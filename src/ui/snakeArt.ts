@@ -76,7 +76,7 @@ export function drawSnakeHead(
   graphics.fillStyle(headColor, 1)
   graphics.fillCircle(x, y, radius)
 
-  graphics.fillStyle(theme.accent, 0.24)
+  graphics.fillStyle(snakeColors.art.blush, 0.38)
   graphics.fillCircle(
     x - dir.x * radius * 0.1 + side.x * radius * 0.62,
     y - dir.y * radius * 0.1 + side.y * radius * 0.62,
@@ -137,7 +137,7 @@ export function drawSnakeHead(
       const startY = y + dir.y * (radius + 1)
       const endX = startX + dir.x * radius * (0.45 + flick * 0.55)
       const endY = startY + dir.y * radius * (0.45 + flick * 0.55)
-      graphics.lineStyle(Math.max(2, radius * 0.12), theme.accent, 1)
+      graphics.lineStyle(Math.max(2, radius * 0.12), snakeColors.art.tongue, 1)
       graphics.lineBetween(startX, startY, endX, endY)
       graphics.lineBetween(endX, endY, endX + dir.x * 4 + side.x * 4, endY + dir.y * 4 + side.y * 4)
       graphics.lineBetween(endX, endY, endX + dir.x * 4 - side.x * 4, endY + dir.y * 4 - side.y * 4)

@@ -1,9 +1,11 @@
 import type { Theme } from '@mg/core'
 
 const ink = 0x332b45
-const muted = 0x65627a
-const accent = 0x38bdf8
-const accentAlt = 0x35c77e
+const muted = 0x6b6178
+const accent = 0x6e45e8
+const accentAlt = 0x2fb673
+const accentWarm = 0xffc94d
+const cream = 0xfff9ec
 const white = 0xffffff
 
 function cssColor(color: number): string {
@@ -11,27 +13,27 @@ function cssColor(color: number): string {
 }
 
 const snakeTheme = {
-  bg: 0xbfeaff,
-  bgAlt: 0xe8faef,
-  board: 0xfff9ec,
+  bg: 0xe3f2fa,
+  bgAlt: 0xfff4e2,
+  board: cream,
   boardAlt: 0xeaf9e8,
   ink,
   accent,
-  accentHover: 0x7dd3fc,
+  accentHover: 0x5a33ce,
   accentAlt,
-  accentWarm: 0xfff1b8,
-  accentInk: '#0b7fae',
-  accentText: cssColor(ink),
+  accentWarm,
+  accentInk: '#4e2cb8',
+  onAccent: cream,
   text: cssColor(ink),
   textMuted: cssColor(muted),
   muted,
-  panel: 0xfff9ec,
+  panel: cream,
   panelStroke: ink,
   surface: white,
-  surfaceAlt: 0xfff3d9,
-  danger: 0xe8504a,
-  dangerHover: 0xf26b64,
-  onDanger: 0xfff9ec,
+  surfaceAlt: 0xffead5,
+  danger: 0xce2f40,
+  dangerHover: 0xb82736,
+  onDanger: cream,
   highlight: white,
   overlay: 0x2a2038,
   shadow: ink,
@@ -40,7 +42,6 @@ const snakeTheme = {
 } satisfies Partial<Theme>
 
 export interface SnakeArtColors {
-  sky: number
   snakeHead: number
   snakeTail: number
   fruit: readonly number[]
@@ -48,19 +49,22 @@ export interface SnakeArtColors {
   eyeWhite: number
   shine: number
   cloud: number
+  tongue: number
+  blush: number
   confetti: readonly number[]
 }
 
 const snakeArt: SnakeArtColors = {
-  sky: 0x5bc8f5,
   snakeHead: 0x7be8a6,
   snakeTail: 0x1e9e60,
-  fruit: [0xff5c8a, 0xef5a6f, 0x8b7cf6],
+  fruit: [0xff5c8a, 0xff7a59, 0xffb020],
   leaf: accentAlt,
   eyeWhite: white,
   shine: white,
   cloud: white,
-  confetti: [accent, accentAlt, 0xfff1b8, white, 0xff5c8a],
+  tongue: 0xff5c8a,
+  blush: 0xff8fa8,
+  confetti: [accent, accentAlt, accentWarm, white, 0xff5c8a],
 }
 
 export const snakeColors = {

@@ -10,6 +10,24 @@ function hex(color: number): string {
   return `#${color.toString(16).padStart(6, '0')}`
 }
 
+function parseHex(value: string): number {
+  return Number.parseInt(value.replace('#', ''), 16)
+}
+
+function luminance(color: number): number {
+  const channels = [16, 8, 0].map((shift) => {
+    const value = ((color >> shift) & 0xff) / 255
+    return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+  })
+  return 0.2126 * (channels[0] ?? 0) + 0.7152 * (channels[1] ?? 0) + 0.0722 * (channels[2] ?? 0)
+}
+
+function contrast(a: number, b: number): number {
+  const lighter = Math.max(luminance(a), luminance(b))
+  const darker = Math.min(luminance(a), luminance(b))
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
 describe('snake colors', () => {
   it('keeps the browser branding in sync with the game palette', () => {
     const html = read('../index.html')
@@ -25,10 +43,28 @@ describe('snake colors', () => {
   it('keeps the favicon art in sync with the game palette', () => {
     const favicon = read('../public/favicon.svg').toLowerCase()
 
-    expect(favicon).toContain(hex(snakeColors.theme.bg))
+    expect(favicon).toContain(hex(snakeColors.theme.accent))
+    expect(favicon).toContain(hex(snakeColors.theme.onAccent))
     expect(favicon).toContain(hex(snakeColors.theme.ink))
     expect(favicon).toContain(hex(snakeColors.art.snakeHead))
     expect(favicon).toContain(hex(snakeColors.art.leaf))
     expect(favicon).toContain(hex(snakeColors.art.fruit[0] ?? 0))
+  })
+
+  it('keeps text readable in every supported role', () => {
+    const { theme } = snakeColors
+
+    expect(contrast(theme.accent, theme.bg)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(theme.accent, theme.board)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(theme.onAccent, theme.accent)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(theme.onDanger, theme.danger)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(parseHex(theme.accentInk), theme.bg)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(theme.muted, theme.bg)).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('darkens the accent on hover instead of washing it out', () => {
+    expect(luminance(snakeColors.theme.accentHover)).toBeLessThan(
+      luminance(snakeColors.theme.accent),
+    )
   })
 })

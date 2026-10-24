@@ -48,7 +48,7 @@ export function drawBackdrop(
   }
 
   if (options.confetti !== false) {
-    const colors = [theme.accent, theme.accentAlt, theme.accentWarm, snakeColors.art.sky]
+    const colors = snakeColors.art.confetti
     for (let index = 0; index < 26; index += 1) {
       const x = insets.left + (((index * 137) % 100) / 100) * (width - insets.left - insets.right)
       const y = insets.top + (((index * 71) % 100) / 100) * height * 0.82

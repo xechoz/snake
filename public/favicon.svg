@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Snake</title>
-  <rect width="64" height="64" rx="15" fill="#BFEAFF" />
-  <rect x="2" y="2" width="60" height="60" rx="13" fill="none" stroke="#332B45" stroke-width="3" />
+  <rect width="64" height="64" rx="15" fill="#6E45E8" />
+  <rect x="2" y="2" width="60" height="60" rx="13" fill="none" stroke="#FFF9EC" stroke-width="3" />
   <path
     d="M12 46c0-11 9-20 20-20h11"
     fill="none"
@@ -13,7 +13,7 @@
   <path
     d="M12 46c0-11 9-20 20-20h11"
     fill="none"
-    stroke="#35C77E"
+    stroke="#2FB673"
     stroke-width="10"
     stroke-linecap="round"
     stroke-linejoin="round"
@@ -23,6 +23,6 @@
   <circle cx="51.5" cy="27.5" r="1.9" fill="#332B45" />
   <path d="M53 27l5 1M58 28l1-2M58 28l1 2" fill="none" stroke="#FF5C8A" stroke-width="2" stroke-linecap="round" />
   <circle cx="51" cy="48" r="7" fill="#FF5C8A" stroke="#332B45" stroke-width="2.5" />
-  <path d="M49 41c1-3 4-4 6-3" fill="none" stroke="#35C77E" stroke-width="3" stroke-linecap="round" />
+  <path d="M49 41c1-3 4-4 6-3" fill="none" stroke="#2FB673" stroke-width="3" stroke-linecap="round" />
   <circle cx="48.5" cy="45.5" r="1.8" fill="#FFF9EC" />
 </svg>

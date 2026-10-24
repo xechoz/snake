@@ -242,11 +242,12 @@ export class MenuScene extends Phaser.Scene {
     this.bestChip.fillRoundedRect(left, top, chipWidth, chipHeight, chipHeight / 2)
 
     this.bestStar.clear()
+    this.bestStar.setPosition(left + 32, layout.bestY)
     this.bestStar.fillStyle(theme.accent, 1)
-    this.bestStar.fillCircle(left + 32, layout.bestY, 18)
+    this.bestStar.fillCircle(0, 0, 18)
     this.bestStar.lineStyle(2.5, theme.ink, 1)
-    this.bestStar.strokeCircle(left + 32, layout.bestY, 18)
-    drawIcon(this.bestStar, 'star', 20, theme.surface, false)
+    this.bestStar.strokeCircle(0, 0, 18)
+    drawIcon(this.bestStar, 'star', 20, theme.onAccent, false)
 
     this.bestLabel.setPosition(left + starSpace + this.bestLabel.width / 2, layout.bestY)
   }

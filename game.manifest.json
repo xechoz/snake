@@ -9,6 +9,6 @@
     "zh": "经典贪吃蛇：吃果实变长，别撞墙，也别咬到自己。",
     "en": "Classic Snake: eat fruit, grow longer, and avoid the walls and yourself."
   },
-  "themeColor": "#38bdf8",
+  "themeColor": "#6e45e8",
   "tags": ["arcade", "classic"]
 }
