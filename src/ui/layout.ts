@@ -144,7 +144,6 @@ export function computeSnakeLayout(viewport: Viewport): SnakeLayout {
 export interface MenuLayout {
   centerX: number
   titleY: number
-  subtitleY: number
   bestY: number
   playY: number
   secondaryY: number
@@ -188,7 +187,6 @@ export function computeMenuLayout(viewport: Viewport): MenuLayout {
   return {
     centerX,
     titleY: top,
-    subtitleY: top + 96,
     bestY: top + 160,
     playY: top + 270,
     secondaryY: top + 396,

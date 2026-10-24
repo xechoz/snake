@@ -327,11 +327,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawBackdrop(): void {
-    drawBackdrop(this.backdropGraphics, this.viewport, getServices().theme, {
-      clouds: 2,
-      confetti: false,
-      hillAlpha: 0.8,
-    })
+    drawBackdrop(this.backdropGraphics, this.viewport, getServices().theme)
   }
 
   private drawBoard(): void {

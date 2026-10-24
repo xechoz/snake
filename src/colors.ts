@@ -37,8 +37,9 @@ const snakeTheme = {
   highlight: white,
   overlay: 0x2a2038,
   shadow: ink,
-  radius: 18,
-  radiusLarge: 28,
+  // Button clamps this to half its height, so every control renders as a capsule.
+  radius: 64,
+  radiusLarge: 44,
 } satisfies Partial<Theme>
 
 export interface SnakeArtColors {

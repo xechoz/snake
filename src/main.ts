@@ -4,6 +4,7 @@ import { snakeI18n } from './i18n'
 import { GameScene } from './scenes/GameScene'
 import { HudScene } from './scenes/HudScene'
 import { MenuScene } from './scenes/MenuScene'
+import { drawBackdrop } from './ui/backdrop'
 
 createGame({
   id: 'snake',
@@ -12,5 +13,6 @@ createGame({
   defaultLang: 'zh',
   i18n: snakeI18n,
   menuScene: 'Menu',
+  backdrop: drawBackdrop,
   scenes: [MenuScene, GameScene, HudScene],
 })

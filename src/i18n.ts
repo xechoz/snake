@@ -3,7 +3,6 @@ import type { Dictionary } from '@mg/core'
 export const snakeI18n: Record<'zh' | 'en', Dictionary> = {
   zh: {
     'game.title': '贪吃蛇',
-    'menu.subtitle': '经典街机 · 20 × 20',
     'menu.play': '开始',
     'menu.best': '最高分 {score}',
     'menu.controlsTouch': '按住屏幕任意位置拖动转向',
@@ -31,7 +30,6 @@ export const snakeI18n: Record<'zh' | 'en', Dictionary> = {
   },
   en: {
     'game.title': 'Snake',
-    'menu.subtitle': 'Classic arcade · 20 × 20',
     'menu.play': 'Play',
     'menu.best': 'Best {score}',
     'menu.controlsTouch': 'Press anywhere and drag to steer',

@@ -110,7 +110,7 @@ describe('computeMenuLayout', () => {
     const layout = computeMenuLayout(viewport(1280, 720))
 
     expect(layout.titleY).toBeGreaterThanOrEqual(72)
-    expect(layout.subtitleY - layout.titleY).toBe(96)
+    expect(layout.bestY - layout.titleY).toBe(160)
     expect(layout.hintY).toBeLessThan(720)
     expect(layout.playWidth).toBe(480)
     expect(layout.secondaryWidth).toBe(230)

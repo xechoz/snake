@@ -27,7 +27,6 @@ export class MenuScene extends Phaser.Scene {
   private mascot!: Phaser.GameObjects.Container
   private title!: Phaser.GameObjects.Text
   private titleAccent!: Phaser.GameObjects.Graphics
-  private subtitle!: Phaser.GameObjects.Text
   private bestLabel!: Phaser.GameObjects.Text
   private bestStar!: Phaser.GameObjects.Graphics
   private playButton!: Button
@@ -69,10 +68,6 @@ export class MenuScene extends Phaser.Scene {
       .setOrigin(0.5)
 
     this.titleAccent = this.add.graphics()
-
-    this.subtitle = this.add
-      .text(0, 0, services.i18n.t('menu.subtitle'), textStyle(theme, 28, theme.textMuted))
-      .setOrigin(0.5)
 
     this.bestStar = this.add.graphics()
     this.bestLabel = this.add
@@ -183,7 +178,6 @@ export class MenuScene extends Phaser.Scene {
     this.titleAccent.fillStyle(theme.accent, 1)
     this.titleAccent.fillRoundedRect(layout.centerX - 58, layout.titleY + 64, 116, 11, 5.5)
 
-    this.subtitle.setPosition(layout.centerX, layout.subtitleY)
     this.drawBest(layout)
 
     this.playButton.setPosition(layout.centerX, layout.playY)
@@ -273,7 +267,6 @@ export class MenuScene extends Phaser.Scene {
   private playEntrance(): void {
     this.title.setAlpha(0).setScale(0.84)
     this.titleAccent.setAlpha(0)
-    this.subtitle.setAlpha(0)
     this.bestStar.setAlpha(0)
     this.bestLabel.setAlpha(0)
     this.playButton.setAlpha(0).setScale(0.9)
@@ -294,7 +287,7 @@ export class MenuScene extends Phaser.Scene {
     })
     this.tweens.add({ targets: this.titleAccent, alpha: 1, duration: 360, delay: 120 })
     this.tweens.add({
-      targets: [this.subtitle, this.bestStar, this.bestLabel],
+      targets: [this.bestStar, this.bestLabel],
       alpha: 1,
       duration: 360,
       delay: 160,
