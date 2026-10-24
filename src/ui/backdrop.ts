@@ -1,5 +1,6 @@
 import { mixColor, type Theme, type Viewport } from '@mg/core'
 import type Phaser from 'phaser'
+import { snakeColors } from '../colors'
 
 export interface BackdropOptions {
   sun?: boolean
@@ -35,7 +36,7 @@ export function drawBackdrop(
     graphics.fillCircle(sunX, sunY, 108)
     graphics.fillStyle(theme.accentWarm, 0.85)
     graphics.fillCircle(sunX, sunY, 52)
-    graphics.fillStyle(0xffffff, 0.35)
+    graphics.fillStyle(snakeColors.art.shine, 0.35)
     graphics.fillCircle(sunX - 14, sunY - 14, 16)
   }
 
@@ -47,7 +48,7 @@ export function drawBackdrop(
   }
 
   if (options.confetti !== false) {
-    const colors = [theme.accent, theme.accentAlt, theme.accentWarm, 0x5bc8f5]
+    const colors = [theme.accent, theme.accentAlt, theme.accentWarm, snakeColors.art.sky]
     for (let index = 0; index < 26; index += 1) {
       const x = insets.left + (((index * 137) % 100) / 100) * (width - insets.left - insets.right)
       const y = insets.top + (((index * 71) % 100) / 100) * height * 0.82
@@ -60,9 +61,9 @@ export function drawBackdrop(
 
   if (options.hills !== false) {
     const alpha = options.hillAlpha ?? 1
-    graphics.fillStyle(mixColor(theme.accentAlt, 0xffffff, 0.55), alpha)
+    graphics.fillStyle(mixColor(theme.accentAlt, theme.highlight, 0.55), alpha)
     graphics.fillEllipse(width * 0.18, height + 70, width * 0.95, 300)
-    graphics.fillStyle(mixColor(theme.accentAlt, 0xffffff, 0.35), alpha)
+    graphics.fillStyle(mixColor(theme.accentAlt, theme.highlight, 0.35), alpha)
     graphics.fillEllipse(width * 0.86, height + 100, width * 0.82, 330)
   }
 }
@@ -74,7 +75,7 @@ function drawCloud(
   scale: number,
   alpha: number,
 ): void {
-  graphics.fillStyle(0xffffff, alpha)
+  graphics.fillStyle(snakeColors.art.cloud, alpha)
   graphics.fillRoundedRect(x - 74 * scale, y, 148 * scale, 34 * scale, 17 * scale)
   graphics.fillCircle(x - 44 * scale, y + 6 * scale, 26 * scale)
   graphics.fillCircle(x + 2 * scale, y - 8 * scale, 32 * scale)

@@ -44,7 +44,7 @@ export class FloatingJoystick extends Phaser.GameObjects.Container {
     this.knob.fillCircle(0, 0, KNOB_RADIUS + 3)
     this.knob.fillStyle(theme.accent, 1)
     this.knob.fillCircle(0, 0, KNOB_RADIUS)
-    this.knob.fillStyle(0xffffff, 0.4)
+    this.knob.fillStyle(theme.highlight, 0.4)
     this.knob.fillCircle(-11, -13, 10)
 
     this.add([base, this.knob])

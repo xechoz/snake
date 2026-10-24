@@ -9,6 +9,7 @@ import {
   type Viewport,
 } from '@mg/core'
 import Phaser from 'phaser'
+import { snakeColors } from '../colors'
 import {
   computeSnakeLayout,
   inlineScorePositions,
@@ -258,7 +259,7 @@ export class HudScene extends Phaser.Scene {
 
   private celebrate(): void {
     const theme = getServices().theme
-    const colors = [theme.accent, theme.accentAlt, theme.accentWarm, 0xffffff, 0xff5c8a]
+    const colors = snakeColors.art.confetti
     const width = this.scale.width
     for (let index = 0; index < 42; index += 1) {
       const piece = this.add

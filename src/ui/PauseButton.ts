@@ -85,7 +85,7 @@ export class PauseButton extends Phaser.GameObjects.Container {
     this.background.fillCircle(0, 0, half + 3)
     this.background.fillStyle(this.hovered ? this.theme.surfaceAlt : this.theme.surface, 1)
     this.background.fillCircle(0, 0, half)
-    this.background.fillStyle(0xffffff, 0.5)
+    this.background.fillStyle(this.theme.highlight, 0.5)
     this.background.fillCircle(-half * 0.34, -half * 0.38, half * 0.24)
 
     const offset = this.pressed ? 3 : 0

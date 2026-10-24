@@ -1,5 +1,6 @@
 import type { Theme } from '@mg/core'
 import type Phaser from 'phaser'
+import { snakeColors } from '../colors'
 
 export interface SnakeSegment {
   x: number
@@ -110,11 +111,11 @@ export function drawSnakeHead(
       graphics.lineStyle(Math.max(2, radius * 0.14), ink, 1)
       graphics.lineBetween(eyeX - radius * 0.16, eyeY, eyeX + radius * 0.16, eyeY)
     } else {
-      graphics.fillStyle(0xffffff, 1)
+      graphics.fillStyle(snakeColors.art.eyeWhite, 1)
       graphics.fillCircle(eyeX, eyeY, radius * 0.22)
       graphics.fillStyle(ink, 1)
       graphics.fillCircle(eyeX + dir.x * radius * 0.06, eyeY + dir.y * radius * 0.06, radius * 0.12)
-      graphics.fillStyle(0xffffff, 0.8)
+      graphics.fillStyle(snakeColors.art.shine, 0.8)
       graphics.fillCircle(eyeX - radius * 0.04, eyeY - radius * 0.05, radius * 0.05)
     }
   }
@@ -163,14 +164,14 @@ export function drawFruit(
   graphics.fillStyle(color, 1)
   graphics.fillCircle(x, y, size)
 
-  graphics.fillStyle(0xffffff, 0.55)
+  graphics.fillStyle(snakeColors.art.shine, 0.55)
   graphics.fillCircle(x - size * 0.3, y - size * 0.34, size * 0.26)
-  graphics.fillStyle(0xffffff, 0.8)
+  graphics.fillStyle(snakeColors.art.shine, 0.8)
   graphics.fillCircle(x + size * 0.34, y - size * 0.42, size * 0.09)
 
   graphics.fillStyle(theme.ink, 1)
   graphics.fillEllipse(x + size * 0.42, y - size - 4, size * 0.62 + 3, size * 0.32 + 3)
-  graphics.fillStyle(theme.accentAlt, 1)
+  graphics.fillStyle(snakeColors.art.leaf, 1)
   graphics.fillEllipse(x + size * 0.42, y - size - 4, size * 0.62, size * 0.32)
 
   graphics.lineStyle(Math.max(2, size * 0.16), theme.ink, 1)

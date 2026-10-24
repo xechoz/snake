@@ -1,8 +1,8 @@
 import { mixColor, type Theme } from '@mg/core'
 import type Phaser from 'phaser'
+import { snakeColors } from '../colors'
 import { snakeConfig } from '../logic/config'
 import type { Cell, Direction, SnakeState } from '../logic/types'
-import { snakePalette } from './palette'
 import { drawFruit, drawSnakeBody, drawSnakeHead, type SnakeSegment } from './snakeArt'
 
 export interface BoardMetrics {
@@ -46,7 +46,7 @@ export function drawBoardFrame(
     }
   }
 
-  graphics.lineStyle(2, mixColor(theme.accentAlt, 0xffffff, 0.35), 0.7)
+  graphics.lineStyle(2, mixColor(theme.accentAlt, theme.highlight, 0.35), 0.7)
   graphics.strokeRect(x, y, width, width)
 }
 
@@ -73,7 +73,7 @@ export function drawSnakeAndFood(
 
   const segments: SnakeSegment[] = points.map((point, index) => {
     const t = snake.length === 1 ? 0 : index / (snake.length - 1)
-    const color = mixColor(snakePalette.snakeHead, snakePalette.snakeTail, t)
+    const color = mixColor(snakeColors.art.snakeHead, snakeColors.art.snakeTail, t)
     return {
       x: point.x,
       y: point.y,
@@ -97,7 +97,7 @@ export function drawSnakeAndFood(
       direction,
       cell * 0.48,
       theme,
-      dead ? theme.danger : snakePalette.snakeHead,
+      dead ? theme.danger : snakeColors.art.snakeHead,
       3.6,
       { dead, tongue },
     )
@@ -143,6 +143,6 @@ export function cellCenterY(board: BoardMetrics, y: number): number {
 }
 
 export function fruitColorAt(cell: Cell): number {
-  const index = Math.abs(cell.x * 7 + cell.y * 13) % snakePalette.fruit.length
-  return snakePalette.fruit[index] ?? snakePalette.fruit[0]
+  const index = Math.abs(cell.x * 7 + cell.y * 13) % snakeColors.art.fruit.length
+  return snakeColors.art.fruit[index] ?? snakeColors.art.fruit[0]
 }

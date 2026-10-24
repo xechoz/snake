@@ -270,7 +270,7 @@ export class MenuScene extends Phaser.Scene {
       graphics.fillCircle(0, -4, 11)
       graphics.lineStyle(2, theme.ink, 1)
       graphics.strokeCircle(0, -4, 11)
-      graphics.fillStyle(0xffffff, 0.5)
+      graphics.fillStyle(theme.highlight, 0.5)
       graphics.fillCircle(-3, -8, 3.5)
       return
     }

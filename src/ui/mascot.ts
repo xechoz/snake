@@ -1,6 +1,6 @@
 import { mixColor, type Theme } from '@mg/core'
 import type Phaser from 'phaser'
-import { snakePalette } from './palette'
+import { snakeColors } from '../colors'
 import { drawSnakeBody, drawSnakeHead, type Point, type SnakeSegment } from './snakeArt'
 
 /** A friendly coiled snake used as the menu mascot. */
@@ -34,7 +34,7 @@ export function createSnakeMascot(scene: Phaser.Scene, theme: Theme): Phaser.Gam
       x: point.x,
       y: point.y,
       radius: 18 - t * 8,
-      color: mixColor(snakePalette.snakeHead, snakePalette.snakeTail, t),
+      color: mixColor(snakeColors.art.snakeHead, snakeColors.art.snakeTail, t),
     }
   })
 
@@ -48,10 +48,20 @@ export function createSnakeMascot(scene: Phaser.Scene, theme: Theme): Phaser.Gam
     const flickPhase = now % 3100
     const tongue = flickPhase < 300 ? Math.sin((flickPhase / 300) * Math.PI) : 0
     headGraphics.clear()
-    drawSnakeHead(headGraphics, head.x, head.y, direction, 23, theme, snakePalette.snakeHead, 4, {
-      blink,
-      tongue,
-    })
+    drawSnakeHead(
+      headGraphics,
+      head.x,
+      head.y,
+      direction,
+      23,
+      theme,
+      snakeColors.art.snakeHead,
+      4,
+      {
+        blink,
+        tongue,
+      },
+    )
   }
   redrawHead()
   scene.time.addEvent({ delay: 90, loop: true, callback: redrawHead })
