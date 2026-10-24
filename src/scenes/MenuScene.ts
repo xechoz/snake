@@ -58,14 +58,9 @@ export class MenuScene extends Phaser.Scene {
     this.backdrop = this.add.graphics()
     this.mascot = createSnakeMascot(this, theme)
 
-    this.title = this.add
-      .text(
-        0,
-        0,
-        services.i18n.t('game.title'),
-        displayTextStyle(theme, 104, cssColor(theme.accent), true, 7, 8),
-      )
-      .setOrigin(0.5)
+    const titleStyle = displayTextStyle(theme, 104, cssColor(theme.accent), true, 7, 8)
+    titleStyle.stroke = cssColor(theme.accentInk)
+    this.title = this.add.text(0, 0, services.i18n.t('game.title'), titleStyle).setOrigin(0.5)
 
     this.titleAccent = this.add.graphics()
 
@@ -75,11 +70,12 @@ export class MenuScene extends Phaser.Scene {
         0,
         0,
         services.i18n.t('menu.best', { score: best }),
-        textStyle(theme, 28, theme.accentInk, true),
+        textStyle(theme, 28, cssColor(theme.accentInk), true),
       )
       .setOrigin(0.5)
 
-    this.playButton = new Button(this, 0, 0, services.i18n.t('menu.play'), theme, {
+    const primaryTheme = { ...theme, ink: theme.accentInk }
+    this.playButton = new Button(this, 0, 0, services.i18n.t('menu.play'), primaryTheme, {
       width: initial.playWidth,
       height: 100,
       fontSize: 32,
@@ -175,7 +171,7 @@ export class MenuScene extends Phaser.Scene {
 
     this.title.setPosition(layout.centerX, layout.titleY)
     this.titleAccent.clear()
-    this.titleAccent.fillStyle(theme.accent, 1)
+    this.titleAccent.fillStyle(theme.accentInk, 1)
     this.titleAccent.fillRoundedRect(layout.centerX - 58, layout.titleY + 64, 116, 11, 5.5)
 
     this.drawBest(layout)
@@ -219,6 +215,8 @@ export class MenuScene extends Phaser.Scene {
     this.bestStar.setPosition(left + badge / 2, layout.bestY)
     this.bestStar.fillStyle(theme.accent, 1)
     this.bestStar.fillCircle(0, 0, badge / 2)
+    this.bestStar.lineStyle(2, theme.onAccent, 1)
+    this.bestStar.strokeCircle(0, 0, badge / 2 - 1)
     drawIcon(this.bestStar, 'star', 20, theme.onAccent, false)
 
     this.bestLabel.setPosition(left + badge + gap + this.bestLabel.width / 2, layout.bestY)
@@ -239,7 +237,7 @@ export class MenuScene extends Phaser.Scene {
       graphics.fillTriangle(0, 23, -4, 17, 4, 17)
       graphics.fillTriangle(-23, 0, -17, -4, -17, 4)
       graphics.fillTriangle(23, 0, 17, -4, 17, 4)
-      graphics.fillStyle(theme.accent, 1)
+      graphics.fillStyle(theme.accentInk, 1)
       graphics.fillCircle(0, -4, 11)
       graphics.fillStyle(theme.highlight, 0.5)
       graphics.fillCircle(-3, -8, 3.5)

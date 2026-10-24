@@ -59,7 +59,7 @@ export class HudScene extends Phaser.Scene {
         0,
         0,
         String(stats.score),
-        displayTextStyle(theme, SCORE_VALUE_SIZE, cssColor(theme.accent), true, 0, 4),
+        displayTextStyle(theme, SCORE_VALUE_SIZE, cssColor(theme.accentInk), true, 0, 4),
       )
       .setOrigin(0.5)
 

@@ -92,7 +92,10 @@ export class PauseButton extends Phaser.GameObjects.Container {
 
     const offset = this.pressed ? 2 : 0
     this.icon.clear()
-    this.icon.fillStyle(this.hovered ? this.theme.accentHover : this.theme.accent, 1)
+    this.icon.fillStyle(
+      this.hovered ? mixColor(this.theme.accentInk, this.theme.ink, 0.25) : this.theme.accentInk,
+      1,
+    )
     this.icon.fillRoundedRect(-13, -15 + offset, 9, 30, 4)
     this.icon.fillRoundedRect(4, -15 + offset, 9, 30, 4)
   }

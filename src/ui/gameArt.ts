@@ -128,7 +128,7 @@ export function drawCountdownBadge(
   graphics.fillCircle(centerX + 2, centerY + 8, 82)
   graphics.fillStyle(theme.surface, 1)
   graphics.fillCircle(centerX, centerY, 82)
-  graphics.lineStyle(7, theme.accent, 1)
+  graphics.lineStyle(7, theme.accentInk, 1)
   graphics.strokeCircle(centerX, centerY, 71)
 }
 

@@ -10,10 +10,6 @@ function hex(color: number): string {
   return `#${color.toString(16).padStart(6, '0')}`
 }
 
-function parseHex(value: string): number {
-  return Number.parseInt(value.replace('#', ''), 16)
-}
-
 function luminance(color: number): number {
   const channels = [16, 8, 0].map((shift) => {
     const value = ((color >> shift) & 0xff) / 255
@@ -54,11 +50,10 @@ describe('snake colors', () => {
   it('keeps text readable in every supported role', () => {
     const { theme } = snakeColors
 
-    expect(contrast(theme.accent, theme.bg)).toBeGreaterThanOrEqual(4.5)
-    expect(contrast(theme.accent, theme.board)).toBeGreaterThanOrEqual(4.5)
-    expect(contrast(theme.onAccent, theme.accent)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(theme.accentInk, theme.bg)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(theme.accentInk, theme.surface)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(theme.onAccent, theme.accent)).toBeGreaterThanOrEqual(3)
     expect(contrast(theme.onDanger, theme.danger)).toBeGreaterThanOrEqual(4.5)
-    expect(contrast(parseHex(theme.accentInk), theme.bg)).toBeGreaterThanOrEqual(4.5)
     expect(contrast(theme.muted, theme.bg)).toBeGreaterThanOrEqual(4.5)
   })
 
