@@ -119,6 +119,8 @@ export class GameScene extends Phaser.Scene {
       this.countdownMs -= frame
       if (this.countdownMs <= 0) {
         this.countdownActive = false
+        // The two-character "开始" needs a smaller face than a single digit.
+        this.countdownText.setFontSize(56)
         this.countdownText.setText(getServices().i18n.t('go'))
         this.popCountdown()
         this.tweens.add({
@@ -238,6 +240,7 @@ export class GameScene extends Phaser.Scene {
     this.tweens.killTweensOf([this.countdownText, this.countdownBadge])
     this.countdownActive = true
     this.countdownMs = COUNTDOWN_MS
+    this.countdownText.setFontSize(96)
     this.countdownText.setText(String(Math.ceil(this.countdownMs / 600)))
     this.countdownText.setAlpha(1).setScale(1)
     this.countdownBadge.setAlpha(1)
@@ -343,10 +346,12 @@ export class GameScene extends Phaser.Scene {
 
     const badge = this.add.container(x, y).setDepth(10)
     const background = this.add.graphics()
+    background.fillStyle(theme.shadow, 0.12)
+    background.fillRoundedRect(-32, -16, 68, 40, 20)
     background.fillStyle(theme.surface, 1)
     background.fillRoundedRect(-34, -20, 68, 40, 20)
-    background.lineStyle(3, theme.ink, 1)
-    background.strokeRoundedRect(-34, -20, 68, 40, 20)
+    background.lineStyle(1, theme.borderSoft, 1)
+    background.strokeRoundedRect(-33.5, -19.5, 67, 39, 20)
     const label = this.add
       .text(0, 0, `+${snakeConfig.scorePerFood}`, textStyle(theme, 26, theme.text, true))
       .setOrigin(0.5)

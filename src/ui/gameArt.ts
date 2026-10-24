@@ -125,9 +125,7 @@ export function drawCountdownBadge(
 ): void {
   graphics.clear()
   graphics.fillStyle(theme.shadow, 0.16)
-  graphics.fillCircle(centerX + 2, centerY + 8, 88)
-  graphics.fillStyle(theme.ink, 1)
-  graphics.fillCircle(centerX, centerY, 86)
+  graphics.fillCircle(centerX + 2, centerY + 8, 82)
   graphics.fillStyle(theme.surface, 1)
   graphics.fillCircle(centerX, centerY, 82)
   graphics.lineStyle(7, theme.accent, 1)

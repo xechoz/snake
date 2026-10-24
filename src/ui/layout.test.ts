@@ -151,4 +151,9 @@ describe('computeMenuLayout', () => {
     expect(computeMenuLayout(viewport(720, 720)).mascot.visible).toBe(false)
     expect(computeMenuLayout(viewport(960, 720)).mascot.visible).toBe(true)
   })
+
+  it('hides the mascot when it would cover the help text', () => {
+    expect(computeMenuLayout(viewport(768, 1024)).mascot.visible).toBe(false)
+    expect(computeMenuLayout(viewport(720, 1558)).mascot.visible).toBe(true)
+  })
 })

@@ -1,12 +1,12 @@
 import type { Theme } from '@mg/core'
 
 const ink = 0x332b45
+const white = 0xffffff
 const muted = 0x6b6178
 const accent = 0x6e45e8
 const accentAlt = 0x2fb673
 const accentWarm = 0xffc94d
 const cream = 0xfff9ec
-const white = 0xffffff
 
 function cssColor(color: number): string {
   return `#${color.toString(16).padStart(6, '0')}`
@@ -28,7 +28,7 @@ const snakeTheme = {
   textMuted: cssColor(muted),
   muted,
   panel: cream,
-  panelStroke: ink,
+  borderSoft: 0xd2d0d6,
   surface: white,
   surfaceAlt: 0xffead5,
   danger: 0xce2f40,

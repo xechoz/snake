@@ -1,4 +1,4 @@
-import type { Theme } from '@mg/core'
+import { mixColor, type Theme } from '@mg/core'
 import Phaser from 'phaser'
 
 export interface PauseButtonOptions {
@@ -79,16 +79,18 @@ export class PauseButton extends Phaser.GameObjects.Container {
     const half = this.buttonSize / 2
 
     this.background.clear()
-    this.background.fillStyle(this.theme.shadow, 0.16)
-    this.background.fillCircle(2, 8, half)
-    this.background.fillStyle(this.theme.ink, 1)
-    this.background.fillCircle(0, 0, half + 3)
+    this.background.fillStyle(this.theme.shadow, 0.12)
+    this.background.fillCircle(0, 4, half)
     this.background.fillStyle(this.hovered ? this.theme.surfaceAlt : this.theme.surface, 1)
     this.background.fillCircle(0, 0, half)
-    this.background.fillStyle(this.theme.highlight, 0.5)
-    this.background.fillCircle(-half * 0.34, -half * 0.38, half * 0.24)
+    this.background.lineStyle(
+      1,
+      this.hovered ? mixColor(this.theme.borderSoft, this.theme.ink, 0.3) : this.theme.borderSoft,
+      1,
+    )
+    this.background.strokeCircle(0, 0, half - 0.5)
 
-    const offset = this.pressed ? 3 : 0
+    const offset = this.pressed ? 2 : 0
     this.icon.clear()
     this.icon.fillStyle(this.hovered ? this.theme.accentHover : this.theme.accent, 1)
     this.icon.fillRoundedRect(-13, -15 + offset, 9, 30, 4)

@@ -156,7 +156,7 @@ export interface MenuLayout {
   mascot: { x: number; y: number; scale: number; visible: boolean }
 }
 
-const MENU_SPAN = 548
+const MENU_SPAN = 560
 
 export function computeMenuLayout(viewport: Viewport): MenuLayout {
   const { insets, width, height } = viewport
@@ -178,7 +178,12 @@ export function computeMenuLayout(viewport: Viewport): MenuLayout {
   const mascotY = landscape
     ? insets.top + Math.round(availableHeight * 0.42)
     : insets.top + availableHeight - 40 - mascotHalf
-  const mascotVisible = landscape ? availableWidth >= 900 : true
+  const hintY = top + 520
+  // Portrait mascots sit low; hide them when a 4:3-ish screen would make the
+  // coiled body cover the help text.
+  const mascotVisible = landscape
+    ? availableWidth >= 900
+    : mascotY - 180 * mascotScale >= hintY + 36
 
   return {
     centerX,
@@ -188,8 +193,8 @@ export function computeMenuLayout(viewport: Viewport): MenuLayout {
     playY: top + 270,
     secondaryY: top + 396,
     controlsY: top + 476,
-    hintY: top + 512,
-    installHintY: top + 548,
+    hintY,
+    installHintY: top + 560,
     playWidth: Math.min(480, availableWidth - 48),
     secondaryWidth: Math.min(230, Math.round((availableWidth - 72) / 2)),
     mascot: { x: mascotX, y: mascotY, scale: mascotScale, visible: mascotVisible },

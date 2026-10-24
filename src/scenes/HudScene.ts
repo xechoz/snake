@@ -59,7 +59,7 @@ export class HudScene extends Phaser.Scene {
         0,
         0,
         String(stats.score),
-        displayTextStyle(theme, SCORE_VALUE_SIZE, cssColor(theme.accent), true, 3, 4),
+        displayTextStyle(theme, SCORE_VALUE_SIZE, cssColor(theme.accent), true, 0, 4),
       )
       .setOrigin(0.5)
 
@@ -130,31 +130,24 @@ export class HudScene extends Phaser.Scene {
     const graphics = this.scoreCard
 
     graphics.clear()
-    graphics.fillStyle(theme.shadow, 0.16)
+    graphics.fillStyle(theme.shadow, 0.12)
     graphics.fillRoundedRect(
       scoreCard.x + 2,
-      scoreCard.y + 10,
+      scoreCard.y + 6,
       scoreCard.width,
       scoreCard.height,
       radius,
     )
-    graphics.fillStyle(theme.ink, 1)
-    graphics.fillRoundedRect(
-      scoreCard.x - 4,
-      scoreCard.y - 4,
-      scoreCard.width + 8,
-      scoreCard.height + 8,
-      radius + 4,
-    )
     graphics.fillStyle(theme.surface, 1)
     graphics.fillRoundedRect(scoreCard.x, scoreCard.y, scoreCard.width, scoreCard.height, radius)
-    graphics.fillStyle(theme.accent, 0.14)
-    graphics.fillRoundedRect(scoreCard.x + 12, scoreCard.y + 10, scoreCard.width - 24, 10, 5)
-
-    graphics.fillStyle(theme.accent, 0.55)
-    for (let index = 0; index < 3; index += 1) {
-      graphics.fillCircle(scoreCard.x + scoreCard.width - 28 + index * 9, scoreCard.y + 26, 3)
-    }
+    graphics.lineStyle(1, theme.borderSoft, 1)
+    graphics.strokeRoundedRect(
+      scoreCard.x + 0.5,
+      scoreCard.y + 0.5,
+      scoreCard.width - 1,
+      scoreCard.height - 1,
+      radius,
+    )
   }
 
   private positionScore(): void {
@@ -192,7 +185,7 @@ export class HudScene extends Phaser.Scene {
       title: services.i18n.t('pause.title'),
       body: services.i18n.t('pause.body'),
       width: 640,
-      height: 540,
+      height: 500,
       titleFontSize: 36,
       bodyFontSize: 30,
       actionsLayout: 'column',
