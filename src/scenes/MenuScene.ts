@@ -2,6 +2,9 @@ import {
   Button,
   cssColor,
   getServices,
+  isEmbedded,
+  isStandalone,
+  maybeEnterFullscreen,
   onLayoutChange,
   readViewport,
   textStyle,
@@ -24,6 +27,7 @@ export class MenuScene extends Phaser.Scene {
   private languageButton!: Button
   private controls!: Phaser.GameObjects.Text
   private hint!: Phaser.GameObjects.Text
+  private installHint?: Phaser.GameObjects.Text
 
   constructor() {
     super('Menu')
@@ -106,15 +110,30 @@ export class MenuScene extends Phaser.Scene {
       .text(0, 0, services.i18n.t('menu.hint'), textStyle(theme, 26, theme.textMuted))
       .setOrigin(0.5)
 
+    if (this.shouldShowInstallHint()) {
+      this.installHint = this.add
+        .text(0, 0, services.i18n.t('menu.fullscreenHint'), {
+          ...textStyle(theme, 22, theme.textMuted),
+          align: 'center',
+        })
+        .setOrigin(0.5)
+    }
+
     this.applyLayout(viewport, initial)
     onLayoutChange(this, (next) => this.applyLayout(next, computeMenuLayout(next)))
 
     this.input.keyboard?.once('keydown-ENTER', () => this.startGame())
     this.input.keyboard?.once('keydown-SPACE', () => this.startGame())
+
+    // If the Preload request did not land, the first menu tap retries it.
+    if (!this.scale.fullscreen.active) {
+      this.input.once('pointerup', () => maybeEnterFullscreen(this.scale))
+    }
   }
 
   private startGame(): void {
     const services = getServices()
+    maybeEnterFullscreen(this.scale)
     services.audio.unlock()
     services.audio.play('click')
     this.scene.start('Game')
@@ -157,8 +176,19 @@ export class MenuScene extends Phaser.Scene {
     )
     this.controls.setPosition(layout.centerX, layout.controlsY)
     this.hint.setPosition(layout.centerX, layout.hintY)
+    this.installHint?.setPosition(layout.centerX, layout.installHintY)
+    this.installHint?.setWordWrapWidth(
+      viewport.width - viewport.insets.left - viewport.insets.right - 48,
+    )
 
     this.motif.setPosition(layout.motif.x, layout.motif.y).setScale(layout.motif.scale)
+  }
+
+  private shouldShowInstallHint(): boolean {
+    if (isEmbedded()) return false
+    if (this.scale.fullscreen.available) return false
+    if (isStandalone()) return false
+    return hasTouchInput()
   }
 
   private drawBackdrop(viewport: Viewport): void {

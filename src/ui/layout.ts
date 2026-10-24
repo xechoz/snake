@@ -114,6 +114,7 @@ export interface MenuLayout {
   secondaryY: number
   controlsY: number
   hintY: number
+  installHintY: number
   playWidth: number
   secondaryWidth: number
   motif: { x: number; y: number; scale: number }
@@ -145,6 +146,7 @@ export function computeMenuLayout(viewport: Viewport): MenuLayout {
     secondaryY: top + 390,
     controlsY: top + 470,
     hintY: top + 506,
+    installHintY: top + 544,
     playWidth: Math.min(480, availableWidth - 48),
     secondaryWidth: Math.min(230, Math.round((availableWidth - 72) / 2)),
     motif: { x: motifX, y: motifY, scale: motifScale },

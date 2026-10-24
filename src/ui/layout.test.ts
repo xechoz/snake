@@ -91,6 +91,8 @@ describe('computeMenuLayout', () => {
     expect(layout.hintY).toBeLessThan(720)
     expect(layout.playWidth).toBe(480)
     expect(layout.secondaryWidth).toBe(230)
+    expect(layout.installHintY).toBeGreaterThan(layout.hintY)
+    expect(layout.installHintY).toBeLessThan(720)
   })
 
   it('centres the menu vertically and widens nothing beyond the screen in portrait', () => {
@@ -99,6 +101,8 @@ describe('computeMenuLayout', () => {
     expect(layout.centerX).toBe(360)
     expect(layout.titleY).toBeGreaterThan(96)
     expect(layout.hintY).toBeLessThan(1558)
+    expect(layout.installHintY).toBeGreaterThan(layout.hintY)
+    expect(layout.installHintY).toBeLessThan(1558)
     expect(layout.playWidth).toBeLessThanOrEqual(720 - 48)
   })
 })
