@@ -1,6 +1,7 @@
-import { Button, createPanel, cssColor, getServices, textStyle } from '@mg/core'
+import { Button, cssColor, getServices, textStyle } from '@mg/core'
 import Phaser from 'phaser'
 import { snakeSave } from '../save'
+import { hasTouchInput } from '../ui/device'
 
 export class MenuScene extends Phaser.Scene {
   private soundButton?: Button
@@ -14,40 +15,47 @@ export class MenuScene extends Phaser.Scene {
     const { width, height } = this.cameras.main
     const theme = services.theme
     const best = snakeSave(services).read().best
+    const centerX = width / 2
 
     services.platform.gameplayStop()
 
     this.cameras.main.setBackgroundColor(theme.bg)
     this.drawBackdrop(width, height)
+    this.drawSnakeMotif()
 
     this.add
-      .text(100, 150, services.i18n.t('game.title'), {
-        ...textStyle(theme, 92, theme.text, true),
+      .text(centerX, 150, services.i18n.t('game.title'), textStyle(theme, 104, theme.text, true))
+      .setOrigin(0.5)
+
+    this.add
+      .text(centerX, 232, services.i18n.t('menu.subtitle'), textStyle(theme, 32, theme.textMuted))
+      .setOrigin(0.5)
+
+    const bestLabel = this.add
+      .text(centerX, 300, services.i18n.t('menu.best', { score: best }), {
+        ...textStyle(theme, 32, cssColor(theme.accent), true),
       })
-      .setOrigin(0, 0.5)
+      .setOrigin(0.5)
+    const chipWidth = Math.max(220, bestLabel.width + 56)
+    const chip = this.add.graphics()
+    chip.fillStyle(theme.accent, 0.1)
+    chip.fillRoundedRect(centerX - chipWidth / 2, 272, chipWidth, 56, 28)
+    chip.lineStyle(1, theme.accent, 0.32)
+    chip.strokeRoundedRect(centerX - chipWidth / 2, 272, chipWidth, 56, 28)
+    bestLabel.setDepth(1)
 
-    this.add
-      .text(104, 216, services.i18n.t('menu.subtitle'), textStyle(theme, 20, theme.textMuted))
-      .setOrigin(0, 0.5)
-
-    this.add
-      .text(104, 280, services.i18n.t('menu.best', { score: best }), {
-        ...textStyle(theme, 22, cssColor(theme.accent)),
-      })
-      .setOrigin(0, 0.5)
-
-    new Button(this, 300, 430, services.i18n.t('menu.play'), theme, {
-      width: 300,
-      height: 68,
-      fontSize: 26,
+    new Button(this, centerX, 410, services.i18n.t('menu.play'), theme, {
+      width: 480,
+      height: 96,
+      fontSize: 32,
       onClick: () => this.startGame(),
     })
 
-    this.soundButton = new Button(this, 210, 530, this.soundLabel(), theme, {
-      width: 190,
-      height: 50,
+    this.soundButton = new Button(this, centerX - 127, 540, this.soundLabel(), theme, {
+      width: 230,
+      height: 92,
       variant: 'ghost',
-      fontSize: 18,
+      fontSize: 28,
       onClick: () => {
         services.audio.play('click')
         services.setSound(!services.settings.value.sound)
@@ -55,11 +63,11 @@ export class MenuScene extends Phaser.Scene {
       },
     })
 
-    new Button(this, 414, 530, this.languageLabel(), theme, {
-      width: 190,
-      height: 50,
+    new Button(this, centerX + 127, 540, this.languageLabel(), theme, {
+      width: 230,
+      height: 92,
       variant: 'ghost',
-      fontSize: 18,
+      fontSize: 28,
       onClick: () => {
         services.audio.play('click')
         services.setLang(services.i18n.lang === 'zh' ? 'en' : 'zh')
@@ -68,13 +76,16 @@ export class MenuScene extends Phaser.Scene {
     })
 
     this.add
-      .text(104, 620, services.i18n.t('menu.controls'), textStyle(theme, 16, theme.textMuted))
-      .setOrigin(0, 0.5)
+      .text(
+        centerX,
+        620,
+        services.i18n.t(hasTouchInput() ? 'menu.controlsTouch' : 'menu.controlsDesktop'),
+        textStyle(theme, 26, theme.textMuted),
+      )
+      .setOrigin(0.5)
     this.add
-      .text(104, 650, services.i18n.t('menu.hint'), textStyle(theme, 16, theme.textMuted))
-      .setOrigin(0, 0.5)
-
-    this.drawSnakeArt()
+      .text(centerX, 656, services.i18n.t('menu.hint'), textStyle(theme, 26, theme.textMuted))
+      .setOrigin(0.5)
 
     this.input.keyboard?.once('keydown-ENTER', () => this.startGame())
     this.input.keyboard?.once('keydown-SPACE', () => this.startGame())
@@ -108,27 +119,25 @@ export class MenuScene extends Phaser.Scene {
     graphics.fillRect(0, 0, width, height)
   }
 
-  private drawSnakeArt(): void {
+  private drawSnakeMotif(): void {
     const theme = getServices().theme
-    createPanel(this, 760, 90, 440, 540, theme)
-
     const points = [
-      [820, 180],
-      [880, 180],
-      [940, 180],
-      [1000, 180],
-      [1060, 180],
-      [1060, 240],
-      [1060, 300],
-      [1000, 300],
-      [940, 300],
-      [880, 300],
-      [880, 360],
-      [880, 420],
-      [940, 420],
-      [1000, 420],
-      [1060, 420],
-      [1060, 480],
+      [900, 180],
+      [960, 180],
+      [1020, 180],
+      [1080, 180],
+      [1140, 180],
+      [1140, 240],
+      [1140, 300],
+      [1080, 300],
+      [1020, 300],
+      [960, 300],
+      [960, 360],
+      [960, 420],
+      [1020, 420],
+      [1080, 420],
+      [1140, 420],
+      [1140, 480],
     ] as const
 
     const graphics = this.add.graphics()
@@ -143,17 +152,16 @@ export class MenuScene extends Phaser.Scene {
       graphics.fillStyle(Phaser.Display.Color.GetColor(color.r, color.g, color.b), 1)
       graphics.fillRoundedRect(x - 22, y - 22, 44, 44, 12)
     })
+    graphics.setAlpha(0.12)
 
-    const food = this.add.circle(1140, 520, 16, 0xf97362)
+    const food = this.add.circle(1220, 520, 16, 0xf97362, 0.18)
     this.tweens.add({
       targets: food,
       scale: { from: 0.85, to: 1.15 },
-      duration: 700,
+      duration: 900,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.inOut',
     })
-
-    this.add.text(980, 590, '20 × 20', textStyle(theme, 16, theme.textMuted)).setOrigin(0.5)
   }
 }

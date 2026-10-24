@@ -1,18 +1,29 @@
-import { cssColor, DebugOverlay, getServices, onAppHidden, randomSeed, textStyle } from '@mg/core'
+import {
+  cssColor,
+  DebugOverlay,
+  getServices,
+  onAppHidden,
+  PORTRAIT_BLOCK_QUERY,
+  randomSeed,
+  textStyle,
+} from '@mg/core'
 import { createRng, type Rng } from '@mg/core/rng'
 import Phaser from 'phaser'
 import { snakeConfig } from '../logic/config'
 import { createInitialState, enqueueDirection, step, tickMs } from '../logic/state'
 import type { Cell, Direction, SnakeState } from '../logic/types'
 import { snakeSave } from '../save'
-import type { HudScene } from './HudScene'
+import { resolveSwipe } from '../ui/swipe'
+import type { GameOverInfo, HudScene } from './HudScene'
 
-const BOARD_X = 60
-const BOARD_Y = 60
-const BOARD_SIZE = 600
+const BOARD_X = 24
+const BOARD_Y = 24
+const BOARD_SIZE = 672
 const GRID = snakeConfig.width
 const CELL = BOARD_SIZE / GRID
 const COUNTDOWN_MS = 1800
+const SWIPE_THRESHOLD = 40
+const GAME_OVER_DELAY_MS = 700
 const SNAKE_HEAD = 0x6ee7b7
 const SNAKE_TAIL = 0x15803d
 const FOOD = 0xf97362
@@ -40,7 +51,14 @@ export class GameScene extends Phaser.Scene {
   private countdownText!: Phaser.GameObjects.Text
   private debugOverlay?: DebugOverlay
   private removeHiddenListener?: () => void
+  private portraitQuery?: MediaQueryList
   private swipeStart: { x: number; y: number } | null = null
+  private swipePointerId: number | null = null
+  private swipeEmitted = false
+
+  private readonly handlePortraitChange = (event: MediaQueryListEvent): void => {
+    if (event.matches) this.pauseGame()
+  }
 
   constructor() {
     super('Game')
@@ -60,7 +78,7 @@ export class GameScene extends Phaser.Scene {
         BOARD_X + BOARD_SIZE / 2,
         BOARD_Y + BOARD_SIZE / 2,
         '',
-        textStyle(theme, 110, cssColor(theme.accent), true),
+        textStyle(theme, 120, cssColor(theme.accent), true),
       )
       .setOrigin(0.5)
       .setDepth(12)
@@ -75,7 +93,12 @@ export class GameScene extends Phaser.Scene {
     this.removeHiddenListener = onAppHidden(() => {
       if (!this.paused && !this.finished) this.pauseGame()
     })
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.removeHiddenListener?.())
+    this.portraitQuery = window.matchMedia(PORTRAIT_BLOCK_QUERY)
+    this.portraitQuery.addEventListener('change', this.handlePortraitChange)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.removeHiddenListener?.()
+      this.portraitQuery?.removeEventListener('change', this.handlePortraitChange)
+    })
   }
 
   update(_time: number, delta: number): void {
@@ -127,6 +150,14 @@ export class GameScene extends Phaser.Scene {
 
   currentStats(): { score: number; best: number; tickMs: number } {
     return { score: this.state.score, best: this.best, tickMs: tickMs(this.state) }
+  }
+
+  inputDirection(direction: Direction): void {
+    if (this.paused || this.finished || this.state.status !== 'alive') return
+    const next = enqueueDirection(this.state, direction)
+    if (next === this.state) return
+    this.state = next
+    getServices().audio.play('turn')
   }
 
   pauseGame(): void {
@@ -219,12 +250,15 @@ export class GameScene extends Phaser.Scene {
 
     if (isNewBest) services.platform.happyTime()
 
-    this.hud()?.showGameOver({
+    const info: GameOverInfo = {
       score: this.state.score,
       best,
       newBest: isNewBest,
       won: this.state.status === 'won',
       reason: this.state.status === 'won' ? 'win' : (this.state.deathReason ?? 'wall'),
+    }
+    this.time.delayedCall(GAME_OVER_DELAY_MS, () => {
+      if (this.finished) this.hud()?.showGameOver(info)
     })
   }
 
@@ -253,7 +287,7 @@ export class GameScene extends Phaser.Scene {
           ? theme.danger
           : interpolateColor(SNAKE_HEAD, SNAKE_TAIL, t)
       const inset = index === 0 ? 1.5 : 2.5
-      const radius = index === 0 ? 10 : 8
+      const radius = index === 0 ? 11 : 9
       graphics.fillStyle(color, 1)
       graphics.fillRoundedRect(
         x - CELL / 2 + inset,
@@ -274,9 +308,9 @@ export class GameScene extends Phaser.Scene {
       graphics.fillStyle(0x07130f, 1)
       for (const side of [-1, 1]) {
         graphics.fillCircle(
-          hx + direction.x * 5 + perpendicular.x * side * 5.5,
-          hy + direction.y * 5 + perpendicular.y * side * 5.5,
-          3,
+          hx + direction.x * 6 + perpendicular.x * side * 6.5,
+          hy + direction.y * 6 + perpendicular.y * side * 6.5,
+          3.4,
         )
       }
     }
@@ -286,8 +320,10 @@ export class GameScene extends Phaser.Scene {
     if (this.state.food) {
       const cx = this.cellCenterX(this.state.food.x)
       const cy = this.cellCenterY(this.state.food.y)
-      const pulse = Math.sin(this.time.now * 0.006) * 1.4
+      const pulse = Math.sin(this.time.now * 0.006) * 1.6
       const radius = CELL * 0.3 + pulse
+      foodGraphics.fillStyle(FOOD, 0.14)
+      foodGraphics.fillCircle(cx, cy, radius * 1.75)
       foodGraphics.fillStyle(FOOD, 1)
       foodGraphics.fillCircle(cx, cy, radius)
       foodGraphics.fillStyle(0xffd166, 0.9)
@@ -301,17 +337,17 @@ export class GameScene extends Phaser.Scene {
     const theme = getServices().theme
     const frame = this.add.graphics().setDepth(0)
 
-    frame.fillStyle(0x000000, 0.25)
-    frame.fillRoundedRect(BOARD_X - 8, BOARD_Y - 4, BOARD_SIZE + 16, BOARD_SIZE + 20, 20)
+    frame.fillStyle(0x000000, 0.22)
+    frame.fillRoundedRect(BOARD_X - 4, BOARD_Y - 2, BOARD_SIZE + 8, BOARD_SIZE + 14, 22)
     frame.fillStyle(theme.board, 1)
-    frame.fillRoundedRect(BOARD_X - 10, BOARD_Y - 10, BOARD_SIZE + 20, BOARD_SIZE + 20, 18)
+    frame.fillRoundedRect(BOARD_X - 10, BOARD_Y - 10, BOARD_SIZE + 20, BOARD_SIZE + 20, 20)
     frame.lineStyle(1, theme.panelStroke, 1)
-    frame.strokeRoundedRect(BOARD_X - 10, BOARD_Y - 10, BOARD_SIZE + 20, BOARD_SIZE + 20, 18)
+    frame.strokeRoundedRect(BOARD_X - 10, BOARD_Y - 10, BOARD_SIZE + 20, BOARD_SIZE + 20, 20)
 
     for (let y = 0; y < GRID; y++) {
       for (let x = 0; x < GRID; x++) {
         if ((x + y) % 2 === 0) {
-          frame.fillStyle(theme.boardAlt, 0.55)
+          frame.fillStyle(theme.boardAlt, 0.45)
           frame.fillRect(BOARD_X + x * CELL, BOARD_Y + y * CELL, CELL, CELL)
         }
       }
@@ -328,13 +364,13 @@ export class GameScene extends Phaser.Scene {
         x,
         y,
         `+${snakeConfig.scorePerFood}`,
-        textStyle(theme, 18, cssColor(theme.accent), true),
+        textStyle(theme, 28, cssColor(theme.accent), true),
       )
       .setOrigin(0.5)
       .setDepth(10)
     this.tweens.add({
       targets: label,
-      y: y - 34,
+      y: y - 40,
       alpha: 0,
       duration: 520,
       ease: 'Quad.out',
@@ -342,12 +378,12 @@ export class GameScene extends Phaser.Scene {
     })
 
     for (let i = 0; i < 6; i++) {
-      const particle = this.add.circle(x, y, 2.5, FOOD).setDepth(9)
+      const particle = this.add.circle(x, y, 3.5, FOOD).setDepth(9)
       const angle = (Math.PI * 2 * i) / 6
       this.tweens.add({
         targets: particle,
-        x: x + Math.cos(angle) * Phaser.Math.Between(18, 34),
-        y: y + Math.sin(angle) * Phaser.Math.Between(18, 34),
+        x: x + Math.cos(angle) * Phaser.Math.Between(18, 38),
+        y: y + Math.sin(angle) * Phaser.Math.Between(18, 38),
         alpha: 0,
         duration: 380,
         ease: 'Quad.out',
@@ -376,7 +412,7 @@ export class GameScene extends Phaser.Scene {
   private bindInput(): void {
     const keyboard = this.input.keyboard
     const bind = (key: string, direction: Direction): void => {
-      keyboard?.on(`keydown-${key}`, () => this.pushDirection(direction))
+      keyboard?.on(`keydown-${key}`, () => this.inputDirection(direction))
     }
 
     bind('UP', 'up')
@@ -391,28 +427,59 @@ export class GameScene extends Phaser.Scene {
     keyboard?.on('keydown-P', () => this.togglePause())
     keyboard?.on('keydown-ESC', () => this.togglePause())
     keyboard?.on('keydown-SPACE', () => this.togglePause())
+    keyboard?.on('keydown-ENTER', () => {
+      if (this.finished) this.restartGame()
+      else if (this.paused) this.resumeGame()
+    })
+    keyboard?.on('keydown-R', () => {
+      if (this.finished) this.restartGame()
+    })
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (!this.isInsideBoard(pointer)) return
+      this.swipePointerId = pointer.id
+      this.swipeStart = { x: pointer.x, y: pointer.y }
+      this.swipeEmitted = false
+    })
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      if (pointer.id !== this.swipePointerId || !this.swipeStart) return
+      const dx = pointer.x - this.swipeStart.x
+      const dy = pointer.y - this.swipeStart.y
+      if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_THRESHOLD) return
+      const direction = resolveSwipe(dx, dy, SWIPE_THRESHOLD)
+      if (!direction) return
+      this.inputDirection(direction)
+      this.swipeEmitted = true
       this.swipeStart = { x: pointer.x, y: pointer.y }
     })
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
-      const start = this.swipeStart
+      if (pointer.id !== this.swipePointerId) return
+      if (!this.swipeEmitted && this.swipeStart) {
+        const direction = resolveSwipe(
+          pointer.x - this.swipeStart.x,
+          pointer.y - this.swipeStart.y,
+          SWIPE_THRESHOLD,
+        )
+        if (direction) this.inputDirection(direction)
+      }
       this.swipeStart = null
-      if (!start) return
-      const dx = pointer.x - start.x
-      const dy = pointer.y - start.y
-      if (Math.max(Math.abs(dx), Math.abs(dy)) < 30) return
-      if (Math.abs(dx) > Math.abs(dy)) this.pushDirection(dx > 0 ? 'right' : 'left')
-      else this.pushDirection(dy > 0 ? 'down' : 'up')
+      this.swipePointerId = null
+      this.swipeEmitted = false
+    })
+    this.input.on('gameout', () => {
+      this.swipeStart = null
+      this.swipePointerId = null
+      this.swipeEmitted = false
     })
   }
 
-  private pushDirection(direction: Direction): void {
-    if (this.paused || this.finished || this.state.status !== 'alive') return
-    const next = enqueueDirection(this.state, direction)
-    if (next === this.state) return
-    this.state = next
-    getServices().audio.play('turn')
+  private isInsideBoard(pointer: Phaser.Input.Pointer): boolean {
+    return (
+      pointer.x >= BOARD_X &&
+      pointer.x <= BOARD_X + BOARD_SIZE &&
+      pointer.y >= BOARD_Y &&
+      pointer.y <= BOARD_Y + BOARD_SIZE
+    )
   }
 
   private cellCenterX(x: number): number {

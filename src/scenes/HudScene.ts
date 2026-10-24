@@ -1,5 +1,8 @@
-import { Button, createPanel, getServices, Modal, textStyle } from '@mg/core'
+import { createPanel, cssColor, getServices, Modal, textStyle } from '@mg/core'
 import Phaser from 'phaser'
+import { hasTouchInput } from '../ui/device'
+import { IconButton, type IconKind } from '../ui/IconButton'
+import { VirtualJoystick } from '../ui/VirtualJoystick'
 import type { GameScene } from './GameScene'
 
 export interface GameOverInfo {
@@ -10,11 +13,20 @@ export interface GameOverInfo {
   reason: 'wall' | 'self' | 'win'
 }
 
+const PANEL_X = 720
+const PANEL_Y = 24
+const PANEL_WIDTH = 536
+const PANEL_HEIGHT = 672
+const CONTENT_X = PANEL_X + 36
+const JOYSTICK_X = 988
+const JOYSTICK_Y = 490
+
 export class HudScene extends Phaser.Scene {
   private scoreValue!: Phaser.GameObjects.Text
   private bestValue!: Phaser.GameObjects.Text
   private speedValue!: Phaser.GameObjects.Text
-  private soundButton!: Button
+  private soundButton!: IconButton
+  private joystick?: VirtualJoystick
   private modal?: Modal
   private lastScore = -1
   private lastBest = -1
@@ -29,67 +41,38 @@ export class HudScene extends Phaser.Scene {
     const theme = services.theme
     const stats = this.gameScene().currentStats()
 
-    createPanel(this, 700, 60, 520, 600, theme)
+    createPanel(this, PANEL_X, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT, theme)
 
     this.add
-      .text(740, 92, services.i18n.t('game.title'), textStyle(theme, 32, theme.text, true))
-      .setOrigin(0, 0)
-    this.add
-      .text(740, 134, services.i18n.t('menu.subtitle'), textStyle(theme, 14, theme.textMuted))
-      .setOrigin(0, 0)
-
-    const divider = this.add.graphics()
-    divider.lineStyle(1, theme.panelStroke, 0.8)
-    divider.lineBetween(740, 172, 1180, 172)
-
-    this.add
-      .text(740, 196, services.i18n.t('hud.score'), textStyle(theme, 16, theme.textMuted))
+      .text(CONTENT_X, 60, services.i18n.t('hud.score'), textStyle(theme, 28, theme.textMuted))
       .setOrigin(0, 0)
     this.scoreValue = this.add
-      .text(740, 218, String(stats.score), textStyle(theme, 56, '#34d399', true))
-      .setOrigin(0, 0)
+      .text(CONTENT_X, 150, String(stats.score), textStyle(theme, 88, cssColor(theme.accent), true))
+      .setOrigin(0, 0.5)
 
-    this.add
-      .text(740, 310, services.i18n.t('hud.best'), textStyle(theme, 16, theme.textMuted))
-      .setOrigin(0, 0)
     this.bestValue = this.add
-      .text(740, 334, String(stats.best), textStyle(theme, 34, theme.text, true))
-      .setOrigin(0, 0)
-
-    this.add
-      .text(740, 402, services.i18n.t('hud.speed'), textStyle(theme, 16, theme.textMuted))
+      .text(CONTENT_X, 216, this.bestLabel(stats.best), textStyle(theme, 30, theme.text, true))
       .setOrigin(0, 0)
     this.speedValue = this.add
-      .text(740, 426, this.speedLabel(stats.tickMs), textStyle(theme, 26, theme.text, true))
+      .text(CONTENT_X, 264, this.speedLabel(stats.tickMs), textStyle(theme, 26, theme.textMuted))
       .setOrigin(0, 0)
 
-    this.add
-      .text(740, 486, services.i18n.t('hud.controls'), {
-        ...textStyle(theme, 15, theme.textMuted),
-        lineSpacing: 8,
-      })
-      .setOrigin(0, 0)
-
-    this.soundButton = new Button(this, 850, 592, this.soundLabel(), theme, {
-      width: 200,
-      height: 50,
-      variant: 'ghost',
-      fontSize: 17,
-      onClick: () => {
-        const current = services.settings.value.sound
-        services.audio.play('click')
-        services.setSound(!current)
-        this.soundButton.setText(this.soundLabel())
-      },
+    this.soundButton = new IconButton(this, 1054, 110, this.soundIcon(), theme, {
+      size: 92,
+      onClick: () => this.toggleSound(),
     })
-
-    new Button(this, 1085, 592, services.i18n.t('hud.pause'), theme, {
-      width: 200,
-      height: 50,
-      variant: 'ghost',
-      fontSize: 17,
+    new IconButton(this, 1170, 110, 'pause', theme, {
+      size: 92,
       onClick: () => this.gameScene().pauseGame(),
     })
+
+    if (hasTouchInput()) {
+      this.joystick = new VirtualJoystick(this, JOYSTICK_X, JOYSTICK_Y, theme, (direction) =>
+        this.gameScene().inputDirection(direction),
+      )
+    } else {
+      this.drawKeyLegend(JOYSTICK_X, JOYSTICK_Y)
+    }
 
     this.lastScore = stats.score
     this.lastBest = stats.best
@@ -101,10 +84,19 @@ export class HudScene extends Phaser.Scene {
     if (stats.score !== this.lastScore) {
       this.lastScore = stats.score
       this.scoreValue.setText(String(stats.score))
+      this.tweens.killTweensOf(this.scoreValue)
+      this.scoreValue.setScale(1)
+      this.tweens.add({
+        targets: this.scoreValue,
+        scale: 1.08,
+        duration: 100,
+        yoyo: true,
+        ease: 'Quad.out',
+      })
     }
     if (stats.best !== this.lastBest) {
       this.lastBest = stats.best
-      this.bestValue.setText(String(stats.best))
+      this.bestValue.setText(this.bestLabel(stats.best))
     }
     const speed = this.speedLabel(stats.tickMs)
     if (speed !== this.lastSpeed) {
@@ -117,10 +109,20 @@ export class HudScene extends Phaser.Scene {
     if (this.modal?.active) return
     const services = getServices()
     const game = this.gameScene()
+    this.joystick?.reset()
+    this.joystick?.setVisible(false)
 
     this.modal = new Modal(this, services.theme, {
       title: services.i18n.t('pause.title'),
       body: services.i18n.t('pause.body'),
+      width: 640,
+      height: 520,
+      titleFontSize: 36,
+      bodyFontSize: 30,
+      actionsLayout: 'column',
+      actionWidth: 480,
+      actionHeight: 92,
+      actionFontSize: 30,
       actions: [
         {
           label: services.i18n.t('pause.resume'),
@@ -144,17 +146,30 @@ export class HudScene extends Phaser.Scene {
     if (this.modal?.active) return
     const services = getServices()
     const game = this.gameScene()
+    this.joystick?.reset()
+    this.joystick?.setVisible(false)
+
     const reasonKey =
       info.reason === 'win' ? 'over.win' : info.reason === 'self' ? 'over.self' : 'over.wall'
     const body = [
-      services.i18n.t('over.body', { score: info.score, best: info.best }),
+      services.i18n.t('over.body', { best: info.best }),
       services.i18n.t(reasonKey),
       ...(info.newBest ? [services.i18n.t('over.newBest')] : []),
     ].join('\n')
 
     this.modal = new Modal(this, services.theme, {
       title: services.i18n.t(info.won ? 'over.winTitle' : 'over.title'),
+      hero: String(info.score),
       body,
+      width: 640,
+      height: 600,
+      titleFontSize: 36,
+      heroFontSize: 72,
+      bodyFontSize: 30,
+      actionsLayout: 'column',
+      actionWidth: 480,
+      actionHeight: 92,
+      actionFontSize: 30,
       actions: [
         {
           label: services.i18n.t('over.restart'),
@@ -172,15 +187,50 @@ export class HudScene extends Phaser.Scene {
   closeModal(): void {
     this.modal?.close()
     this.modal = undefined
+    this.joystick?.setVisible(true)
+  }
+
+  private toggleSound(): void {
+    const services = getServices()
+    services.audio.play('click')
+    services.setSound(!services.settings.value.sound)
+    this.soundButton.setKind(this.soundIcon())
+  }
+
+  private soundIcon(): IconKind {
+    return getServices().settings.value.sound ? 'soundOn' : 'soundOff'
+  }
+
+  private bestLabel(best: number): string {
+    return `${getServices().i18n.t('hud.best')} ${best}`
   }
 
   private speedLabel(tick: number): string {
-    return `${(1000 / tick).toFixed(1)} /s`
+    const value = (1000 / tick).toFixed(1)
+    return getServices().i18n.t('hud.speedValue', { value })
   }
 
-  private soundLabel(): string {
-    const services = getServices()
-    return services.i18n.t(services.settings.value.sound ? 'core.soundOn' : 'core.soundOff')
+  private drawKeyLegend(centerX: number, centerY: number): void {
+    const theme = getServices().theme
+    const keySize = 84
+    const gap = 96
+    const graphics = this.add.graphics()
+
+    const key = (x: number, y: number, label: string): void => {
+      graphics.fillStyle(theme.panel, 0.8)
+      graphics.fillRoundedRect(x - keySize / 2, y - keySize / 2, keySize, keySize, 14)
+      graphics.lineStyle(1, theme.panelStroke, 1)
+      graphics.strokeRoundedRect(x - keySize / 2, y - keySize / 2, keySize, keySize, 14)
+      this.add.text(x, y, label, textStyle(theme, 38, theme.text, true)).setOrigin(0.5)
+    }
+
+    key(centerX, centerY - gap, '↑')
+    key(centerX - gap, centerY, '←')
+    key(centerX + gap, centerY, '→')
+    key(centerX, centerY + gap, '↓')
+    this.add
+      .text(centerX, centerY + gap + 88, 'WASD', textStyle(theme, 26, theme.textMuted))
+      .setOrigin(0.5)
   }
 
   private gameScene(): GameScene {
