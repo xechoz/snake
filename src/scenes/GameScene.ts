@@ -13,16 +13,15 @@ import { snakeConfig } from '../logic/config'
 import { createInitialState, enqueueDirection, step, tickMs } from '../logic/state'
 import type { Cell, Direction, SnakeState } from '../logic/types'
 import { snakeSave } from '../save'
-import { resolveSwipe } from '../ui/swipe'
+import { FloatingJoystick } from '../ui/FloatingJoystick'
 import type { GameOverInfo, HudScene } from './HudScene'
 
-const BOARD_X = 24
-const BOARD_Y = 24
 const BOARD_SIZE = 672
+const BOARD_X = (1280 - BOARD_SIZE) / 2
+const BOARD_Y = 24
 const GRID = snakeConfig.width
 const CELL = BOARD_SIZE / GRID
 const COUNTDOWN_MS = 1800
-const SWIPE_THRESHOLD = 40
 const GAME_OVER_DELAY_MS = 700
 const SNAKE_HEAD = 0x6ee7b7
 const SNAKE_TAIL = 0x15803d
@@ -52,9 +51,7 @@ export class GameScene extends Phaser.Scene {
   private debugOverlay?: DebugOverlay
   private removeHiddenListener?: () => void
   private portraitQuery?: MediaQueryList
-  private swipeStart: { x: number; y: number } | null = null
-  private swipePointerId: number | null = null
-  private swipeEmitted = false
+  private joystick!: FloatingJoystick
 
   private readonly handlePortraitChange = (event: MediaQueryListEvent): void => {
     if (event.matches) this.pauseGame()
@@ -84,6 +81,7 @@ export class GameScene extends Phaser.Scene {
       .setDepth(12)
       .setAlpha(0)
 
+    this.joystick = new FloatingJoystick(this, theme, (direction) => this.inputDirection(direction))
     this.resetGame()
     this.bindInput()
     this.scene.launch('Hud')
@@ -148,8 +146,8 @@ export class GameScene extends Phaser.Scene {
     this.render(this.progress())
   }
 
-  currentStats(): { score: number; best: number; tickMs: number } {
-    return { score: this.state.score, best: this.best, tickMs: tickMs(this.state) }
+  currentStats(): { score: number } {
+    return { score: this.state.score }
   }
 
   inputDirection(direction: Direction): void {
@@ -158,6 +156,7 @@ export class GameScene extends Phaser.Scene {
     if (next === this.state) return
     this.state = next
     getServices().audio.play('turn')
+    this.hud()?.dismissHint()
   }
 
   pauseGame(): void {
@@ -166,14 +165,17 @@ export class GameScene extends Phaser.Scene {
     this.paused = true
     this.countdownActive = false
     this.countdownText.setAlpha(0)
+    this.joystick.setEnabled(false)
     services.platform.gameplayStop()
     services.audio.play('pause')
+    this.hud()?.dismissHint()
     this.hud()?.showPause()
   }
 
   resumeGame(): void {
     const services = getServices()
     this.paused = false
+    this.joystick.setEnabled(true)
     this.hud()?.closeModal()
     this.startCountdown()
     services.platform.gameplayStart()
@@ -204,6 +206,7 @@ export class GameScene extends Phaser.Scene {
     this.elapsed = 0
     this.paused = false
     this.finished = false
+    this.joystick.setEnabled(true)
     this.countdownText.setAlpha(1).setScale(1)
     this.startCountdown()
     services.platform.gameplayStart()
@@ -239,6 +242,7 @@ export class GameScene extends Phaser.Scene {
   private finish(): void {
     const services = getServices()
     this.finished = true
+    this.joystick.setEnabled(false)
     services.platform.gameplayStop()
 
     const save = snakeSave(services)
@@ -434,52 +438,6 @@ export class GameScene extends Phaser.Scene {
     keyboard?.on('keydown-R', () => {
       if (this.finished) this.restartGame()
     })
-
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (!this.isInsideBoard(pointer)) return
-      this.swipePointerId = pointer.id
-      this.swipeStart = { x: pointer.x, y: pointer.y }
-      this.swipeEmitted = false
-    })
-    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-      if (pointer.id !== this.swipePointerId || !this.swipeStart) return
-      const dx = pointer.x - this.swipeStart.x
-      const dy = pointer.y - this.swipeStart.y
-      if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE_THRESHOLD) return
-      const direction = resolveSwipe(dx, dy, SWIPE_THRESHOLD)
-      if (!direction) return
-      this.inputDirection(direction)
-      this.swipeEmitted = true
-      this.swipeStart = { x: pointer.x, y: pointer.y }
-    })
-    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
-      if (pointer.id !== this.swipePointerId) return
-      if (!this.swipeEmitted && this.swipeStart) {
-        const direction = resolveSwipe(
-          pointer.x - this.swipeStart.x,
-          pointer.y - this.swipeStart.y,
-          SWIPE_THRESHOLD,
-        )
-        if (direction) this.inputDirection(direction)
-      }
-      this.swipeStart = null
-      this.swipePointerId = null
-      this.swipeEmitted = false
-    })
-    this.input.on('gameout', () => {
-      this.swipeStart = null
-      this.swipePointerId = null
-      this.swipeEmitted = false
-    })
-  }
-
-  private isInsideBoard(pointer: Phaser.Input.Pointer): boolean {
-    return (
-      pointer.x >= BOARD_X &&
-      pointer.x <= BOARD_X + BOARD_SIZE &&
-      pointer.y >= BOARD_Y &&
-      pointer.y <= BOARD_Y + BOARD_SIZE
-    )
   }
 
   private cellCenterX(x: number): number {

@@ -1,8 +1,6 @@
-import { createPanel, cssColor, getServices, Modal, textStyle } from '@mg/core'
+import { cssColor, getServices, Modal, textStyle } from '@mg/core'
 import Phaser from 'phaser'
-import { hasTouchInput } from '../ui/device'
-import { IconButton, type IconKind } from '../ui/IconButton'
-import { VirtualJoystick } from '../ui/VirtualJoystick'
+import { PauseButton } from '../ui/PauseButton'
 import type { GameScene } from './GameScene'
 
 export interface GameOverInfo {
@@ -13,24 +11,19 @@ export interface GameOverInfo {
   reason: 'wall' | 'self' | 'win'
 }
 
-const PANEL_X = 720
-const PANEL_Y = 24
-const PANEL_WIDTH = 536
-const PANEL_HEIGHT = 672
-const CONTENT_X = PANEL_X + 36
-const JOYSTICK_X = 988
-const JOYSTICK_Y = 490
+const SCORE_X = 148
+const SCORE_LABEL_Y = 118
+const SCORE_VALUE_Y = 196
+const HINT_Y = 560
+const PAUSE_X = 1232
+const PAUSE_Y = 60
+const PAUSE_SIZE = 64
 
 export class HudScene extends Phaser.Scene {
   private scoreValue!: Phaser.GameObjects.Text
-  private bestValue!: Phaser.GameObjects.Text
-  private speedValue!: Phaser.GameObjects.Text
-  private soundButton!: IconButton
-  private joystick?: VirtualJoystick
+  private hint?: Phaser.GameObjects.Text
   private modal?: Modal
   private lastScore = -1
-  private lastBest = -1
-  private lastSpeed = ''
 
   constructor() {
     super('Hud')
@@ -41,76 +34,73 @@ export class HudScene extends Phaser.Scene {
     const theme = services.theme
     const stats = this.gameScene().currentStats()
 
-    createPanel(this, PANEL_X, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT, theme)
-
     this.add
-      .text(CONTENT_X, 60, services.i18n.t('hud.score'), textStyle(theme, 28, theme.textMuted))
-      .setOrigin(0, 0)
+      .text(
+        SCORE_X,
+        SCORE_LABEL_Y,
+        services.i18n.t('hud.score'),
+        textStyle(theme, 26, theme.textMuted),
+      )
+      .setOrigin(0.5)
     this.scoreValue = this.add
-      .text(CONTENT_X, 150, String(stats.score), textStyle(theme, 88, cssColor(theme.accent), true))
-      .setOrigin(0, 0.5)
+      .text(
+        SCORE_X,
+        SCORE_VALUE_Y,
+        String(stats.score),
+        textStyle(theme, 96, cssColor(theme.accent), true),
+      )
+      .setOrigin(0.5)
 
-    this.bestValue = this.add
-      .text(CONTENT_X, 216, this.bestLabel(stats.best), textStyle(theme, 30, theme.text, true))
-      .setOrigin(0, 0)
-    this.speedValue = this.add
-      .text(CONTENT_X, 264, this.speedLabel(stats.tickMs), textStyle(theme, 26, theme.textMuted))
-      .setOrigin(0, 0)
+    this.hint = this.add
+      .text(SCORE_X, HINT_Y, services.i18n.t('hud.hint'), {
+        ...textStyle(theme, 26, theme.textMuted),
+        align: 'center',
+        lineSpacing: 8,
+        wordWrap: { width: 260 },
+      })
+      .setOrigin(0.5)
+      .setAlpha(0.65)
 
-    this.soundButton = new IconButton(this, 1054, 110, this.soundIcon(), theme, {
-      size: 92,
-      onClick: () => this.toggleSound(),
-    })
-    new IconButton(this, 1170, 110, 'pause', theme, {
-      size: 92,
+    new PauseButton(this, PAUSE_X, PAUSE_Y, theme, {
+      size: PAUSE_SIZE,
       onClick: () => this.gameScene().pauseGame(),
     })
 
-    if (hasTouchInput()) {
-      this.joystick = new VirtualJoystick(this, JOYSTICK_X, JOYSTICK_Y, theme, (direction) =>
-        this.gameScene().inputDirection(direction),
-      )
-    } else {
-      this.drawKeyLegend(JOYSTICK_X, JOYSTICK_Y)
-    }
-
     this.lastScore = stats.score
-    this.lastBest = stats.best
-    this.lastSpeed = this.speedLabel(stats.tickMs)
   }
 
   update(): void {
     const stats = this.gameScene().currentStats()
-    if (stats.score !== this.lastScore) {
-      this.lastScore = stats.score
-      this.scoreValue.setText(String(stats.score))
-      this.tweens.killTweensOf(this.scoreValue)
-      this.scoreValue.setScale(1)
-      this.tweens.add({
-        targets: this.scoreValue,
-        scale: 1.08,
-        duration: 100,
-        yoyo: true,
-        ease: 'Quad.out',
-      })
-    }
-    if (stats.best !== this.lastBest) {
-      this.lastBest = stats.best
-      this.bestValue.setText(this.bestLabel(stats.best))
-    }
-    const speed = this.speedLabel(stats.tickMs)
-    if (speed !== this.lastSpeed) {
-      this.lastSpeed = speed
-      this.speedValue.setText(speed)
-    }
+    if (stats.score === this.lastScore) return
+    this.lastScore = stats.score
+    this.scoreValue.setText(String(stats.score))
+    this.tweens.killTweensOf(this.scoreValue)
+    this.scoreValue.setScale(1)
+    this.tweens.add({
+      targets: this.scoreValue,
+      scale: 1.08,
+      duration: 100,
+      yoyo: true,
+      ease: 'Quad.out',
+    })
+  }
+
+  dismissHint(): void {
+    const hint = this.hint
+    if (!hint?.visible) return
+    this.tweens.killTweensOf(hint)
+    this.tweens.add({
+      targets: hint,
+      alpha: 0,
+      duration: 300,
+      onComplete: () => hint.setVisible(false),
+    })
   }
 
   showPause(): void {
     if (this.modal?.active) return
     const services = getServices()
     const game = this.gameScene()
-    this.joystick?.reset()
-    this.joystick?.setVisible(false)
 
     this.modal = new Modal(this, services.theme, {
       title: services.i18n.t('pause.title'),
@@ -146,8 +136,6 @@ export class HudScene extends Phaser.Scene {
     if (this.modal?.active) return
     const services = getServices()
     const game = this.gameScene()
-    this.joystick?.reset()
-    this.joystick?.setVisible(false)
 
     const reasonKey =
       info.reason === 'win' ? 'over.win' : info.reason === 'self' ? 'over.self' : 'over.wall'
@@ -187,50 +175,6 @@ export class HudScene extends Phaser.Scene {
   closeModal(): void {
     this.modal?.close()
     this.modal = undefined
-    this.joystick?.setVisible(true)
-  }
-
-  private toggleSound(): void {
-    const services = getServices()
-    services.audio.play('click')
-    services.setSound(!services.settings.value.sound)
-    this.soundButton.setKind(this.soundIcon())
-  }
-
-  private soundIcon(): IconKind {
-    return getServices().settings.value.sound ? 'soundOn' : 'soundOff'
-  }
-
-  private bestLabel(best: number): string {
-    return `${getServices().i18n.t('hud.best')} ${best}`
-  }
-
-  private speedLabel(tick: number): string {
-    const value = (1000 / tick).toFixed(1)
-    return getServices().i18n.t('hud.speedValue', { value })
-  }
-
-  private drawKeyLegend(centerX: number, centerY: number): void {
-    const theme = getServices().theme
-    const keySize = 84
-    const gap = 96
-    const graphics = this.add.graphics()
-
-    const key = (x: number, y: number, label: string): void => {
-      graphics.fillStyle(theme.panel, 0.8)
-      graphics.fillRoundedRect(x - keySize / 2, y - keySize / 2, keySize, keySize, 14)
-      graphics.lineStyle(1, theme.panelStroke, 1)
-      graphics.strokeRoundedRect(x - keySize / 2, y - keySize / 2, keySize, keySize, 14)
-      this.add.text(x, y, label, textStyle(theme, 38, theme.text, true)).setOrigin(0.5)
-    }
-
-    key(centerX, centerY - gap, '↑')
-    key(centerX - gap, centerY, '←')
-    key(centerX + gap, centerY, '→')
-    key(centerX, centerY + gap, '↓')
-    this.add
-      .text(centerX, centerY + gap + 88, 'WASD', textStyle(theme, 26, theme.textMuted))
-      .setOrigin(0.5)
   }
 
   private gameScene(): GameScene {
