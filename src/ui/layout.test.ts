@@ -1,6 +1,6 @@
 import type { Insets, Viewport } from '@mg/core'
 import { describe, expect, it } from 'vitest'
-import { computeMenuLayout, computeSnakeLayout, type Rect } from './layout'
+import { computeMenuLayout, computeSnakeLayout, inlineScorePositions, type Rect } from './layout'
 
 const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 }
 
@@ -20,6 +20,7 @@ describe('computeSnakeLayout', () => {
     expect(layout.orientation).toBe('landscape')
     expect(layout.board).toEqual({ x: 304, y: 24, width: 672, height: 672, cell: 33.6 })
     expect(layout.hud).toEqual({ x: 42, y: 24, width: 220, height: 220 })
+    expect(layout.score).toEqual({ mode: 'stacked', x: 152, labelY: 153, valueY: 208 })
     expect(layout.pause).toEqual({ x: 152, y: 72 })
   })
 
@@ -39,7 +40,7 @@ describe('computeSnakeLayout', () => {
     expect(layout.orientation).toBe('portrait')
     expect(layout.board).toEqual({ x: 24, y: 443, width: 672, height: 672, cell: 33.6 })
     expect(layout.hud).toEqual({ x: 192, y: 24, width: 336, height: 104 })
-    expect(layout.score).toEqual({ x: 302, labelY: 37, valueY: 92 })
+    expect(layout.score).toEqual({ mode: 'inline', x: 302, y: 76 })
     expect(layout.pause).toEqual({ x: 480, y: 76 })
   })
 
@@ -79,6 +80,26 @@ describe('computeSnakeLayout', () => {
     expect(layout.board.x).toBeGreaterThan(insets.left)
     expect(layout.hud.x).toBeGreaterThanOrEqual(insets.left)
     expect(layout.board.x + layout.board.width).toBeLessThanOrEqual(1558 - insets.right)
+  })
+})
+
+describe('inlineScorePositions', () => {
+  it('keeps the group centred and the value anchored as digits change', () => {
+    const oneDigit = inlineScorePositions(302, 52, 48)
+    const fourDigits = inlineScorePositions(302, 52, 160)
+
+    expect(oneDigit.valueX).toBe(336)
+    expect(fourDigits.valueX).toBe(336)
+    expect(oneDigit.labelX).toBe(302 - (48 + 16) / 2)
+    expect(fourDigits.labelX).toBe(302 - (160 + 16) / 2)
+  })
+
+  it('centres the whole group on the anchor', () => {
+    const { labelX, valueX } = inlineScorePositions(302, 52, 120)
+    const left = labelX - 52 / 2
+    const right = valueX + 120 / 2
+
+    expect((left + right) / 2).toBe(302)
   })
 })
 

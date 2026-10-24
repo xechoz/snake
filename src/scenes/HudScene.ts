@@ -10,6 +10,7 @@ import {
 import Phaser from 'phaser'
 import {
   computeSnakeLayout,
+  inlineScorePositions,
   SCORE_LABEL_SIZE,
   SCORE_VALUE_SIZE,
   type SnakeLayout,
@@ -73,6 +74,7 @@ export class HudScene extends Phaser.Scene {
     if (stats.score === this.lastScore) return
     this.lastScore = stats.score
     this.scoreValue.setText(String(stats.score))
+    this.positionScore()
     this.tweens.killTweensOf(this.scoreValue)
     this.scoreValue.setScale(1)
     this.tweens.add({
@@ -111,10 +113,27 @@ export class HudScene extends Phaser.Scene {
   }
 
   private applyLayout(): void {
-    const { score, pause } = this.layout
-    this.scoreLabel.setPosition(score.x, score.labelY)
-    this.scoreValue.setPosition(score.x, score.valueY)
+    const { pause } = this.layout
+    this.positionScore()
     this.pauseButton.setPosition(pause.x, pause.y)
+  }
+
+  private positionScore(): void {
+    const { score } = this.layout
+
+    if (score.mode === 'stacked') {
+      this.scoreLabel.setOrigin(0.5).setPosition(score.x, score.labelY)
+      this.scoreValue.setOrigin(0.5).setPosition(score.x, score.valueY)
+      return
+    }
+
+    const { labelX, valueX } = inlineScorePositions(
+      score.x,
+      this.scoreLabel.width,
+      this.scoreValue.width,
+    )
+    this.scoreLabel.setOrigin(0.5).setPosition(labelX, score.y)
+    this.scoreValue.setOrigin(0.5).setPosition(valueX, score.y)
   }
 
   private rebuildModal(): void {

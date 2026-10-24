@@ -15,6 +15,7 @@ export interface Point {
 
 export const SCORE_LABEL_SIZE = 26
 export const SCORE_VALUE_SIZE = 72
+export const SCORE_INLINE_GAP = 16
 
 const MARGIN = 24
 const EDGE = 24
@@ -33,8 +34,23 @@ export interface SnakeLayout {
   placement: 'side' | 'top'
   board: Rect & { cell: number }
   hud: Rect
-  score: { x: number; labelY: number; valueY: number }
+  score:
+    | { mode: 'stacked'; x: number; labelY: number; valueY: number }
+    | { mode: 'inline'; x: number; y: number }
   pause: Point
+}
+
+/** Centres the inline score group so digit count changes never shift it. */
+export function inlineScorePositions(
+  centerX: number,
+  labelWidth: number,
+  valueWidth: number,
+): { labelX: number; valueX: number } {
+  const left = centerX - (labelWidth + SCORE_INLINE_GAP + valueWidth) / 2
+  return {
+    labelX: left + labelWidth / 2,
+    valueX: left + labelWidth + SCORE_INLINE_GAP + valueWidth / 2,
+  }
 }
 
 /**
@@ -81,6 +97,7 @@ export function computeSnakeLayout(viewport: Viewport): SnakeLayout {
       board,
       hud: { x: hudX, y: hudY, width: COLUMN_HUD.width, height: COLUMN_HUD.height },
       score: {
+        mode: 'stacked',
         x: hudX + COLUMN_HUD.width / 2,
         labelY: scoreLabelY,
         valueY: scoreLabelY + SCORE_LABEL_SIZE / 2 + 6 + SCORE_VALUE_SIZE / 2,
@@ -97,9 +114,9 @@ export function computeSnakeLayout(viewport: Viewport): SnakeLayout {
     board,
     hud: { x: hudX, y: hudY, width: ROW_HUD.width, height: ROW_HUD.height },
     score: {
+      mode: 'inline',
       x: hudX + SCORE_BLOCK_WIDTH / 2,
-      labelY: hudY + SCORE_LABEL_SIZE / 2,
-      valueY: hudY + SCORE_LABEL_SIZE + 6 + SCORE_VALUE_SIZE / 2,
+      y: hudY + ROW_HUD.height / 2,
     },
     pause: { x: hudX + ROW_HUD.width - PAUSE_HIT / 2, y: hudY + ROW_HUD.height / 2 },
   }
