@@ -1,9 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Snake</title>
-  <rect width="64" height="64" rx="14" fill="#0b1020" />
-  <rect x="12" y="24" width="14" height="14" rx="4" fill="#6ee7b7" />
-  <rect x="26" y="24" width="14" height="14" rx="4" fill="#34d399" />
-  <rect x="40" y="24" width="12" height="12" rx="4" fill="#15803d" />
-  <circle cx="18" cy="29" r="1.8" fill="#07130f" />
-  <circle cx="24" cy="29" r="1.8" fill="#07130f" />
+  <rect width="64" height="64" rx="15" fill="#BFEAFF" />
+  <rect x="2" y="2" width="60" height="60" rx="13" fill="none" stroke="#332B45" stroke-width="3" />
+  <path
+    d="M12 46c0-11 9-20 20-20h11"
+    fill="none"
+    stroke="#332B45"
+    stroke-width="15"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M12 46c0-11 9-20 20-20h11"
+    fill="none"
+    stroke="#35C77E"
+    stroke-width="10"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle cx="45" cy="26" r="9.5" fill="#7BE8A6" stroke="#332B45" stroke-width="3" />
+  <circle cx="48" cy="22.5" r="1.9" fill="#332B45" />
+  <circle cx="51.5" cy="27.5" r="1.9" fill="#332B45" />
+  <path d="M53 27l5 1M58 28l1-2M58 28l1 2" fill="none" stroke="#FF5C8A" stroke-width="2" stroke-linecap="round" />
+  <circle cx="51" cy="48" r="7" fill="#FF5C8A" stroke="#332B45" stroke-width="2.5" />
+  <path d="M49 41c1-3 4-4 6-3" fill="none" stroke="#35C77E" stroke-width="3" stroke-linecap="round" />
+  <circle cx="48.5" cy="45.5" r="1.8" fill="#FFF9EC" />
 </svg>

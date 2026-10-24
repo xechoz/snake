@@ -43,21 +43,25 @@ export class PauseButton extends Phaser.GameObjects.Container {
       if (!this.canHover) return
       this.hovered = true
       this.redraw()
-      scene.tweens.add({ targets: this, scale: 1.04, duration: 90, ease: 'Quad.out' })
+      scene.tweens.add({ targets: this, scale: 1.05, duration: 90, ease: 'Quad.out' })
     })
     this.zone.on('pointerout', () => {
       this.hovered = false
       this.cancelPress()
+      this.redraw()
+      scene.tweens.add({ targets: this, scale: 1, duration: 90, ease: 'Quad.out' })
     })
     this.zone.on('pointerupoutside', () => this.cancelPress())
     this.zone.on('pointerdown', () => {
       this.pressed = true
+      this.redraw()
       scene.tweens.add({ targets: this, scale: 0.95, duration: 60, ease: 'Quad.out' })
     })
     this.zone.on('pointerup', () => {
       if (!this.pressed) return
       this.pressed = false
-      scene.tweens.add({ targets: this, scale: this.hovered ? 1.04 : 1, duration: 90 })
+      this.redraw()
+      scene.tweens.add({ targets: this, scale: this.hovered ? 1.05 : 1, duration: 90 })
       this.onClickHandler()
     })
 
@@ -67,29 +71,27 @@ export class PauseButton extends Phaser.GameObjects.Container {
   private cancelPress(): void {
     if (!this.pressed) return
     this.pressed = false
-    this.scene.tweens.add({ targets: this, scale: this.hovered ? 1.04 : 1, duration: 90 })
+    this.redraw()
+    this.scene.tweens.add({ targets: this, scale: this.hovered ? 1.05 : 1, duration: 90 })
   }
 
   private redraw(): void {
-    const radius = 16
     const half = this.buttonSize / 2
-    this.background.clear()
-    this.background.fillStyle(0x000000, 0.12)
-    this.background.fillRoundedRect(-half + 2, -half + 3, this.buttonSize, this.buttonSize, radius)
-    this.background.fillStyle(
-      this.hovered ? this.theme.panelStroke : this.theme.panel,
-      this.hovered ? 0.5 : 0.22,
-    )
-    this.background.fillRoundedRect(-half, -half, this.buttonSize, this.buttonSize, radius)
-    this.background.lineStyle(1, this.theme.panelStroke, this.hovered ? 0.7 : 0.4)
-    this.background.strokeRoundedRect(-half, -half, this.buttonSize, this.buttonSize, radius)
 
-    const color = this.hovered
-      ? this.theme.accent
-      : Phaser.Display.Color.HexStringToColor(this.theme.text).color
+    this.background.clear()
+    this.background.fillStyle(this.theme.shadow, 0.16)
+    this.background.fillCircle(2, 8, half)
+    this.background.fillStyle(this.theme.ink, 1)
+    this.background.fillCircle(0, 0, half + 3)
+    this.background.fillStyle(this.hovered ? this.theme.surfaceAlt : this.theme.surface, 1)
+    this.background.fillCircle(0, 0, half)
+    this.background.fillStyle(0xffffff, 0.5)
+    this.background.fillCircle(-half * 0.34, -half * 0.38, half * 0.24)
+
+    const offset = this.pressed ? 3 : 0
     this.icon.clear()
-    this.icon.fillStyle(color, this.hovered ? 1 : 0.8)
-    this.icon.fillRoundedRect(-12, -14, 8, 28, 3)
-    this.icon.fillRoundedRect(4, -14, 8, 28, 3)
+    this.icon.fillStyle(this.hovered ? this.theme.accentHover : this.theme.accent, 1)
+    this.icon.fillRoundedRect(-13, -15 + offset, 9, 30, 4)
+    this.icon.fillRoundedRect(4, -15 + offset, 9, 30, 4)
   }
 }

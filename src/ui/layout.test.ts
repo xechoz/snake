@@ -19,8 +19,9 @@ describe('computeSnakeLayout', () => {
     expect(layout.placement).toBe('side')
     expect(layout.orientation).toBe('landscape')
     expect(layout.board).toEqual({ x: 304, y: 24, width: 672, height: 672, cell: 33.6 })
-    expect(layout.hud).toEqual({ x: 42, y: 24, width: 220, height: 220 })
-    expect(layout.score).toEqual({ mode: 'stacked', x: 152, labelY: 153, valueY: 208 })
+    expect(layout.hud).toEqual({ x: 42, y: 24, width: 220, height: 276 })
+    expect(layout.scoreCard).toEqual({ x: 42, y: 140, width: 220, height: 160 })
+    expect(layout.score).toEqual({ mode: 'stacked', x: 152, labelY: 174, valueY: 236 })
     expect(layout.pause).toEqual({ x: 152, y: 72 })
   })
 
@@ -39,9 +40,10 @@ describe('computeSnakeLayout', () => {
     expect(layout.placement).toBe('top')
     expect(layout.orientation).toBe('portrait')
     expect(layout.board).toEqual({ x: 24, y: 443, width: 672, height: 672, cell: 33.6 })
-    expect(layout.hud).toEqual({ x: 192, y: 24, width: 336, height: 104 })
+    expect(layout.hud).toEqual({ x: 172, y: 24, width: 376, height: 104 })
+    expect(layout.scoreCard).toEqual({ x: 172, y: 24, width: 260, height: 104 })
     expect(layout.score).toEqual({ mode: 'inline', x: 302, y: 76 })
-    expect(layout.pause).toEqual({ x: 480, y: 76 })
+    expect(layout.pause).toEqual({ x: 500, y: 76 })
   })
 
   it('falls back to a stacked layout on square-ish viewports', () => {
@@ -107,13 +109,14 @@ describe('computeMenuLayout', () => {
   it('stacks the menu inside the viewport in landscape', () => {
     const layout = computeMenuLayout(viewport(1280, 720))
 
-    expect(layout.titleY).toBeGreaterThanOrEqual(96)
-    expect(layout.subtitleY - layout.titleY).toBe(82)
+    expect(layout.titleY).toBeGreaterThanOrEqual(72)
+    expect(layout.subtitleY - layout.titleY).toBe(96)
     expect(layout.hintY).toBeLessThan(720)
     expect(layout.playWidth).toBe(480)
     expect(layout.secondaryWidth).toBe(230)
     expect(layout.installHintY).toBeGreaterThan(layout.hintY)
     expect(layout.installHintY).toBeLessThan(720)
+    expect(layout.mascot.visible).toBe(true)
   })
 
   it('centres the menu vertically and widens nothing beyond the screen in portrait', () => {
@@ -125,5 +128,27 @@ describe('computeMenuLayout', () => {
     expect(layout.installHintY).toBeGreaterThan(layout.hintY)
     expect(layout.installHintY).toBeLessThan(1558)
     expect(layout.playWidth).toBeLessThanOrEqual(720 - 48)
+    expect(layout.mascot.visible).toBe(true)
+  })
+
+  it('keeps the mascot inside the viewport and hides it on narrow landscape', () => {
+    for (const [width, height] of [
+      [1280, 720],
+      [1558, 720],
+      [960, 720],
+      [720, 1558],
+      [768, 1024],
+      [720, 720],
+    ] as const) {
+      const layout = computeMenuLayout(viewport(width, height))
+      const half = 180 * layout.mascot.scale
+      expect(layout.mascot.x - half, `${width}x${height}`).toBeGreaterThanOrEqual(0)
+      expect(layout.mascot.x + half, `${width}x${height}`).toBeLessThanOrEqual(width)
+      expect(layout.mascot.y - half, `${width}x${height}`).toBeGreaterThanOrEqual(0)
+      expect(layout.mascot.y + half, `${width}x${height}`).toBeLessThanOrEqual(height)
+    }
+
+    expect(computeMenuLayout(viewport(720, 720)).mascot.visible).toBe(false)
+    expect(computeMenuLayout(viewport(960, 720)).mascot.visible).toBe(true)
   })
 })

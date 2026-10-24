@@ -21,10 +21,12 @@ const MARGIN = 24
 const EDGE = 24
 const PAUSE_HIT = 96
 const HUD_GAP = 20
-const SCORE_BLOCK_WIDTH = 220
+const TOP_CARD_WIDTH = 260
+const SIDE_CARD_WIDTH = 220
+const SIDE_CARD_HEIGHT = 160
 const SCORE_BLOCK_HEIGHT = SCORE_LABEL_SIZE + 6 + SCORE_VALUE_SIZE
-const COLUMN_HUD = { width: SCORE_BLOCK_WIDTH, height: PAUSE_HIT + HUD_GAP + SCORE_BLOCK_HEIGHT }
-const ROW_HUD = { width: SCORE_BLOCK_WIDTH + HUD_GAP + PAUSE_HIT, height: SCORE_BLOCK_HEIGHT }
+const COLUMN_HUD = { width: SIDE_CARD_WIDTH, height: PAUSE_HIT + HUD_GAP + SIDE_CARD_HEIGHT }
+const ROW_HUD = { width: TOP_CARD_WIDTH + HUD_GAP + PAUSE_HIT, height: SCORE_BLOCK_HEIGHT }
 const HUD_CLEARANCE = 16
 const MIN_BOARD = 200
 
@@ -34,6 +36,7 @@ export interface SnakeLayout {
   placement: 'side' | 'top'
   board: Rect & { cell: number }
   hud: Rect
+  scoreCard: Rect
   score:
     | { mode: 'stacked'; x: number; labelY: number; valueY: number }
     | { mode: 'inline'; x: number; y: number }
@@ -90,17 +93,23 @@ export function computeSnakeLayout(viewport: Viewport): SnakeLayout {
     const hudX =
       insets.left + Math.max(EDGE, Math.round((boardX - insets.left - COLUMN_HUD.width) / 2))
     const hudY = insets.top + EDGE
-    const scoreLabelY = hudY + PAUSE_HIT + HUD_GAP + SCORE_LABEL_SIZE / 2
+    const scoreCard = {
+      x: hudX,
+      y: hudY + PAUSE_HIT + HUD_GAP,
+      width: SIDE_CARD_WIDTH,
+      height: SIDE_CARD_HEIGHT,
+    }
     return {
       orientation: orientationOf(viewport),
       placement,
       board,
       hud: { x: hudX, y: hudY, width: COLUMN_HUD.width, height: COLUMN_HUD.height },
+      scoreCard,
       score: {
         mode: 'stacked',
-        x: hudX + COLUMN_HUD.width / 2,
-        labelY: scoreLabelY,
-        valueY: scoreLabelY + SCORE_LABEL_SIZE / 2 + 6 + SCORE_VALUE_SIZE / 2,
+        x: scoreCard.x + scoreCard.width / 2,
+        labelY: scoreCard.y + 34,
+        valueY: scoreCard.y + 96,
       },
       pause: { x: hudX + COLUMN_HUD.width / 2, y: hudY + PAUSE_HIT / 2 },
     }
@@ -108,17 +117,27 @@ export function computeSnakeLayout(viewport: Viewport): SnakeLayout {
 
   const hudX = insets.left + Math.round((availableWidth - ROW_HUD.width) / 2)
   const hudY = insets.top + EDGE
+  const scoreCard = {
+    x: hudX,
+    y: hudY,
+    width: TOP_CARD_WIDTH,
+    height: ROW_HUD.height,
+  }
   return {
     orientation: orientationOf(viewport),
     placement,
     board,
     hud: { x: hudX, y: hudY, width: ROW_HUD.width, height: ROW_HUD.height },
+    scoreCard,
     score: {
       mode: 'inline',
-      x: hudX + SCORE_BLOCK_WIDTH / 2,
+      x: scoreCard.x + scoreCard.width / 2,
+      y: scoreCard.y + scoreCard.height / 2,
+    },
+    pause: {
+      x: hudX + TOP_CARD_WIDTH + HUD_GAP + PAUSE_HIT / 2,
       y: hudY + ROW_HUD.height / 2,
     },
-    pause: { x: hudX + ROW_HUD.width - PAUSE_HIT / 2, y: hudY + ROW_HUD.height / 2 },
   }
 }
 
@@ -134,42 +153,53 @@ export interface MenuLayout {
   installHintY: number
   playWidth: number
   secondaryWidth: number
-  motif: { x: number; y: number; scale: number }
+  mascot: { x: number; y: number; scale: number; visible: boolean }
 }
 
-const MENU_SPAN = 506
-const MOTIF_WIDTH = 240
-const MOTIF_HEIGHT = 360
+const MENU_SPAN = 548
 
 export function computeMenuLayout(viewport: Viewport): MenuLayout {
   const { insets, width, height } = viewport
   const availableWidth = Math.max(1, width - insets.left - insets.right)
   const availableHeight = Math.max(1, height - insets.top - insets.bottom)
-  const top = Math.max(insets.top + 96, Math.round((availableHeight - MENU_SPAN) / 2) - 30)
+  const top = Math.max(insets.top + 72, Math.round((availableHeight - MENU_SPAN) / 2) - 30)
+  const landscape = width >= height
 
-  const motifScale = 1
-  const motifX = width - insets.right - MOTIF_WIDTH * motifScale - 24
-  const motifY =
-    width >= height
-      ? Math.round(insets.top + Math.max(24, (availableHeight - MOTIF_HEIGHT * motifScale) / 2))
-      : Math.round(insets.top + availableHeight - MOTIF_HEIGHT * motifScale - 96)
+  const centerX =
+    landscape && availableWidth >= 900
+      ? insets.left + Math.round(availableWidth * 0.44)
+      : insets.left + Math.round(availableWidth / 2)
+
+  const mascotScale = landscape
+    ? clamp(availableWidth / 1800, 0.6, 1)
+    : clamp(availableWidth / 900, 0.6, 0.85)
+  const mascotHalf = 180 * mascotScale
+  const mascotX = width - insets.right - mascotHalf - 12
+  const mascotY = landscape
+    ? insets.top + Math.round(availableHeight * 0.42)
+    : insets.top + availableHeight - 40 - mascotHalf
+  const mascotVisible = landscape ? availableWidth >= 900 : true
 
   return {
-    centerX: insets.left + Math.round(availableWidth / 2),
+    centerX,
     titleY: top,
-    subtitleY: top + 82,
-    bestY: top + 150,
-    playY: top + 260,
-    secondaryY: top + 390,
-    controlsY: top + 470,
-    hintY: top + 506,
-    installHintY: top + 544,
+    subtitleY: top + 96,
+    bestY: top + 160,
+    playY: top + 270,
+    secondaryY: top + 396,
+    controlsY: top + 476,
+    hintY: top + 512,
+    installHintY: top + 548,
     playWidth: Math.min(480, availableWidth - 48),
     secondaryWidth: Math.min(230, Math.round((availableWidth - 72) / 2)),
-    motif: { x: motifX, y: motifY, scale: motifScale },
+    mascot: { x: mascotX, y: mascotY, scale: mascotScale, visible: mascotVisible },
   }
 }
 
 function orientationOf(viewport: Viewport): SnakeLayout['orientation'] {
   return viewport.width >= viewport.height ? 'landscape' : 'portrait'
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
 }

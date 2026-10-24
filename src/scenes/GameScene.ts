@@ -1,6 +1,6 @@
 import {
-  cssColor,
   DebugOverlay,
+  displayTextStyle,
   getServices,
   onAppHidden,
   onLayoutChange,
@@ -15,26 +15,26 @@ import { snakeConfig } from '../logic/config'
 import { createInitialState, enqueueDirection, step, tickMs } from '../logic/state'
 import type { Cell, Direction, SnakeState } from '../logic/types'
 import { snakeSave } from '../save'
+import { drawBackdrop } from '../ui/backdrop'
 import { FloatingJoystick } from '../ui/FloatingJoystick'
+import {
+  cellCenterX,
+  cellCenterY,
+  drawBoardFrame,
+  drawCountdownBadge,
+  drawSnakeAndFood,
+  fruitColorAt,
+} from '../ui/gameArt'
 import { computeSnakeLayout, type SnakeLayout } from '../ui/layout'
 import type { GameOverInfo, HudScene } from './HudScene'
 
 const COUNTDOWN_MS = 1800
 const GAME_OVER_DELAY_MS = 700
-const SNAKE_HEAD = 0x6ee7b7
-const SNAKE_TAIL = 0x15803d
-const FOOD = 0xf97362
-
-const DIRECTION_VECTORS: Record<Direction, Cell> = {
-  up: { x: 0, y: -1 },
-  down: { x: 0, y: 1 },
-  left: { x: -1, y: 0 },
-  right: { x: 1, y: 0 },
-}
 
 export class GameScene extends Phaser.Scene {
   private state!: SnakeState
   private rng!: Rng
+  private viewport!: Viewport
   private layout!: SnakeLayout
   private prevCells: Cell[] = []
   private elapsed = 0
@@ -44,9 +44,11 @@ export class GameScene extends Phaser.Scene {
   private countdownMs = 0
   private best = 0
   private newBest = false
+  private backdropGraphics!: Phaser.GameObjects.Graphics
   private boardGraphics!: Phaser.GameObjects.Graphics
   private snakeGraphics!: Phaser.GameObjects.Graphics
   private foodGraphics!: Phaser.GameObjects.Graphics
+  private countdownBadge!: Phaser.GameObjects.Graphics
   private countdownText!: Phaser.GameObjects.Text
   private debugOverlay?: DebugOverlay
   private removeHiddenListener?: () => void
@@ -61,15 +63,21 @@ export class GameScene extends Phaser.Scene {
     const theme = services.theme
 
     this.cameras.main.setBackgroundColor(theme.bg)
-    this.layout = computeSnakeLayout(readViewport(this))
+    this.viewport = readViewport(this)
+    this.layout = computeSnakeLayout(this.viewport)
+
+    this.backdropGraphics = this.add.graphics().setDepth(-2)
+    this.drawBackdrop()
 
     this.boardGraphics = this.add.graphics().setDepth(0)
     this.drawBoard()
 
     this.snakeGraphics = this.add.graphics().setDepth(2)
     this.foodGraphics = this.add.graphics().setDepth(3)
+
+    this.countdownBadge = this.add.graphics().setDepth(11).setAlpha(0)
     this.countdownText = this.add
-      .text(0, 0, '', textStyle(theme, 120, cssColor(theme.accent), true))
+      .text(0, 0, '', displayTextStyle(theme, 96, theme.text, true, 0, 5))
       .setOrigin(0.5)
       .setDepth(12)
       .setAlpha(0)
@@ -107,18 +115,23 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.countdownActive) {
+      const previous = Math.ceil(this.countdownMs / 600)
       this.countdownMs -= frame
       if (this.countdownMs <= 0) {
         this.countdownActive = false
         this.countdownText.setText(getServices().i18n.t('go'))
+        this.popCountdown()
         this.tweens.add({
-          targets: this.countdownText,
+          targets: [this.countdownText, this.countdownBadge],
           alpha: 0,
-          duration: 350,
+          duration: 320,
+          delay: 180,
           onComplete: () => this.countdownText.setText(''),
         })
       } else {
-        this.countdownText.setText(String(Math.ceil(this.countdownMs / 600)))
+        const current = Math.ceil(this.countdownMs / 600)
+        if (current !== previous) this.popCountdown()
+        this.countdownText.setText(String(current))
       }
       this.render(0)
       return
@@ -158,7 +171,9 @@ export class GameScene extends Phaser.Scene {
     const services = getServices()
     this.paused = true
     this.countdownActive = false
+    this.tweens.killTweensOf([this.countdownText, this.countdownBadge])
     this.countdownText.setAlpha(0)
+    this.countdownBadge.setAlpha(0)
     this.joystick.setEnabled(false)
     services.platform.gameplayStop()
     services.audio.play('pause')
@@ -195,6 +210,8 @@ export class GameScene extends Phaser.Scene {
 
     const rotated = next.orientation !== this.layout.orientation && this.isPlaying()
     this.layout = next
+    this.viewport = viewport
+    this.drawBackdrop()
     this.drawBoard()
     this.positionCountdown()
     this.joystick.setBlockedRect(next.hud)
@@ -213,15 +230,29 @@ export class GameScene extends Phaser.Scene {
     this.paused = false
     this.finished = false
     this.joystick.setEnabled(true)
-    this.countdownText.setAlpha(1).setScale(1)
     this.startCountdown()
     services.platform.gameplayStart()
   }
 
   private startCountdown(): void {
+    this.tweens.killTweensOf([this.countdownText, this.countdownBadge])
     this.countdownActive = true
     this.countdownMs = COUNTDOWN_MS
+    this.countdownText.setText(String(Math.ceil(this.countdownMs / 600)))
     this.countdownText.setAlpha(1).setScale(1)
+    this.countdownBadge.setAlpha(1)
+    this.popCountdown()
+  }
+
+  private popCountdown(): void {
+    this.tweens.killTweensOf(this.countdownText)
+    this.countdownText.setScale(0.72)
+    this.tweens.add({
+      targets: this.countdownText,
+      scale: 1,
+      duration: 220,
+      ease: 'Back.out',
+    })
   }
 
   private advance(): void {
@@ -237,7 +268,7 @@ export class GameScene extends Phaser.Scene {
         this.showEat(event.at, event.score)
       } else if (event.type === 'die') {
         services.audio.play('die')
-        this.cameras.main.shake(200, 0.007)
+        this.cameras.main.shake(220, 0.008)
         this.flash()
       } else if (event.type === 'win') {
         services.audio.play('start')
@@ -251,6 +282,7 @@ export class GameScene extends Phaser.Scene {
     this.joystick.setEnabled(false)
     services.platform.gameplayStop()
 
+    const won = this.state.status === 'won'
     const save = snakeSave(services)
     const current = save.read()
     const isNewBest = this.newBest
@@ -258,14 +290,14 @@ export class GameScene extends Phaser.Scene {
     save.write({ best, plays: current.plays + 1 })
     this.best = best
 
-    if (isNewBest) services.platform.happyTime()
+    if (isNewBest || won) services.platform.happyTime()
 
     const info: GameOverInfo = {
       score: this.state.score,
       best,
       newBest: isNewBest,
-      won: this.state.status === 'won',
-      reason: this.state.status === 'won' ? 'win' : (this.state.deathReason ?? 'wall'),
+      won,
+      reason: won ? 'win' : (this.state.deathReason ?? 'wall'),
     }
     this.time.delayedCall(GAME_OVER_DELAY_MS, () => {
       if (this.finished) this.hud()?.showGameOver(info)
@@ -279,126 +311,69 @@ export class GameScene extends Phaser.Scene {
   }
 
   private render(progress: number): void {
-    const services = getServices()
-    const theme = services.theme
-    const snake = this.state.snake
-    const graphics = this.snakeGraphics
-    const cell = this.layout.board.cell
-    graphics.clear()
+    drawSnakeAndFood(
+      this.snakeGraphics,
+      this.foodGraphics,
+      this.state,
+      this.prevCells,
+      this.layout.board,
+      progress,
+      this.time.now,
+      getServices().theme,
+    )
+  }
 
-    for (let index = snake.length - 1; index >= 0; index--) {
-      const current = snake[index]
-      if (!current) continue
-      const previous = this.prevCells[index] ?? current
-      const x = this.cellCenterX(previous.x + (current.x - previous.x) * progress)
-      const y = this.cellCenterY(previous.y + (current.y - previous.y) * progress)
-      const t = snake.length === 1 ? 0 : index / (snake.length - 1)
-      const color =
-        index === 0 && this.state.status === 'dead'
-          ? theme.danger
-          : interpolateColor(SNAKE_HEAD, SNAKE_TAIL, t)
-      const inset = index === 0 ? 1.5 : 2.5
-      const radius = index === 0 ? 11 : 9
-      graphics.fillStyle(color, 1)
-      graphics.fillRoundedRect(
-        x - cell / 2 + inset,
-        y - cell / 2 + inset,
-        cell - inset * 2,
-        cell - inset * 2,
-        radius,
-      )
-    }
-
-    const head = snake[0]
-    if (head) {
-      const previous = this.prevCells[0] ?? head
-      const hx = this.cellCenterX(previous.x + (head.x - previous.x) * progress)
-      const hy = this.cellCenterY(previous.y + (head.y - previous.y) * progress)
-      const direction = DIRECTION_VECTORS[this.state.direction]
-      const perpendicular = { x: -direction.y, y: direction.x }
-      graphics.fillStyle(0x07130f, 1)
-      for (const side of [-1, 1]) {
-        graphics.fillCircle(
-          hx + direction.x * 6 + perpendicular.x * side * 6.5,
-          hy + direction.y * 6 + perpendicular.y * side * 6.5,
-          3.4,
-        )
-      }
-    }
-
-    const foodGraphics = this.foodGraphics
-    foodGraphics.clear()
-    if (this.state.food) {
-      const cx = this.cellCenterX(this.state.food.x)
-      const cy = this.cellCenterY(this.state.food.y)
-      const pulse = Math.sin(this.time.now * 0.006) * 1.6
-      const radius = cell * 0.3 + pulse
-      foodGraphics.fillStyle(FOOD, 0.14)
-      foodGraphics.fillCircle(cx, cy, radius * 1.75)
-      foodGraphics.fillStyle(FOOD, 1)
-      foodGraphics.fillCircle(cx, cy, radius)
-      foodGraphics.fillStyle(0xffd166, 0.9)
-      foodGraphics.fillCircle(cx - radius * 0.35, cy - radius * 0.35, radius * 0.22)
-      foodGraphics.fillStyle(0x4ade80, 1)
-      foodGraphics.fillEllipse(cx + 4, cy - radius - 3, 9, 5)
-    }
+  private drawBackdrop(): void {
+    drawBackdrop(this.backdropGraphics, this.viewport, getServices().theme, {
+      clouds: 2,
+      confetti: false,
+      hillAlpha: 0.8,
+    })
   }
 
   private drawBoard(): void {
-    const theme = getServices().theme
-    const frame = this.boardGraphics
-    const { x, y, width, cell } = this.layout.board
-    frame.clear()
-
-    frame.fillStyle(0x000000, 0.22)
-    frame.fillRoundedRect(x - 4, y - 2, width + 8, width + 14, 22)
-    frame.fillStyle(theme.board, 1)
-    frame.fillRoundedRect(x - 10, y - 10, width + 20, width + 20, 20)
-    frame.lineStyle(1, theme.panelStroke, 1)
-    frame.strokeRoundedRect(x - 10, y - 10, width + 20, width + 20, 20)
-
-    for (let row = 0; row < snakeConfig.height; row++) {
-      for (let column = 0; column < snakeConfig.width; column++) {
-        if ((column + row) % 2 === 0) {
-          frame.fillStyle(theme.boardAlt, 0.45)
-          frame.fillRect(x + column * cell, y + row * cell, cell, cell)
-        }
-      }
-    }
+    drawBoardFrame(this.boardGraphics, this.layout.board, getServices().theme)
   }
 
   private showEat(at: Cell, score: number): void {
     const theme = getServices().theme
-    const x = this.cellCenterX(at.x)
-    const y = this.cellCenterY(at.y)
+    const x = cellCenterX(this.layout.board, at.x)
+    const y = cellCenterY(this.layout.board, at.y)
+    const fruitColor = fruitColorAt(at)
 
+    const badge = this.add.container(x, y).setDepth(10)
+    const background = this.add.graphics()
+    background.fillStyle(theme.surface, 1)
+    background.fillRoundedRect(-34, -20, 68, 40, 20)
+    background.lineStyle(3, theme.ink, 1)
+    background.strokeRoundedRect(-34, -20, 68, 40, 20)
     const label = this.add
-      .text(
-        x,
-        y,
-        `+${snakeConfig.scorePerFood}`,
-        textStyle(theme, 28, cssColor(theme.accent), true),
-      )
+      .text(0, 0, `+${snakeConfig.scorePerFood}`, textStyle(theme, 26, theme.text, true))
       .setOrigin(0.5)
-      .setDepth(10)
+    badge.add([background, label])
     this.tweens.add({
-      targets: label,
-      y: y - 40,
+      targets: badge,
+      y: y - 52,
       alpha: 0,
-      duration: 520,
+      duration: 620,
       ease: 'Quad.out',
-      onComplete: () => label.destroy(),
+      onComplete: () => badge.destroy(),
     })
 
-    for (let i = 0; i < 6; i++) {
-      const particle = this.add.circle(x, y, 3.5, FOOD).setDepth(9)
-      const angle = (Math.PI * 2 * i) / 6
+    const colors = [fruitColor, theme.accent, theme.surface]
+    for (let index = 0; index < 8; index += 1) {
+      const particle = this.add
+        .circle(x, y, 4, colors[index % colors.length] ?? fruitColor)
+        .setDepth(9)
+      const angle = (Math.PI * 2 * index) / 8
+      const distance = Phaser.Math.Between(22, 48)
       this.tweens.add({
         targets: particle,
-        x: x + Math.cos(angle) * Phaser.Math.Between(18, 38),
-        y: y + Math.sin(angle) * Phaser.Math.Between(18, 38),
+        x: x + Math.cos(angle) * distance,
+        y: y + Math.sin(angle) * distance,
         alpha: 0,
-        duration: 380,
+        scale: 0.4,
+        duration: 420,
         ease: 'Quad.out',
         onComplete: () => particle.destroy(),
       })
@@ -413,10 +388,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private flash(): void {
+    const theme = getServices().theme
     const width = this.scale.width
     const height = this.scale.height
     const overlay = this.add
-      .rectangle(width / 2, height / 2, width, height, 0xd9534f, 0.16)
+      .rectangle(width / 2, height / 2, width, height, theme.danger, 0.18)
       .setDepth(20)
     this.tweens.add({
       targets: overlay,
@@ -455,17 +431,10 @@ export class GameScene extends Phaser.Scene {
 
   private positionCountdown(): void {
     const { x, y, width } = this.layout.board
-    this.countdownText.setPosition(x + width / 2, y + width / 2)
-  }
-
-  private cellCenterX(x: number): number {
-    const { x: boardX, cell } = this.layout.board
-    return boardX + (x + 0.5) * cell
-  }
-
-  private cellCenterY(y: number): number {
-    const { y: boardY, cell } = this.layout.board
-    return boardY + (y + 0.5) * cell
+    const centerX = x + width / 2
+    const centerY = y + width / 2
+    this.countdownText.setPosition(centerX, centerY)
+    drawCountdownBadge(this.countdownBadge, centerX, centerY, getServices().theme)
   }
 
   private hud(): HudScene | undefined {
@@ -489,16 +458,4 @@ function layoutsEqual(a: SnakeLayout, b: SnakeLayout): boolean {
     a.hud.width === b.hud.width &&
     a.hud.height === b.hud.height
   )
-}
-
-function interpolateColor(from: number, to: number, t: number): number {
-  const start = Phaser.Display.Color.ValueToColor(from)
-  const end = Phaser.Display.Color.ValueToColor(to)
-  const color = Phaser.Display.Color.Interpolate.ColorWithColor(
-    start,
-    end,
-    100,
-    Math.round(t * 100),
-  )
-  return Phaser.Display.Color.GetColor(color.r, color.g, color.b)
 }
