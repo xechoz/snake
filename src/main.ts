@@ -6,7 +6,7 @@ import { MenuScene } from './scenes/MenuScene'
 
 createGame({
   id: 'snake',
-  design: { width: 1280, height: 720 },
+  design: { base: 720 },
   backgroundColor: 0x0b1020,
   defaultLang: 'zh',
   i18n: snakeI18n,

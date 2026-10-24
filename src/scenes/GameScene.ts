@@ -3,9 +3,11 @@ import {
   DebugOverlay,
   getServices,
   onAppHidden,
-  PORTRAIT_BLOCK_QUERY,
+  onLayoutChange,
   randomSeed,
+  readViewport,
   textStyle,
+  type Viewport,
 } from '@mg/core'
 import { createRng, type Rng } from '@mg/core/rng'
 import Phaser from 'phaser'
@@ -14,13 +16,9 @@ import { createInitialState, enqueueDirection, step, tickMs } from '../logic/sta
 import type { Cell, Direction, SnakeState } from '../logic/types'
 import { snakeSave } from '../save'
 import { FloatingJoystick } from '../ui/FloatingJoystick'
+import { computeSnakeLayout, type SnakeLayout } from '../ui/layout'
 import type { GameOverInfo, HudScene } from './HudScene'
 
-const BOARD_SIZE = 672
-const BOARD_X = (1280 - BOARD_SIZE) / 2
-const BOARD_Y = 24
-const GRID = snakeConfig.width
-const CELL = BOARD_SIZE / GRID
 const COUNTDOWN_MS = 1800
 const GAME_OVER_DELAY_MS = 700
 const SNAKE_HEAD = 0x6ee7b7
@@ -37,6 +35,7 @@ const DIRECTION_VECTORS: Record<Direction, Cell> = {
 export class GameScene extends Phaser.Scene {
   private state!: SnakeState
   private rng!: Rng
+  private layout!: SnakeLayout
   private prevCells: Cell[] = []
   private elapsed = 0
   private paused = false
@@ -45,17 +44,13 @@ export class GameScene extends Phaser.Scene {
   private countdownMs = 0
   private best = 0
   private newBest = false
+  private boardGraphics!: Phaser.GameObjects.Graphics
   private snakeGraphics!: Phaser.GameObjects.Graphics
   private foodGraphics!: Phaser.GameObjects.Graphics
   private countdownText!: Phaser.GameObjects.Text
   private debugOverlay?: DebugOverlay
   private removeHiddenListener?: () => void
-  private portraitQuery?: MediaQueryList
   private joystick!: FloatingJoystick
-
-  private readonly handlePortraitChange = (event: MediaQueryListEvent): void => {
-    if (event.matches) this.pauseGame()
-  }
 
   constructor() {
     super('Game')
@@ -66,22 +61,22 @@ export class GameScene extends Phaser.Scene {
     const theme = services.theme
 
     this.cameras.main.setBackgroundColor(theme.bg)
+    this.layout = computeSnakeLayout(readViewport(this))
+
+    this.boardGraphics = this.add.graphics().setDepth(0)
     this.drawBoard()
 
     this.snakeGraphics = this.add.graphics().setDepth(2)
     this.foodGraphics = this.add.graphics().setDepth(3)
     this.countdownText = this.add
-      .text(
-        BOARD_X + BOARD_SIZE / 2,
-        BOARD_Y + BOARD_SIZE / 2,
-        '',
-        textStyle(theme, 120, cssColor(theme.accent), true),
-      )
+      .text(0, 0, '', textStyle(theme, 120, cssColor(theme.accent), true))
       .setOrigin(0.5)
       .setDepth(12)
       .setAlpha(0)
+    this.positionCountdown()
 
     this.joystick = new FloatingJoystick(this, theme, (direction) => this.inputDirection(direction))
+    this.joystick.setBlockedRect(this.layout.hud)
     this.resetGame()
     this.bindInput()
     this.scene.launch('Hud')
@@ -89,13 +84,13 @@ export class GameScene extends Phaser.Scene {
     if (services.debug) this.debugOverlay = new DebugOverlay(this, theme)
 
     this.removeHiddenListener = onAppHidden(() => {
-      if (!this.paused && !this.finished) this.pauseGame()
+      if (this.isPlaying()) this.pauseGame()
     })
-    this.portraitQuery = window.matchMedia(PORTRAIT_BLOCK_QUERY)
-    this.portraitQuery.addEventListener('change', this.handlePortraitChange)
+
+    onLayoutChange(this, (viewport) => this.handleLayout(viewport))
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.removeHiddenListener?.()
-      this.portraitQuery?.removeEventListener('change', this.handlePortraitChange)
     })
   }
 
@@ -156,7 +151,6 @@ export class GameScene extends Phaser.Scene {
     if (next === this.state) return
     this.state = next
     getServices().audio.play('turn')
-    this.hud()?.dismissHint()
   }
 
   pauseGame(): void {
@@ -168,7 +162,6 @@ export class GameScene extends Phaser.Scene {
     this.joystick.setEnabled(false)
     services.platform.gameplayStop()
     services.audio.play('pause')
-    this.hud()?.dismissHint()
     this.hud()?.showPause()
   }
 
@@ -194,6 +187,19 @@ export class GameScene extends Phaser.Scene {
   goToMenu(): void {
     this.scene.stop('Hud')
     this.scene.start('Menu')
+  }
+
+  private handleLayout(viewport: Viewport): void {
+    const next = computeSnakeLayout(viewport)
+    if (layoutsEqual(next, this.layout)) return
+
+    const rotated = next.orientation !== this.layout.orientation && this.isPlaying()
+    this.layout = next
+    this.drawBoard()
+    this.positionCountdown()
+    this.joystick.setBlockedRect(next.hud)
+
+    if (rotated) this.pauseGame()
   }
 
   private resetGame(): void {
@@ -277,6 +283,7 @@ export class GameScene extends Phaser.Scene {
     const theme = services.theme
     const snake = this.state.snake
     const graphics = this.snakeGraphics
+    const cell = this.layout.board.cell
     graphics.clear()
 
     for (let index = snake.length - 1; index >= 0; index--) {
@@ -294,10 +301,10 @@ export class GameScene extends Phaser.Scene {
       const radius = index === 0 ? 11 : 9
       graphics.fillStyle(color, 1)
       graphics.fillRoundedRect(
-        x - CELL / 2 + inset,
-        y - CELL / 2 + inset,
-        CELL - inset * 2,
-        CELL - inset * 2,
+        x - cell / 2 + inset,
+        y - cell / 2 + inset,
+        cell - inset * 2,
+        cell - inset * 2,
         radius,
       )
     }
@@ -325,7 +332,7 @@ export class GameScene extends Phaser.Scene {
       const cx = this.cellCenterX(this.state.food.x)
       const cy = this.cellCenterY(this.state.food.y)
       const pulse = Math.sin(this.time.now * 0.006) * 1.6
-      const radius = CELL * 0.3 + pulse
+      const radius = cell * 0.3 + pulse
       foodGraphics.fillStyle(FOOD, 0.14)
       foodGraphics.fillCircle(cx, cy, radius * 1.75)
       foodGraphics.fillStyle(FOOD, 1)
@@ -339,20 +346,22 @@ export class GameScene extends Phaser.Scene {
 
   private drawBoard(): void {
     const theme = getServices().theme
-    const frame = this.add.graphics().setDepth(0)
+    const frame = this.boardGraphics
+    const { x, y, width, cell } = this.layout.board
+    frame.clear()
 
     frame.fillStyle(0x000000, 0.22)
-    frame.fillRoundedRect(BOARD_X - 4, BOARD_Y - 2, BOARD_SIZE + 8, BOARD_SIZE + 14, 22)
+    frame.fillRoundedRect(x - 4, y - 2, width + 8, width + 14, 22)
     frame.fillStyle(theme.board, 1)
-    frame.fillRoundedRect(BOARD_X - 10, BOARD_Y - 10, BOARD_SIZE + 20, BOARD_SIZE + 20, 20)
+    frame.fillRoundedRect(x - 10, y - 10, width + 20, width + 20, 20)
     frame.lineStyle(1, theme.panelStroke, 1)
-    frame.strokeRoundedRect(BOARD_X - 10, BOARD_Y - 10, BOARD_SIZE + 20, BOARD_SIZE + 20, 20)
+    frame.strokeRoundedRect(x - 10, y - 10, width + 20, width + 20, 20)
 
-    for (let y = 0; y < GRID; y++) {
-      for (let x = 0; x < GRID; x++) {
-        if ((x + y) % 2 === 0) {
+    for (let row = 0; row < snakeConfig.height; row++) {
+      for (let column = 0; column < snakeConfig.width; column++) {
+        if ((column + row) % 2 === 0) {
           frame.fillStyle(theme.boardAlt, 0.45)
-          frame.fillRect(BOARD_X + x * CELL, BOARD_Y + y * CELL, CELL, CELL)
+          frame.fillRect(x + column * cell, y + row * cell, cell, cell)
         }
       }
     }
@@ -404,7 +413,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private flash(): void {
-    const overlay = this.add.rectangle(640, 360, 1280, 720, 0xd9534f, 0.16).setDepth(20)
+    const width = this.scale.width
+    const height = this.scale.height
+    const overlay = this.add
+      .rectangle(width / 2, height / 2, width, height, 0xd9534f, 0.16)
+      .setDepth(20)
     this.tweens.add({
       targets: overlay,
       alpha: 0,
@@ -440,17 +453,42 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
+  private positionCountdown(): void {
+    const { x, y, width } = this.layout.board
+    this.countdownText.setPosition(x + width / 2, y + width / 2)
+  }
+
   private cellCenterX(x: number): number {
-    return BOARD_X + (x + 0.5) * CELL
+    const { x: boardX, cell } = this.layout.board
+    return boardX + (x + 0.5) * cell
   }
 
   private cellCenterY(y: number): number {
-    return BOARD_Y + (y + 0.5) * CELL
+    const { y: boardY, cell } = this.layout.board
+    return boardY + (y + 0.5) * cell
   }
 
   private hud(): HudScene | undefined {
     return this.scene.get('Hud') as HudScene | undefined
   }
+
+  private isPlaying(): boolean {
+    return !this.paused && !this.finished && this.state.status === 'alive'
+  }
+}
+
+function layoutsEqual(a: SnakeLayout, b: SnakeLayout): boolean {
+  return (
+    a.orientation === b.orientation &&
+    a.placement === b.placement &&
+    a.board.x === b.board.x &&
+    a.board.y === b.board.y &&
+    a.board.width === b.board.width &&
+    a.hud.x === b.hud.x &&
+    a.hud.y === b.hud.y &&
+    a.hud.width === b.hud.width &&
+    a.hud.height === b.hud.height
+  )
 }
 
 function interpolateColor(from: number, to: number, t: number): number {

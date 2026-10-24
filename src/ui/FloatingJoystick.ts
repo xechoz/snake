@@ -2,6 +2,7 @@ import type { Theme } from '@mg/core'
 import Phaser from 'phaser'
 import type { Direction } from '../logic/types'
 import { resolveJoystickDirection } from './joystick'
+import type { Rect } from './layout'
 
 const BASE_RADIUS = 92
 const KNOB_RADIUS = 34
@@ -14,6 +15,7 @@ export class FloatingJoystick extends Phaser.GameObjects.Container {
   private activePointerId: number | null = null
   private lastDirection: Direction | null = null
   private enabled = true
+  private blockedRect: Rect | null = null
 
   constructor(
     scene: Phaser.Scene,
@@ -56,6 +58,11 @@ export class FloatingJoystick extends Phaser.GameObjects.Container {
     if (!enabled) this.reset()
   }
 
+  /** Keeps the joystick from popping up under HUD controls. */
+  setBlockedRect(rect: Rect | null): void {
+    this.blockedRect = rect
+  }
+
   reset(): void {
     this.activePointerId = null
     this.lastDirection = null
@@ -79,6 +86,7 @@ export class FloatingJoystick extends Phaser.GameObjects.Container {
 
   private handleDown(pointer: Phaser.Input.Pointer): void {
     if (!this.enabled || this.activePointerId !== null) return
+    if (this.isBlocked(pointer)) return
     this.activePointerId = pointer.id
     this.lastDirection = null
     this.knob.setPosition(0, 0)
@@ -110,5 +118,16 @@ export class FloatingJoystick extends Phaser.GameObjects.Container {
   private handleGameOut(): void {
     if (this.activePointerId === null) return
     this.reset()
+  }
+
+  private isBlocked(pointer: Phaser.Input.Pointer): boolean {
+    const rect = this.blockedRect
+    if (!rect) return false
+    return (
+      pointer.x >= rect.x &&
+      pointer.x <= rect.x + rect.width &&
+      pointer.y >= rect.y &&
+      pointer.y <= rect.y + rect.height
+    )
   }
 }

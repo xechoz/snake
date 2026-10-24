@@ -1,5 +1,19 @@
-import { cssColor, getServices, Modal, textStyle } from '@mg/core'
+import {
+  cssColor,
+  getServices,
+  Modal,
+  onLayoutChange,
+  readViewport,
+  textStyle,
+  type Viewport,
+} from '@mg/core'
 import Phaser from 'phaser'
+import {
+  computeSnakeLayout,
+  SCORE_LABEL_SIZE,
+  SCORE_VALUE_SIZE,
+  type SnakeLayout,
+} from '../ui/layout'
 import { PauseButton } from '../ui/PauseButton'
 import type { GameScene } from './GameScene'
 
@@ -11,18 +25,15 @@ export interface GameOverInfo {
   reason: 'wall' | 'self' | 'win'
 }
 
-const SCORE_X = 148
-const SCORE_LABEL_Y = 118
-const SCORE_VALUE_Y = 196
-const HINT_Y = 560
-const PAUSE_X = 1232
-const PAUSE_Y = 60
-const PAUSE_SIZE = 64
+type ModalRequest = { kind: 'pause' } | { kind: 'over'; info: GameOverInfo }
 
 export class HudScene extends Phaser.Scene {
+  private layout!: SnakeLayout
+  private scoreLabel!: Phaser.GameObjects.Text
   private scoreValue!: Phaser.GameObjects.Text
-  private hint?: Phaser.GameObjects.Text
+  private pauseButton!: PauseButton
   private modal?: Modal
+  private modalRequest?: ModalRequest
   private lastScore = -1
 
   constructor() {
@@ -33,39 +44,27 @@ export class HudScene extends Phaser.Scene {
     const services = getServices()
     const theme = services.theme
     const stats = this.gameScene().currentStats()
+    this.layout = computeSnakeLayout(readViewport(this))
 
-    this.add
-      .text(
-        SCORE_X,
-        SCORE_LABEL_Y,
-        services.i18n.t('hud.score'),
-        textStyle(theme, 26, theme.textMuted),
-      )
+    this.scoreLabel = this.add
+      .text(0, 0, services.i18n.t('hud.score'), textStyle(theme, SCORE_LABEL_SIZE, theme.textMuted))
       .setOrigin(0.5)
     this.scoreValue = this.add
       .text(
-        SCORE_X,
-        SCORE_VALUE_Y,
+        0,
+        0,
         String(stats.score),
-        textStyle(theme, 96, cssColor(theme.accent), true),
+        textStyle(theme, SCORE_VALUE_SIZE, cssColor(theme.accent), true),
       )
       .setOrigin(0.5)
 
-    this.hint = this.add
-      .text(SCORE_X, HINT_Y, services.i18n.t('hud.hint'), {
-        ...textStyle(theme, 26, theme.textMuted),
-        align: 'center',
-        lineSpacing: 8,
-        wordWrap: { width: 260 },
-      })
-      .setOrigin(0.5)
-      .setAlpha(0.65)
-
-    new PauseButton(this, PAUSE_X, PAUSE_Y, theme, {
-      size: PAUSE_SIZE,
+    this.pauseButton = new PauseButton(this, this.layout.pause.x, this.layout.pause.y, theme, {
+      size: 64,
       onClick: () => this.gameScene().pauseGame(),
     })
 
+    this.applyLayout()
+    onLayoutChange(this, (viewport) => this.handleLayout(viewport))
     this.lastScore = stats.score
   }
 
@@ -85,20 +84,49 @@ export class HudScene extends Phaser.Scene {
     })
   }
 
-  dismissHint(): void {
-    const hint = this.hint
-    if (!hint?.visible) return
-    this.tweens.killTweensOf(hint)
-    this.tweens.add({
-      targets: hint,
-      alpha: 0,
-      duration: 300,
-      onComplete: () => hint.setVisible(false),
-    })
-  }
-
   showPause(): void {
     if (this.modal?.active) return
+    this.modalRequest = { kind: 'pause' }
+    this.buildPauseModal()
+  }
+
+  showGameOver(info: GameOverInfo): void {
+    if (this.modal?.active) return
+    this.modalRequest = { kind: 'over', info }
+    this.buildGameOverModal(info)
+  }
+
+  closeModal(): void {
+    this.modal?.close()
+    this.modal = undefined
+    this.modalRequest = undefined
+  }
+
+  private handleLayout(viewport: Viewport): void {
+    const next = computeSnakeLayout(viewport)
+    if (layoutsEqual(next, this.layout)) return
+    this.layout = next
+    this.applyLayout()
+    this.rebuildModal()
+  }
+
+  private applyLayout(): void {
+    const { score, pause } = this.layout
+    this.scoreLabel.setPosition(score.x, score.labelY)
+    this.scoreValue.setPosition(score.x, score.valueY)
+    this.pauseButton.setPosition(pause.x, pause.y)
+  }
+
+  private rebuildModal(): void {
+    const request = this.modalRequest
+    if (!request || !this.modal?.active) return
+    this.modal.close()
+    this.modal = undefined
+    if (request.kind === 'pause') this.buildPauseModal()
+    else this.buildGameOverModal(request.info)
+  }
+
+  private buildPauseModal(): void {
     const services = getServices()
     const game = this.gameScene()
 
@@ -132,8 +160,7 @@ export class HudScene extends Phaser.Scene {
     })
   }
 
-  showGameOver(info: GameOverInfo): void {
-    if (this.modal?.active) return
+  private buildGameOverModal(info: GameOverInfo): void {
     const services = getServices()
     const game = this.gameScene()
 
@@ -172,12 +199,19 @@ export class HudScene extends Phaser.Scene {
     })
   }
 
-  closeModal(): void {
-    this.modal?.close()
-    this.modal = undefined
-  }
-
   private gameScene(): GameScene {
     return this.scene.get('Game') as GameScene
   }
+}
+
+function layoutsEqual(a: SnakeLayout, b: SnakeLayout): boolean {
+  return (
+    a.board.x === b.board.x &&
+    a.board.y === b.board.y &&
+    a.board.width === b.board.width &&
+    a.hud.x === b.hud.x &&
+    a.hud.y === b.hud.y &&
+    a.hud.width === b.hud.width &&
+    a.hud.height === b.hud.height
+  )
 }
