@@ -59,8 +59,8 @@ export interface SnakeArtColors {
 }
 
 const snakeArt: SnakeArtColors = {
-  snakeHead: 0x7be8a6,
-  snakeTail: 0x1e9e60,
+  snakeHead: 0x7dd3fc,
+  snakeTail: 0x0369a1,
   fruit: [0xff5c8a, 0xff7a59, 0xffb020],
   leaf: accentAlt,
   eyeWhite: white,
@@ -84,17 +84,22 @@ export interface SnakeLogoColors {
   leaf: number
   eye: number
   shine: number
+  ribbonHead: number
+  ribbonTail: number
 }
 
 const snakeLogo: SnakeLogoColors = {
   face: cream,
-  outline: 0x1f5a3c,
-  depth: 0x14452e,
-  shadow: 0x7be8a6,
+  outline: 0x0c4a6e,
+  depth: 0x0b3b57,
+  shadow: 0x7dd3fc,
   fruit: 0xff5c8a,
   leaf: accentAlt,
   eye: ink,
   shine: white,
+  // The wordmark lockup follows the playable snake's blue palette.
+  ribbonHead: 0x7dd3fc,
+  ribbonTail: 0x0369a1,
 }
 
 export const snakeColors = {

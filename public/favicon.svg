@@ -13,12 +13,12 @@
   <path
     d="M12 46c0-11 9-20 20-20h11"
     fill="none"
-    stroke="#2FB673"
+    stroke="#0369A1"
     stroke-width="10"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
-  <circle cx="45" cy="26" r="9.5" fill="#7BE8A6" stroke="#332B45" stroke-width="3" />
+  <circle cx="45" cy="26" r="9.5" fill="#7DD3FC" stroke="#332B45" stroke-width="3" />
   <circle cx="48" cy="22.5" r="1.9" fill="#332B45" />
   <circle cx="51.5" cy="27.5" r="1.9" fill="#332B45" />
   <path d="M53 27l5 1M58 28l1-2M58 28l1 2" fill="none" stroke="#FF5C8A" stroke-width="2" stroke-linecap="round" />

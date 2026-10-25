@@ -2,49 +2,52 @@ import type { Theme } from '@mg/core'
 import type Phaser from 'phaser'
 import { snakeColors } from '../colors'
 
-export interface SnakeSegment {
-  x: number
-  y: number
-  radius: number
-  color: number
-}
-
 export interface Point {
   x: number
   y: number
 }
 
-/** Two-pass body: an ink underlay for the outline, then tapered colour fills. */
-export function drawSnakeBody(
+export interface SnakeBlock {
+  x: number
+  y: number
+  color: number
+}
+
+/**
+ * Cell-aligned body: one rounded tile per segment, tail first so the head sits
+ * on top. Ink tiles are inflated before the fills so the gaps read as seams.
+ */
+export function drawBlockSnakeBody(
   graphics: Phaser.GameObjects.Graphics,
-  segments: readonly SnakeSegment[],
+  blocks: readonly SnakeBlock[],
+  cell: number,
   ink: number,
   outline: number,
 ): void {
-  if (segments.length === 0) return
+  if (blocks.length === 0) return
+
+  const inset = Math.max(1.5, cell * 0.06)
+  const size = cell - inset * 2
+  const radius = cell * 0.28
 
   graphics.fillStyle(ink, 1)
-  for (const segment of segments) {
-    graphics.fillCircle(segment.x, segment.y, segment.radius + outline)
-  }
-  for (let index = 1; index < segments.length; index += 1) {
-    const previous = segments[index - 1]
-    const current = segments[index]
-    if (!previous || !current) continue
-    graphics.lineStyle(previous.radius + current.radius + outline * 2, ink, 1)
-    graphics.lineBetween(previous.x, previous.y, current.x, current.y)
+  for (let index = blocks.length - 1; index >= 0; index -= 1) {
+    const block = blocks[index]
+    if (!block) continue
+    graphics.fillRoundedRect(
+      block.x - size / 2 - outline,
+      block.y - size / 2 - outline,
+      size + outline * 2,
+      size + outline * 2,
+      radius + outline,
+    )
   }
 
-  for (let index = segments.length - 1; index >= 0; index -= 1) {
-    const segment = segments[index]
-    if (!segment) continue
-    graphics.fillStyle(segment.color, 1)
-    graphics.fillCircle(segment.x, segment.y, segment.radius)
-    const previous = segments[index - 1]
-    if (previous) {
-      graphics.lineStyle(previous.radius + segment.radius, segment.color, 1)
-      graphics.lineBetween(previous.x, previous.y, segment.x, segment.y)
-    }
+  for (let index = blocks.length - 1; index >= 0; index -= 1) {
+    const block = blocks[index]
+    if (!block) continue
+    graphics.fillStyle(block.color, 1)
+    graphics.fillRoundedRect(block.x - size / 2, block.y - size / 2, size, size, radius)
   }
 }
 

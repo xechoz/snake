@@ -2,7 +2,7 @@ import { getServices, mixColor } from '@mg/core'
 import type Phaser from 'phaser'
 import { snakeColors } from '../colors'
 import { MENU_DEMO_HEIGHT, MENU_DEMO_WIDTH } from './layout'
-import { drawFruit, drawSnakeBody, drawSnakeHead, type SnakeSegment } from './snakeArt'
+import { drawBlockSnakeBody, drawFruit, drawSnakeHead, type SnakeBlock } from './snakeArt'
 
 const COLS = 6
 const ROWS = 4
@@ -88,17 +88,15 @@ export function createMenuDemo(scene: Phaser.Scene): MenuDemo {
     })
 
     snake.clear()
-    const bodyPoints = densify(points)
-    const segments: SnakeSegment[] = bodyPoints.map((point, index) => {
-      const t = bodyPoints.length <= 1 ? 0 : index / (bodyPoints.length - 1)
+    const blocks: SnakeBlock[] = points.map((point, index) => {
+      const t = points.length <= 1 ? 0 : index / (points.length - 1)
       return {
         x: point.x,
         y: point.y,
-        radius: CELL * (0.4 - t * 0.14),
         color: mixColor(snakeColors.art.snakeHead, snakeColors.art.snakeTail, t),
       }
     })
-    drawSnakeBody(snake, segments, theme.ink, 3)
+    drawBlockSnakeBody(snake, blocks, CELL, theme.ink, 2.2)
 
     const head = points[0]
     const next = points[1]
@@ -235,33 +233,6 @@ function cellY(row: number): number {
 
 function cloneCells(cells: readonly Cell[]): Cell[] {
   return cells.map((cell) => ({ x: cell.x, y: cell.y }))
-}
-
-interface Point {
-  x: number
-  y: number
-}
-
-/** Extra samples keep the tapered colour ramp from banding at cell spacing. */
-function densify(points: readonly Point[], steps = 12): Point[] {
-  if (points.length < 2) return points.map((point) => ({ ...point }))
-
-  const dense: Point[] = []
-  for (let index = 0; index < points.length - 1; index += 1) {
-    const from = points[index]
-    const to = points[index + 1]
-    if (!from || !to) continue
-    for (let step = 0; step < steps; step += 1) {
-      const t = step / steps
-      dense.push({
-        x: from.x + (to.x - from.x) * t,
-        y: from.y + (to.y - from.y) * t,
-      })
-    }
-  }
-  const tail = points[points.length - 1]
-  if (tail) dense.push({ ...tail })
-  return dense
 }
 
 function firstFood(): Cell | null {

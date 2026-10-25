@@ -1,7 +1,7 @@
 import { cssColor, getServices, mixColor } from '@mg/core'
 import type Phaser from 'phaser'
 import { type SnakeLogoColors, snakeColors } from '../colors'
-import { drawSnakeBody, drawSnakeHead, type SnakeSegment } from './snakeArt'
+import { drawBlockSnakeBody, drawSnakeHead, type Point, type SnakeBlock } from './snakeArt'
 
 const FONT_SIZE = 104
 const STROKE = 9
@@ -9,7 +9,12 @@ const DEPTH_OFFSET = 7
 const SHADOW_OFFSET = { x: 8, y: 14 }
 const CHAR_GAP = 9
 const HEAD_RADIUS = 22
-const HEAD_DIRECTION = { x: 0.92, y: -0.39 }
+const RIBBON_CELL = 22
+const RIBBON_OUTLINE = 3.2
+const RIBBON_TAIL_PAD = 6
+const RIBBON_HEAD_PAD = 32
+const RIBBON_HEAD_OFFSET = 10
+const RIBBON_BASELINE = 0.62
 
 /** The title lockup, with its own fixed palette instead of the UI theme. */
 export interface SnakeLogo {
@@ -45,7 +50,7 @@ export function createSnakeLogo(scene: Phaser.Scene): SnakeLogo {
     cursor += glyph.width + CHAR_GAP
   })
 
-  const ribbonY = glyphHeight * 0.58
+  const ribbonY = glyphHeight * RIBBON_BASELINE
   const halo = scene.add.graphics()
   const haloWidth = totalWidth + 96
   const haloHeight = glyphHeight + 76
@@ -55,9 +60,13 @@ export function createSnakeLogo(scene: Phaser.Scene): SnakeLogo {
     halo.fillEllipse(0, 4, haloWidth * shrink, haloHeight * shrink)
   }
 
-  const { segments, headX, headY } = createRibbon(totalWidth, ribbonY)
+  const { blocks, cell, headX, headY, headDirection, extent } = createRibbon(
+    totalWidth,
+    ribbonY,
+    logo,
+  )
   const ribbon = scene.add.graphics()
-  drawSnakeBody(ribbon, segments, logo.outline, 4)
+  drawBlockSnakeBody(ribbon, blocks, cell, logo.outline, RIBBON_OUTLINE)
 
   const head = scene.add.graphics()
   const drawHead = (): void => {
@@ -66,17 +75,10 @@ export function createSnakeLogo(scene: Phaser.Scene): SnakeLogo {
     const flickPhase = now % 3100
     const tongue = flickPhase < 300 ? Math.sin((flickPhase / 300) * Math.PI) : 0
     head.clear()
-    drawSnakeHead(
-      head,
-      headX,
-      headY,
-      HEAD_DIRECTION,
-      HEAD_RADIUS,
-      logo.eye,
-      snakeColors.art.snakeHead,
-      4,
-      { blink, tongue },
-    )
+    drawSnakeHead(head, headX, headY, headDirection, HEAD_RADIUS, logo.eye, logo.ribbonHead, 4, {
+      blink,
+      tongue,
+    })
   }
   drawHead()
   const headTimer = scene.time.addEvent({ delay: 90, loop: true, callback: drawHead })
@@ -89,11 +91,11 @@ export function createSnakeLogo(scene: Phaser.Scene): SnakeLogo {
   const fruitGroup = scene.add.container(fruitX, fruitY, [fruit])
   const snakeGroup = scene.add.container(0, 0, [ribbon, head])
 
-  const left = Math.min(-totalWidth / 2 - 26, fruitX - 30)
-  const right = Math.max(totalWidth / 2 + 20, headX + HEAD_RADIUS + 8)
+  const left = Math.min(-totalWidth / 2 - 26, fruitX - 30, extent.left)
+  const right = Math.max(totalWidth / 2 + 20, headX + HEAD_RADIUS + 8, extent.right)
   const width = right - left
-  const top = Math.min(-glyphHeight / 2 - 8, fruitY - 32)
-  const bottom = Math.max(glyphHeight / 2, headY + HEAD_RADIUS + 8, fruitY + 30)
+  const top = Math.min(-glyphHeight / 2 - 8, fruitY - 32, extent.top)
+  const bottom = Math.max(glyphHeight / 2, headY + HEAD_RADIUS + 8, fruitY + 30, extent.bottom)
   const height = bottom - top + 8
 
   const bob = scene.add.container(0, 0, [halo, wordmark, snakeGroup, fruitGroup])
@@ -210,34 +212,81 @@ function glyphTransform(index: number, count: number): { wave: number; angle: nu
   return { wave, angle }
 }
 
-function createRibbon(
-  totalWidth: number,
-  ribbonY: number,
-): { segments: SnakeSegment[]; headX: number; headY: number } {
-  const count = 30
-  const startX = -totalWidth / 2 - 6
-  const endX = totalWidth / 2 + 32
-  const segments: SnakeSegment[] = []
+interface RibbonExtent {
+  left: number
+  right: number
+  top: number
+  bottom: number
+}
 
-  for (let index = 0; index < count; index += 1) {
-    const t = index / (count - 1)
-    segments.push({
-      x: startX + (endX - startX) * t,
-      y: ribbonY + Math.sin(t * Math.PI * 1.5 + 0.2) * 11 - t * 2,
-      radius: 11 - t * 5.5,
-      color: mixColor(snakeColors.art.snakeHead, snakeColors.art.snakeTail, t),
-    })
+interface RibbonLayout {
+  blocks: SnakeBlock[]
+  cell: number
+  headX: number
+  headY: number
+  headDirection: Point
+  extent: RibbonExtent
+}
+
+/**
+ * The logo underline is a cell-aligned snake like the one on the board: equal
+ * rounded tiles, orthogonal steps only, built from the tail towards the head.
+ */
+function createRibbon(totalWidth: number, ribbonY: number, logo: SnakeLogoColors): RibbonLayout {
+  const startX = -totalWidth / 2 - RIBBON_TAIL_PAD
+  const endX = totalWidth / 2 + RIBBON_HEAD_PAD
+  const span = endX - startX
+  const columns = Math.max(6, Math.round(span / RIBBON_CELL))
+  const cell = span / columns
+  const turns = [
+    { column: Math.round(columns * 0.28), row: 1 },
+    { column: Math.round(columns * 0.48), row: 0 },
+    { column: Math.round(columns * 0.68), row: 1 },
+    { column: Math.round(columns * 0.88), row: 0 },
+  ]
+
+  const cells: Point[] = [{ x: startX, y: ribbonY }]
+  let row = 0
+  let turnIndex = 0
+  for (let column = 1; column <= columns; column += 1) {
+    cells.push({ x: startX + column * cell, y: ribbonY + row * cell })
+    const turn = turns[turnIndex]
+    if (turn && column === turn.column) {
+      row = turn.row
+      cells.push({ x: startX + column * cell, y: ribbonY + row * cell })
+      turnIndex += 1
+    }
   }
 
-  const tail = segments[segments.length - 2]
-  const tip = segments[segments.length - 1]
-  const dx = tip && tail ? tip.x - tail.x : 1
-  const dy = tip && tail ? tip.y - tail.y : 0
-  const length = Math.hypot(dx, dy) || 1
-  const headX = (tip?.x ?? endX) + (dx / length) * 10
-  const headY = (tip?.y ?? ribbonY) + (dy / length) * 10
+  const last = cells.length - 1
+  const blocks: SnakeBlock[] = cells
+    .map((point, index) => ({
+      x: point.x,
+      y: point.y,
+      color: mixColor(logo.ribbonTail, logo.ribbonHead, index / last),
+    }))
+    .reverse()
 
-  return { segments, headX, headY }
+  const tip = cells[last]
+  const previous = cells[last - 1]
+  const dx = tip && previous ? tip.x - previous.x : 1
+  const dy = tip && previous ? tip.y - previous.y : 0
+  const length = Math.hypot(dx, dy) || 1
+  const headDirection = { x: dx / length, y: dy / length }
+  const headX = (tip?.x ?? endX) + headDirection.x * RIBBON_HEAD_OFFSET
+  const headY = (tip?.y ?? ribbonY) + headDirection.y * RIBBON_HEAD_OFFSET
+
+  const half = cell / 2 + RIBBON_OUTLINE
+  const xs = cells.map((point) => point.x)
+  const ys = cells.map((point) => point.y)
+  const extent: RibbonExtent = {
+    left: Math.min(...xs) - half,
+    right: Math.max(...xs) + half,
+    top: Math.min(...ys) - half,
+    bottom: Math.max(...ys) + half,
+  }
+
+  return { blocks, cell, headX, headY, headDirection, extent }
 }
 
 function drawLogoFruit(graphics: Phaser.GameObjects.Graphics, logo: SnakeLogoColors): void {

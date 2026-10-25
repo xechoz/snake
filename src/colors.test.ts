@@ -68,8 +68,12 @@ describe('snake colors', () => {
 
     expect(contrast(logo.face, logo.outline)).toBeGreaterThanOrEqual(4.5)
     expect(contrast(logo.outline, logo.shadow)).toBeGreaterThanOrEqual(3)
+    expect(contrast(logo.ribbonHead, logo.outline)).toBeGreaterThanOrEqual(3)
     // The fruit is decorative and always carries a dark outline.
     expect(contrast(logo.fruit, logo.outline)).toBeGreaterThanOrEqual(2.5)
+    // The lockup keeps the playable snake's blue gradient.
+    expect(logo.ribbonHead).toBe(snakeColors.art.snakeHead)
+    expect(logo.ribbonTail).toBe(snakeColors.art.snakeTail)
 
     const source = read('./ui/logo.ts')
     const themeRefs = source.match(/theme\.[a-zA-Z]+/g) ?? []

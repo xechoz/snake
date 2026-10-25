@@ -3,7 +3,7 @@ import type Phaser from 'phaser'
 import { snakeColors } from '../colors'
 import { snakeConfig } from '../logic/config'
 import type { Cell, Direction, SnakeState } from '../logic/types'
-import { drawFruit, drawSnakeBody, drawSnakeHead, type SnakeSegment } from './snakeArt'
+import { drawBlockSnakeBody, drawFruit, drawSnakeHead, type SnakeBlock } from './snakeArt'
 
 export interface BoardMetrics {
   x: number
@@ -71,19 +71,18 @@ export function drawSnakeAndFood(
     }
   })
 
-  const segments: SnakeSegment[] = points.map((point, index) => {
+  const blocks: SnakeBlock[] = points.map((point, index) => {
     const t = snake.length === 1 ? 0 : index / (snake.length - 1)
     const color = mixColor(snakeColors.art.snakeHead, snakeColors.art.snakeTail, t)
     return {
       x: point.x,
       y: point.y,
-      radius: cell * (0.4 - t * 0.14),
       color: dead ? mixColor(color, theme.muted, 0.55) : color,
     }
   })
 
   snakeGraphics.clear()
-  drawSnakeBody(snakeGraphics, segments, theme.ink, 3.2)
+  drawBlockSnakeBody(snakeGraphics, blocks, cell, theme.ink, 2.2)
 
   const head = points[0]
   if (head) {
