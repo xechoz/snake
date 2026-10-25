@@ -36,6 +36,9 @@ import type { GameOverInfo, HudScene } from './HudScene'
 
 const COUNTDOWN_MS = 1800
 const GAME_OVER_DELAY_MS = 700
+const COMBO_WINDOW_MS = 1200
+/** Major pentatonic ladder for consecutive eats, the "do-re-mi" feel of Yoshi fruit chains. */
+const EAT_STEPS = [0, 2, 4, 7, 9, 12, 14, 16]
 
 export class GameScene extends Phaser.Scene {
   private state!: SnakeState
@@ -50,6 +53,9 @@ export class GameScene extends Phaser.Scene {
   private countdownMs = 0
   private best = 0
   private newBest = false
+  /** Consecutive eats within COMBO_WINDOW_MS, transposed up for the eat sound. */
+  private eatChain = 0
+  private lastEatAt = Number.NEGATIVE_INFINITY
   private backdropGraphics!: Phaser.GameObjects.Graphics
   private boardGraphics!: Phaser.GameObjects.Graphics
   private snakeGraphics!: Phaser.GameObjects.Graphics
@@ -263,6 +269,7 @@ export class GameScene extends Phaser.Scene {
 
   private startCountdown(): void {
     this.tweens.killTweensOf([this.countdownText, this.countdownBadge])
+    this.resetEatChain()
     this.countdownActive = true
     this.countdownMs = COUNTDOWN_MS
     this.countdownText.setFontSize(96)
@@ -292,7 +299,7 @@ export class GameScene extends Phaser.Scene {
 
     for (const event of result.events) {
       if (event.type === 'eat') {
-        services.audio.play('eat')
+        this.playEatSound()
         showEatFeedback(this, this.layout.board, event.at, event.kind, event.points, services.theme)
       } else if (event.type === 'power') {
         services.audio.play(event.effect === 'fast' ? 'boost' : 'slow')
@@ -319,6 +326,7 @@ export class GameScene extends Phaser.Scene {
         services.audio.play('click')
         showFeastEndFeedback(this, this.layout.board, services.i18n.t('feast.end'), services.theme)
       } else if (event.type === 'die') {
+        this.resetEatChain()
         services.audio.play('die')
         this.cameras.main.shake(220, 0.008)
         flashDanger(this, services.theme)
@@ -333,6 +341,22 @@ export class GameScene extends Phaser.Scene {
       const save = snakeSave(services)
       save.write({ ...save.read(), best: this.state.score })
     }
+  }
+
+  private playEatSound(): void {
+    const now = this.time.now
+    this.eatChain =
+      now - this.lastEatAt <= COMBO_WINDOW_MS
+        ? Math.min(this.eatChain + 1, EAT_STEPS.length - 1)
+        : 0
+    this.lastEatAt = now
+    const step = EAT_STEPS[this.eatChain]
+    getServices().audio.play('eat', { pitch: 2 ** (step / 12) })
+  }
+
+  private resetEatChain(): void {
+    this.eatChain = 0
+    this.lastEatAt = Number.NEGATIVE_INFINITY
   }
 
   private finish(): void {
