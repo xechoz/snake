@@ -6,7 +6,6 @@ import {
   onLayoutChange,
   randomSeed,
   readViewport,
-  textStyle,
   type Viewport,
 } from '@mg/core'
 import { createRng, type Rng } from '@mg/core/rng'
@@ -17,14 +16,8 @@ import type { Cell, Direction, SnakeState } from '../logic/types'
 import { snakeSave } from '../save'
 import { drawBackdrop } from '../ui/backdrop'
 import { FloatingJoystick } from '../ui/FloatingJoystick'
-import {
-  cellCenterX,
-  cellCenterY,
-  drawBoardFrame,
-  drawCountdownBadge,
-  drawSnakeAndFood,
-  fruitColorAt,
-} from '../ui/gameArt'
+import { flashDanger, showEatFeedback, showPowerUpFeedback } from '../ui/feedback'
+import { drawBoardActors, drawBoardFrame, drawCountdownBadge } from '../ui/gameArt'
 import { computeSnakeLayout, type SnakeLayout } from '../ui/layout'
 import type { GameOverInfo, HudScene } from './HudScene'
 
@@ -48,6 +41,7 @@ export class GameScene extends Phaser.Scene {
   private boardGraphics!: Phaser.GameObjects.Graphics
   private snakeGraphics!: Phaser.GameObjects.Graphics
   private foodGraphics!: Phaser.GameObjects.Graphics
+  private powerUpGraphics!: Phaser.GameObjects.Graphics
   private countdownBadge!: Phaser.GameObjects.Graphics
   private countdownText!: Phaser.GameObjects.Text
   private debugOverlay?: DebugOverlay
@@ -74,6 +68,7 @@ export class GameScene extends Phaser.Scene {
 
     this.snakeGraphics = this.add.graphics().setDepth(2)
     this.foodGraphics = this.add.graphics().setDepth(3)
+    this.powerUpGraphics = this.add.graphics().setDepth(4)
 
     this.countdownBadge = this.add.graphics().setDepth(11).setAlpha(0)
     this.countdownText = this.add
@@ -268,14 +263,33 @@ export class GameScene extends Phaser.Scene {
     for (const event of result.events) {
       if (event.type === 'eat') {
         services.audio.play('eat')
-        this.showEat(event.at, event.score)
+        showEatFeedback(this, this.layout.board, event.at, event.kind, event.points, services.theme)
+      } else if (event.type === 'power') {
+        services.audio.play(event.effect === 'fast' ? 'boost' : 'slow')
+        const label = services.i18n.t(event.effect === 'fast' ? 'power.fast' : 'power.slow')
+        showPowerUpFeedback(
+          this,
+          this.layout.board,
+          event.at,
+          event.kind,
+          event.effect,
+          label,
+          services.theme,
+        )
       } else if (event.type === 'die') {
         services.audio.play('die')
         this.cameras.main.shake(220, 0.008)
-        this.flash()
+        flashDanger(this, services.theme)
       } else if (event.type === 'win') {
         services.audio.play('start')
       }
+    }
+
+    if (this.state.score > this.best) {
+      this.best = this.state.score
+      this.newBest = true
+      const save = snakeSave(services)
+      save.write({ ...save.read(), best: this.state.score })
     }
   }
 
@@ -314,9 +328,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private render(progress: number): void {
-    drawSnakeAndFood(
+    drawBoardActors(
       this.snakeGraphics,
       this.foodGraphics,
+      this.powerUpGraphics,
       this.state,
       this.prevCells,
       this.layout.board,
@@ -332,75 +347,6 @@ export class GameScene extends Phaser.Scene {
 
   private drawBoard(): void {
     drawBoardFrame(this.boardGraphics, this.layout.board, getServices().theme)
-  }
-
-  private showEat(at: Cell, score: number): void {
-    const theme = getServices().theme
-    const x = cellCenterX(this.layout.board, at.x)
-    const y = cellCenterY(this.layout.board, at.y)
-    const fruitColor = fruitColorAt(at)
-
-    const badge = this.add.container(x, y).setDepth(10)
-    const background = this.add.graphics()
-    background.fillStyle(theme.shadow, 0.12)
-    background.fillRoundedRect(-32, -16, 68, 40, 20)
-    background.fillStyle(theme.surface, 1)
-    background.fillRoundedRect(-34, -20, 68, 40, 20)
-    background.lineStyle(1, theme.borderSoft, 1)
-    background.strokeRoundedRect(-33.5, -19.5, 67, 39, 20)
-    const label = this.add
-      .text(0, 0, `+${snakeConfig.scorePerFood}`, textStyle(theme, 26, theme.text, true))
-      .setOrigin(0.5)
-    badge.add([background, label])
-    this.tweens.add({
-      targets: badge,
-      y: y - 52,
-      alpha: 0,
-      duration: 620,
-      ease: 'Quad.out',
-      onComplete: () => badge.destroy(),
-    })
-
-    const colors = [fruitColor, theme.accent, theme.surface]
-    for (let index = 0; index < 8; index += 1) {
-      const particle = this.add
-        .circle(x, y, 4, colors[index % colors.length] ?? fruitColor)
-        .setDepth(9)
-      const angle = (Math.PI * 2 * index) / 8
-      const distance = Phaser.Math.Between(22, 48)
-      this.tweens.add({
-        targets: particle,
-        x: x + Math.cos(angle) * distance,
-        y: y + Math.sin(angle) * distance,
-        alpha: 0,
-        scale: 0.4,
-        duration: 420,
-        ease: 'Quad.out',
-        onComplete: () => particle.destroy(),
-      })
-    }
-
-    if (score > this.best) {
-      this.best = score
-      this.newBest = true
-      const save = snakeSave(getServices())
-      save.write({ ...save.read(), best: score })
-    }
-  }
-
-  private flash(): void {
-    const theme = getServices().theme
-    const width = this.scale.width
-    const height = this.scale.height
-    const overlay = this.add
-      .rectangle(width / 2, height / 2, width, height, theme.danger, 0.18)
-      .setDepth(20)
-    this.tweens.add({
-      targets: overlay,
-      alpha: 0,
-      duration: 320,
-      onComplete: () => overlay.destroy(),
-    })
   }
 
   private bindInput(): void {

@@ -44,7 +44,17 @@ describe('snake colors', () => {
     expect(favicon).toContain(hex(snakeColors.theme.ink))
     expect(favicon).toContain(hex(snakeColors.art.snakeHead))
     expect(favicon).toContain(hex(snakeColors.art.leaf))
-    expect(favicon).toContain(hex(snakeColors.art.fruit[0] ?? 0))
+    expect(favicon).toContain(hex(snakeColors.art.fruits.apple.body))
+  })
+
+  it('keeps fruit and effect palettes distinct', () => {
+    const fruitBodies = Object.values(snakeColors.art.fruits).map((fruit) => fruit.body)
+    expect(new Set(fruitBodies).size).toBe(fruitBodies.length)
+
+    expect(snakeColors.art.effects.slow).not.toBe(snakeColors.art.effects.fast)
+    for (const fruit of Object.values(snakeColors.art.fruits)) {
+      expect(contrast(fruit.light, fruit.dark)).toBeGreaterThanOrEqual(2)
+    }
   })
 
   it('keeps text readable in every supported role', () => {

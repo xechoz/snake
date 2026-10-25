@@ -1,4 +1,5 @@
 import type { Theme } from '@mg/core'
+import type { EffectKind, FruitKind, PowerUpKind } from './logic/types'
 
 const ink = 0x332b45
 const white = 0xffffff
@@ -45,10 +46,27 @@ const snakeTheme = {
   radiusLarge: 44,
 } satisfies Partial<Theme>
 
+export interface FruitArtColors {
+  readonly light: number
+  readonly body: number
+  readonly dark: number
+  readonly leaf: number
+}
+
+export interface PowerUpArtColors {
+  readonly light: number
+  readonly body: number
+  readonly dark: number
+  readonly accent: number
+}
+
 export interface SnakeArtColors {
+  ink: number
   snakeHead: number
   snakeTail: number
-  fruit: readonly number[]
+  fruits: Record<FruitKind, FruitArtColors>
+  powerUps: Record<PowerUpKind, PowerUpArtColors>
+  effects: Record<EffectKind, number>
   leaf: number
   eyeWhite: number
   shine: number
@@ -59,9 +77,25 @@ export interface SnakeArtColors {
 }
 
 const snakeArt: SnakeArtColors = {
+  ink,
   snakeHead: 0x7dd3fc,
   snakeTail: 0x0369a1,
-  fruit: [0xff5c8a, 0xff7a59, 0xffb020],
+  fruits: {
+    apple: { light: 0xffa8c0, body: 0xff5c8a, dark: 0xc42b58, leaf: accentAlt },
+    orange: { light: 0xffc47a, body: 0xff8a2b, dark: 0xc25a0a, leaf: accentAlt },
+    lemon: { light: 0xffef8f, body: 0xffd93d, dark: 0xc4a000, leaf: accentAlt },
+    grape: { light: 0xd0b4ff, body: 0x9b6cf0, dark: 0x6636b8, leaf: accentAlt },
+    berry: { light: 0x9ad8ff, body: 0x3f9fe8, dark: 0x1f5fa8, leaf: accentAlt },
+    melon: { light: 0x9fe8b3, body: 0x3fbf6b, dark: 0x1f7f45, leaf: accentAlt },
+  },
+  powerUps: {
+    ice: { light: 0xe8fbff, body: 0x9be8d8, dark: 0x3aa6b8, accent: 0xffa8c0 },
+    chili: { light: 0xffb08a, body: 0xf2483f, dark: 0xb21f2a, accent: 0x3fae5a },
+  },
+  effects: {
+    slow: 0x6ec8ff,
+    fast: 0xff8a3d,
+  },
   leaf: accentAlt,
   eyeWhite: white,
   shine: white,

@@ -2,8 +2,15 @@ import { mixColor, type Theme } from '@mg/core'
 import type Phaser from 'phaser'
 import { snakeColors } from '../colors'
 import { snakeConfig } from '../logic/config'
-import type { Cell, Direction, SnakeState } from '../logic/types'
-import { drawBlockSnakeBody, drawFruit, drawSnakeHead, type SnakeBlock } from './snakeArt'
+import type { Cell, Direction, FruitKind, SnakeState } from '../logic/types'
+import {
+  drawBlockSnakeBody,
+  drawEffectRing,
+  drawFruit,
+  drawPowerUp,
+  drawSnakeHead,
+  type SnakeBlock,
+} from './snakeArt'
 
 export interface BoardMetrics {
   x: number
@@ -50,9 +57,10 @@ export function drawBoardFrame(
   graphics.strokeRect(x, y, width, width)
 }
 
-export function drawSnakeAndFood(
+export function drawBoardActors(
   snakeGraphics: Phaser.GameObjects.Graphics,
   foodGraphics: Phaser.GameObjects.Graphics,
+  powerUpGraphics: Phaser.GameObjects.Graphics,
   state: SnakeState,
   prevCells: readonly Cell[],
   board: BoardMetrics,
@@ -73,11 +81,10 @@ export function drawSnakeAndFood(
 
   const blocks: SnakeBlock[] = points.map((point, index) => {
     const t = snake.length === 1 ? 0 : index / (snake.length - 1)
-    const color = mixColor(snakeColors.art.snakeHead, snakeColors.art.snakeTail, t)
     return {
       x: point.x,
       y: point.y,
-      color: dead ? mixColor(color, theme.muted, 0.55) : color,
+      color: segmentColor(state.segmentColors[index] ?? null, t, theme, dead),
     }
   })
 
@@ -89,6 +96,8 @@ export function drawSnakeAndFood(
     const direction = DIRECTION_VECTORS[state.direction]
     const cycle = time % 2500
     const tongue = !dead && cycle < 240 ? Math.sin((cycle / 240) * Math.PI) : 0
+    const headKind = state.segmentColors[0] ?? null
+    const headColor = headKind ? snakeColors.art.fruits[headKind].light : snakeColors.art.snakeHead
     drawSnakeHead(
       snakeGraphics,
       head.x,
@@ -96,23 +105,46 @@ export function drawSnakeAndFood(
       direction,
       cell * 0.48,
       theme.ink,
-      dead ? theme.danger : snakeColors.art.snakeHead,
+      dead ? theme.danger : headColor,
       3.6,
       { dead, tongue },
     )
+
+    if (state.effect) {
+      const ratio = state.effect.remaining / state.config.effectTicks[state.effect.kind]
+      drawEffectRing(snakeGraphics, head.x, head.y, cell * 0.72, state.effect.kind, ratio, theme)
+      drawEffectFlair(snakeGraphics, head, direction, cell, state.effect.kind, time)
+    }
   }
 
   foodGraphics.clear()
-  if (state.food) {
+  for (const food of state.foods) {
     drawFruit(
       foodGraphics,
-      cellCenterX(board, state.food.x),
-      cellCenterY(board, state.food.y),
+      cellCenterX(board, food.cell.x),
+      cellCenterY(board, food.cell.y),
       cell * 0.3,
-      fruitColorAt(state.food),
+      food.kind,
       theme,
       time,
     )
+  }
+
+  powerUpGraphics.clear()
+  const powerUp = state.powerUp
+  if (powerUp) {
+    const alpha = powerUp.ttl <= 10 ? 0.45 + 0.55 * Math.abs(Math.sin(time * 0.012)) : 1
+    powerUpGraphics.setAlpha(alpha)
+    drawPowerUp(
+      powerUpGraphics,
+      cellCenterX(board, powerUp.cell.x),
+      cellCenterY(board, powerUp.cell.y),
+      cell * 0.34,
+      powerUp.kind,
+      time,
+    )
+  } else {
+    powerUpGraphics.setAlpha(1)
   }
 }
 
@@ -139,7 +171,58 @@ export function cellCenterY(board: BoardMetrics, y: number): number {
   return board.y + (y + 0.5) * board.cell
 }
 
-export function fruitColorAt(cell: Cell): number {
-  const index = Math.abs(cell.x * 7 + cell.y * 13) % snakeColors.art.fruit.length
-  return snakeColors.art.fruit[index] ?? snakeColors.art.fruit[0]
+export function fruitColor(kind: FruitKind): number {
+  return snakeColors.art.fruits[kind].body
+}
+
+export function segmentColor(
+  kind: FruitKind | null,
+  t: number,
+  theme: Theme,
+  dead: boolean,
+): number {
+  const color = kind
+    ? mixColor(
+        snakeColors.art.fruits[kind].light,
+        snakeColors.art.fruits[kind].dark,
+        Math.min(1, t * 1.15),
+      )
+    : mixColor(snakeColors.art.snakeHead, snakeColors.art.snakeTail, t)
+  return dead ? mixColor(color, theme.muted, 0.55) : color
+}
+
+function drawEffectFlair(
+  graphics: Phaser.GameObjects.Graphics,
+  head: { x: number; y: number },
+  direction: Cell,
+  cell: number,
+  effect: 'slow' | 'fast',
+  time: number,
+): void {
+  if (effect === 'fast') {
+    graphics.lineStyle(2, snakeColors.art.effects.fast, 0.5)
+    for (let index = 0; index < 3; index += 1) {
+      const side = (index - 1) * cell * 0.24
+      const back = cell * (0.9 + index * 0.18)
+      const startX = head.x - direction.x * back - direction.y * side
+      const startY = head.y - direction.y * back + direction.x * side
+      graphics.lineBetween(
+        startX,
+        startY,
+        startX - direction.x * cell * 0.45,
+        startY - direction.y * cell * 0.45,
+      )
+    }
+    return
+  }
+
+  graphics.fillStyle(snakeColors.art.effects.slow, 0.55)
+  for (let index = 0; index < 4; index += 1) {
+    const angle = (Math.PI * 2 * index) / 4 + time * 0.001
+    graphics.fillCircle(
+      head.x + Math.cos(angle) * cell * 0.82,
+      head.y + Math.sin(angle) * cell * 0.82,
+      Math.max(1.5, cell * 0.055),
+    )
+  }
 }

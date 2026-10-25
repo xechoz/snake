@@ -1,6 +1,8 @@
-import { getServices, mixColor } from '@mg/core'
+import { getServices } from '@mg/core'
 import type Phaser from 'phaser'
 import { snakeColors } from '../colors'
+import type { FruitKind } from '../logic/types'
+import { segmentColor } from './gameArt'
 import { MENU_DEMO_HEIGHT, MENU_DEMO_WIDTH } from './layout'
 import { drawBlockSnakeBody, drawFruit, drawSnakeHead, type SnakeBlock } from './snakeArt'
 
@@ -41,6 +43,8 @@ const FOOD: readonly Cell[] = [
   { x: 2, y: 3 },
 ]
 
+const FOOD_KINDS: readonly FruitKind[] = ['apple', 'melon']
+
 const VECTORS: Record<DemoDirection, Cell> = {
   right: { x: 1, y: 0 },
   up: { x: 0, y: -1 },
@@ -72,8 +76,10 @@ export function createMenuDemo(scene: Phaser.Scene): MenuDemo {
 
   let cells: Cell[] = cloneCells(START)
   let previous: Cell[] = cloneCells(START)
+  let segmentColors: (FruitKind | null)[] = cells.map(() => null)
   let fruit: Cell | null = firstFood()
   let fruitIndex = 0
+  let demoRound = 0
   let stepIndex = 0
   let progress = 1
   let resetting = false
@@ -93,7 +99,7 @@ export function createMenuDemo(scene: Phaser.Scene): MenuDemo {
       return {
         x: point.x,
         y: point.y,
-        color: mixColor(snakeColors.art.snakeHead, snakeColors.art.snakeTail, t),
+        color: segmentColor(segmentColors[index] ?? null, t, theme, false),
       }
     })
     drawBlockSnakeBody(snake, blocks, CELL, theme.ink, 2.2)
@@ -103,6 +109,7 @@ export function createMenuDemo(scene: Phaser.Scene): MenuDemo {
     if (head && next) {
       const cycle = scene.time.now % 2500
       const tongue = cycle < 220 ? Math.sin((cycle / 220) * Math.PI) : 0
+      const headKind = segmentColors[0] ?? null
       drawSnakeHead(
         snake,
         head.x,
@@ -110,7 +117,7 @@ export function createMenuDemo(scene: Phaser.Scene): MenuDemo {
         { x: head.x - next.x, y: head.y - next.y },
         CELL * 0.44,
         theme.ink,
-        snakeColors.art.snakeHead,
+        headKind ? snakeColors.art.fruits[headKind].light : snakeColors.art.snakeHead,
         3,
         { tongue },
       )
@@ -123,7 +130,7 @@ export function createMenuDemo(scene: Phaser.Scene): MenuDemo {
         cellX(fruit.x),
         cellY(fruit.y),
         CELL * 0.27,
-        snakeColors.art.fruit[fruitIndex % snakeColors.art.fruit.length] ?? theme.accentWarm,
+        fruitKindAt(fruitIndex + demoRound),
         theme,
         scene.time.now,
       )
@@ -154,8 +161,10 @@ export function createMenuDemo(scene: Phaser.Scene): MenuDemo {
       onComplete: () => {
         cells = cloneCells(START)
         previous = cloneCells(START)
+        segmentColors = cells.map(() => null)
         fruit = firstFood()
         fruitIndex = 0
+        demoRound += 1
         stepIndex = 0
         progress = 1
         redraw()
@@ -189,6 +198,7 @@ export function createMenuDemo(scene: Phaser.Scene): MenuDemo {
 
     previous = cloneCells(cells)
     cells = eating ? [next, ...cells] : [next, ...cells.slice(0, -1)]
+    segmentColors = eating ? [fruitKindAt(fruitIndex + demoRound), ...segmentColors] : segmentColors
     stepIndex += 1
     progress = 0
 
@@ -238,6 +248,10 @@ function cloneCells(cells: readonly Cell[]): Cell[] {
 function firstFood(): Cell | null {
   const food = FOOD[0]
   return food ? { ...food } : null
+}
+
+function fruitKindAt(index: number): FruitKind {
+  return FOOD_KINDS[index % FOOD_KINDS.length] ?? 'apple'
 }
 
 function drawFrame(

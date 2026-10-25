@@ -1,6 +1,7 @@
 import type { Theme } from '@mg/core'
 import type Phaser from 'phaser'
 import { snakeColors } from '../colors'
+import type { EffectKind, FruitKind, PowerUpKind } from '../logic/types'
 
 export interface Point {
   x: number
@@ -152,30 +153,315 @@ export function drawFruit(
   x: number,
   y: number,
   radius: number,
-  color: number,
+  kind: FruitKind,
   theme: Theme,
   time: number,
 ): void {
+  const palette = snakeColors.art.fruits[kind]
   const pulse = Math.sin(time * 0.006) * radius * 0.08
   const size = radius + pulse
 
-  graphics.fillStyle(theme.accentWarm, 0.18)
-  graphics.fillCircle(x, y, size * 1.65)
+  graphics.fillStyle(palette.light, 0.2)
+  graphics.fillCircle(x, y, size * 1.7)
+
+  switch (kind) {
+    case 'apple':
+      drawRoundFruit(graphics, x, y, size, palette, theme)
+      drawLeaf(graphics, x, y, size, palette, theme)
+      break
+    case 'orange':
+      drawRoundFruit(graphics, x, y, size, palette, theme)
+      graphics.fillStyle(palette.dark, 0.35)
+      graphics.fillCircle(x - size * 0.36, y - size * 0.08, size * 0.07)
+      graphics.fillCircle(x + size * 0.24, y + size * 0.28, size * 0.07)
+      graphics.fillCircle(x + size * 0.32, y - size * 0.3, size * 0.06)
+      drawLeaf(graphics, x, y, size, palette, theme)
+      break
+    case 'lemon':
+      drawLemon(graphics, x, y, size, palette, theme)
+      break
+    case 'grape':
+      drawGrapes(graphics, x, y, size, palette, theme)
+      break
+    case 'berry':
+      drawBerries(graphics, x, y, size, palette, theme)
+      break
+    case 'melon':
+      drawMelon(graphics, x, y, size, palette, theme)
+      break
+  }
+}
+
+export function drawPowerUp(
+  graphics: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  radius: number,
+  kind: PowerUpKind,
+  time: number,
+): void {
+  const palette = snakeColors.art.powerUps[kind]
+  const color = kind === 'ice' ? snakeColors.art.effects.slow : snakeColors.art.effects.fast
+  const pulse = Math.sin(time * 0.008) * radius * 0.06
+
+  graphics.fillStyle(color, 0.18)
+  graphics.fillCircle(x, y, radius * (1.85 + pulse / radius))
+
+  if (kind === 'ice') drawIceCream(graphics, x, y, radius + pulse, palette)
+  else drawChili(graphics, x, y, radius + pulse, palette)
+}
+
+export function drawEffectRing(
+  graphics: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  radius: number,
+  effect: EffectKind,
+  ratio: number,
+  theme: Theme,
+): void {
+  const color = snakeColors.art.effects[effect]
+  const pips = 8
+  const filled = Math.max(1, Math.ceil(Math.min(1, Math.max(0, ratio)) * pips))
+  for (let index = 0; index < pips; index += 1) {
+    const angle = -Math.PI / 2 + (Math.PI * 2 * index) / pips
+    const px = x + Math.cos(angle) * radius
+    const py = y + Math.sin(angle) * radius
+    graphics.fillStyle(index < filled ? color : theme.surface, index < filled ? 0.95 : 0.4)
+    graphics.fillCircle(px, py, Math.max(2, radius * 0.11))
+  }
+}
+
+function drawRoundFruit(
+  graphics: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  size: number,
+  palette: { light: number; body: number; dark: number },
+  theme: Theme,
+): void {
   graphics.fillStyle(theme.ink, 1)
   graphics.fillCircle(x, y, size + 3)
-  graphics.fillStyle(color, 1)
+  graphics.fillStyle(palette.body, 1)
   graphics.fillCircle(x, y, size)
+  graphics.fillStyle(palette.light, 0.45)
+  graphics.fillCircle(x - size * 0.32, y - size * 0.36, size * 0.25)
+  graphics.fillStyle(snakeColors.art.shine, 0.85)
+  graphics.fillCircle(x + size * 0.3, y - size * 0.42, size * 0.09)
+}
 
-  graphics.fillStyle(snakeColors.art.shine, 0.55)
-  graphics.fillCircle(x - size * 0.3, y - size * 0.34, size * 0.26)
-  graphics.fillStyle(snakeColors.art.shine, 0.8)
-  graphics.fillCircle(x + size * 0.34, y - size * 0.42, size * 0.09)
-
-  graphics.fillStyle(theme.ink, 1)
-  graphics.fillEllipse(x + size * 0.42, y - size - 4, size * 0.62 + 3, size * 0.32 + 3)
-  graphics.fillStyle(snakeColors.art.leaf, 1)
-  graphics.fillEllipse(x + size * 0.42, y - size - 4, size * 0.62, size * 0.32)
-
+function drawLeaf(
+  graphics: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  size: number,
+  palette: { leaf: number },
+  theme: Theme,
+): void {
   graphics.lineStyle(Math.max(2, size * 0.16), theme.ink, 1)
   graphics.lineBetween(x, y - size - 1, x, y - size - size * 0.34)
+  graphics.fillStyle(theme.ink, 1)
+  graphics.fillEllipse(x + size * 0.42, y - size - 4, size * 0.62 + 3, size * 0.32 + 3)
+  graphics.fillStyle(palette.leaf, 1)
+  graphics.fillEllipse(x + size * 0.42, y - size - 4, size * 0.62, size * 0.32)
+}
+
+function drawLemon(
+  graphics: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  size: number,
+  palette: { light: number; body: number; dark: number },
+  theme: Theme,
+): void {
+  const width = size * 2.3
+  const height = size * 1.65
+  graphics.fillStyle(theme.ink, 1)
+  graphics.fillEllipse(x, y, width + 6, height + 6)
+  graphics.fillStyle(palette.body, 1)
+  graphics.fillEllipse(x, y, width, height)
+  graphics.fillStyle(palette.light, 0.5)
+  graphics.fillEllipse(x - size * 0.38, y - size * 0.22, size * 0.7, size * 0.32)
+  graphics.fillStyle(snakeColors.art.shine, 0.85)
+  graphics.fillCircle(x + size * 0.55, y - size * 0.38, size * 0.09)
+  graphics.fillStyle(palette.dark, 1)
+  graphics.fillCircle(x - width * 0.54, y, size * 0.16)
+  graphics.fillCircle(x + width * 0.54, y, size * 0.16)
+}
+
+function drawGrapes(
+  graphics: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  size: number,
+  palette: { light: number; body: number; dark: number; leaf: number },
+  theme: Theme,
+): void {
+  const berries = [
+    { x: 0, y: -size * 0.5 },
+    { x: -size * 0.48, y: size * 0.02 },
+    { x: 0, y: size * 0.02 },
+    { x: size * 0.48, y: size * 0.02 },
+    { x: -size * 0.25, y: size * 0.55 },
+    { x: size * 0.25, y: size * 0.55 },
+  ]
+  const berryRadius = size * 0.42
+
+  for (const berry of berries) {
+    graphics.fillStyle(theme.ink, 1)
+    graphics.fillCircle(x + berry.x, y + berry.y, berryRadius + 2.5)
+    graphics.fillStyle(palette.body, 1)
+    graphics.fillCircle(x + berry.x, y + berry.y, berryRadius)
+    graphics.fillStyle(palette.light, 0.5)
+    graphics.fillCircle(
+      x + berry.x - berryRadius * 0.3,
+      y + berry.y - berryRadius * 0.32,
+      berryRadius * 0.28,
+    )
+  }
+  graphics.lineStyle(Math.max(2, size * 0.14), theme.ink, 1)
+  graphics.lineBetween(x, y - size * 0.8, x, y - size * 1.15)
+  graphics.fillStyle(palette.leaf, 1)
+  graphics.fillEllipse(x + size * 0.36, y - size * 1.05, size * 0.6, size * 0.3)
+}
+
+function drawBerries(
+  graphics: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  size: number,
+  palette: { light: number; body: number; dark: number; leaf: number },
+  theme: Theme,
+): void {
+  const berries = [
+    { x: -size * 0.4, y: size * 0.08, r: size * 0.48 },
+    { x: size * 0.4, y: size * 0.08, r: size * 0.48 },
+    { x: 0, y: -size * 0.28, r: size * 0.55 },
+  ]
+
+  for (const berry of berries) {
+    graphics.fillStyle(theme.ink, 1)
+    graphics.fillCircle(x + berry.x, y + berry.y, berry.r + 2.5)
+    graphics.fillStyle(palette.body, 1)
+    graphics.fillCircle(x + berry.x, y + berry.y, berry.r)
+    graphics.fillStyle(palette.light, 0.55)
+    graphics.fillCircle(x + berry.x - berry.r * 0.3, y + berry.y - berry.r * 0.35, berry.r * 0.26)
+  }
+  graphics.lineStyle(Math.max(2, size * 0.13), palette.dark, 1)
+  for (let index = 0; index < 5; index += 1) {
+    const angle = -Math.PI / 2 + (Math.PI * 2 * index) / 5
+    graphics.lineBetween(
+      x,
+      y - size * 0.28,
+      x + Math.cos(angle) * size * 0.28,
+      y - size * 0.28 + Math.sin(angle) * size * 0.28,
+    )
+  }
+}
+
+function drawMelon(
+  graphics: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  size: number,
+  palette: { light: number; body: number; dark: number; leaf: number },
+  theme: Theme,
+): void {
+  graphics.fillStyle(theme.ink, 1)
+  graphics.fillCircle(x, y, size + 3)
+  graphics.fillStyle(palette.body, 1)
+  graphics.fillCircle(x, y, size)
+
+  graphics.fillStyle(palette.dark, 0.8)
+  for (const offset of [-0.45, 0, 0.45]) {
+    graphics.fillEllipse(x + size * offset, y, size * 0.14, size * 1.52)
+  }
+  graphics.fillStyle(palette.light, 0.55)
+  graphics.fillCircle(x - size * 0.32, y - size * 0.36, size * 0.22)
+  graphics.lineStyle(Math.max(2, size * 0.14), theme.ink, 1)
+  graphics.lineBetween(x, y - size - 1, x, y - size - size * 0.34)
+  graphics.fillStyle(theme.ink, 1)
+  graphics.fillEllipse(x + size * 0.42, y - size - 4, size * 0.62 + 3, size * 0.32 + 3)
+  graphics.fillStyle(palette.leaf, 1)
+  graphics.fillEllipse(x + size * 0.42, y - size - 4, size * 0.62, size * 0.32)
+}
+
+function drawIceCream(
+  graphics: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  size: number,
+  palette: { light: number; body: number; dark: number; accent: number },
+): void {
+  const coneTop = y - size * 0.1
+  const coneTip = y + size * 1.35
+  graphics.fillStyle(snakeColors.art.shine, 0.9)
+  graphics.fillTriangle(x - size * 0.6, coneTop - 2, x + size * 0.6, coneTop - 2, x, coneTip + 3)
+  graphics.fillStyle(0xe0a96d, 1)
+  graphics.fillTriangle(x - size * 0.55, coneTop, x + size * 0.55, coneTop, x, coneTip)
+  graphics.lineStyle(Math.max(1.5, size * 0.07), 0xb9773d, 0.8)
+  graphics.lineBetween(
+    x - size * 0.28,
+    coneTop + size * 0.35,
+    x + size * 0.28,
+    coneTop + size * 0.35,
+  )
+  graphics.lineBetween(
+    x - size * 0.14,
+    coneTop + size * 0.75,
+    x + size * 0.14,
+    coneTop + size * 0.75,
+  )
+
+  const scoops = [
+    { x: -size * 0.32, y: coneTop - size * 0.42, r: size * 0.58, color: palette.body },
+    { x: size * 0.32, y: coneTop - size * 0.42, r: size * 0.58, color: palette.accent },
+    { x: 0, y: coneTop - size * 0.92, r: size * 0.55, color: palette.light },
+  ]
+  for (const scoop of scoops) {
+    graphics.fillStyle(snakeColors.art.ink, 1)
+    graphics.fillCircle(x + scoop.x, y + scoop.y, scoop.r + 2.5)
+    graphics.fillStyle(scoop.color, 1)
+    graphics.fillCircle(x + scoop.x, y + scoop.y, scoop.r)
+    graphics.fillStyle(snakeColors.art.shine, 0.55)
+    graphics.fillCircle(x + scoop.x - scoop.r * 0.25, y + scoop.y - scoop.r * 0.3, scoop.r * 0.22)
+  }
+  graphics.fillStyle(palette.dark, 1)
+  graphics.fillCircle(x + size * 0.55, y + coneTop - size * 0.85, size * 0.13)
+}
+
+function drawChili(
+  graphics: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  size: number,
+  palette: { light: number; body: number; dark: number; accent: number },
+): void {
+  const body = [
+    { x: -size * 0.32, y: -size * 0.5, r: size * 0.34 },
+    { x: size * 0.05, y: -size * 0.2, r: size * 0.38 },
+    { x: size * 0.34, y: size * 0.22, r: size * 0.31 },
+    { x: size * 0.32, y: size * 0.68, r: size * 0.23 },
+    { x: size * 0.12, y: size * 1.02, r: size * 0.14 },
+  ]
+
+  for (const part of body) {
+    graphics.fillStyle(snakeColors.art.ink, 1)
+    graphics.fillCircle(x + part.x, y + part.y, part.r + 2.5)
+  }
+  for (const part of body) {
+    graphics.fillStyle(palette.body, 1)
+    graphics.fillCircle(x + part.x, y + part.y, part.r)
+  }
+  graphics.fillStyle(palette.light, 0.55)
+  graphics.fillCircle(x - size * 0.4, y - size * 0.58, size * 0.1)
+  graphics.fillStyle(palette.light, 0.4)
+  graphics.fillCircle(x + size * 0.02, y - size * 0.26, size * 0.08)
+
+  graphics.lineStyle(Math.max(3, size * 0.2), snakeColors.art.ink, 1)
+  graphics.lineBetween(x - size * 0.32, y - size * 0.5, x - size * 0.5, y - size * 1.05)
+  graphics.lineStyle(Math.max(2, size * 0.12), palette.accent, 1)
+  graphics.lineBetween(x - size * 0.32, y - size * 0.5, x - size * 0.5, y - size * 1.05)
+  graphics.fillStyle(palette.accent, 1)
+  graphics.fillEllipse(x - size * 0.78, y - size * 0.88, size * 0.58, size * 0.26)
 }
