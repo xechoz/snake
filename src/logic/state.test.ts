@@ -295,6 +295,25 @@ describe('super fruit and feast', () => {
     expect(result.state.speedScore).toBe(10)
   })
 
+  it('keeps the feast when the snake moves onto an already eaten cell', () => {
+    const state = makeState({
+      feast: feastState(),
+      foods: [
+        { cell: { x: 3, y: 2 }, kind: 'apple' },
+        { cell: { x: 5, y: 5 }, kind: 'apple' },
+      ],
+    })
+    const first = step(state, createRng(1))
+    expect(first.state.feast).not.toBeNull()
+
+    const second = step(first.state, createRng(1))
+
+    expect(second.state.feast).not.toBeNull()
+    expect(second.state.foods).toHaveLength(1)
+    expect(second.state.feast?.eaten).toBe(1)
+    expect(second.events).toEqual([])
+  })
+
   it('ends early when the last feast fruit is eaten and restores normal food', () => {
     const state = makeState({
       feast: feastState(),

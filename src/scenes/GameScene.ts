@@ -163,6 +163,7 @@ export class GameScene extends Phaser.Scene {
         this.countdownText.setFontSize(56)
         this.countdownText.setText(getServices().i18n.t('go'))
         this.popCountdown()
+        getServices().audio.play('start')
         this.tweens.add({
           targets: [this.countdownText, this.countdownArt],
           alpha: 0,
@@ -173,9 +174,11 @@ export class GameScene extends Phaser.Scene {
       } else {
         const current = Math.ceil(this.countdownMs / COUNTDOWN_STEP_MS)
         if (current !== previous) {
+          const step = COUNTDOWN_STEPS - current + 1
           this.popCountdown()
+          this.playCountdownTick(step)
           // Three beats: the ring steps when 3 appears, then with 2 and 1.
-          this.stepCountdownRing(COUNTDOWN_STEPS - current + 1)
+          this.stepCountdownRing(step)
         }
         this.countdownText.setText(String(current))
       }
@@ -306,7 +309,14 @@ export class GameScene extends Phaser.Scene {
     this.countdownText.setAlpha(1).setScale(1)
     this.countdownArt.setAlpha(1)
     this.popCountdown()
+    this.playCountdownTick(1)
     this.stepCountdownRing(1)
+  }
+
+  /** One short beep per countdown beat, rising above the menu's confirmation click. */
+  private playCountdownTick(step: number): void {
+    const pitch = 1.15 + (step - 1) * 0.15
+    getServices().audio.play('click', { pitch, gain: 1.15 })
   }
 
   private stepCountdownRing(step: number): void {

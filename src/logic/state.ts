@@ -283,7 +283,7 @@ export function step(state: SnakeState, rng: Rng): StepResult {
       }
     }
 
-    if (!eating || remainingFoods.length === 0 || feastExpired) {
+    if (remainingFoods.length === 0 || feastExpired) {
       const ended: SnakeState = { ...moved, foods: [], feast: null }
       events.push({ type: 'feastEnd' })
       return { state: { ...ended, foods: spawnFoods(ended, rng) }, events }
