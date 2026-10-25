@@ -62,4 +62,17 @@ describe('snake colors', () => {
       luminance(snakeColors.theme.accent),
     )
   })
+
+  it('keeps the title logo readable and independent from theme colours', () => {
+    const logo = snakeColors.logo
+
+    expect(contrast(logo.face, logo.outline)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(logo.outline, logo.shadow)).toBeGreaterThanOrEqual(3)
+    // The fruit is decorative and always carries a dark outline.
+    expect(contrast(logo.fruit, logo.outline)).toBeGreaterThanOrEqual(2.5)
+
+    const source = read('./ui/logo.ts')
+    const themeRefs = source.match(/theme\.[a-zA-Z]+/g) ?? []
+    expect(themeRefs.every((ref) => ref === 'theme.font')).toBe(true)
+  })
 })

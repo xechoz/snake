@@ -61,7 +61,7 @@ export function drawSnakeHead(
   y: number,
   direction: Point,
   radius: number,
-  theme: Theme,
+  ink: number,
   headColor: number,
   outline: number,
   options: HeadOptions = {},
@@ -69,7 +69,6 @@ export function drawSnakeHead(
   const length = Math.hypot(direction.x, direction.y) || 1
   const dir = { x: direction.x / length, y: direction.y / length }
   const side = { x: -dir.y, y: dir.x }
-  const ink = theme.ink
 
   graphics.fillStyle(ink, 1)
   graphics.fillCircle(x, y, radius + outline)

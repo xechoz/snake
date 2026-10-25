@@ -141,61 +141,141 @@ export function computeSnakeLayout(viewport: Viewport): SnakeLayout {
   }
 }
 
+export const MENU_DEMO_WIDTH = 312
+export const MENU_DEMO_HEIGHT = 220
+export const MENU_DEMO_ASPECT = MENU_DEMO_WIDTH / MENU_DEMO_HEIGHT
+export const MENU_SETTINGS_SIZE = 88
+export const MENU_PLAY_HEIGHT = 100
+export const MENU_LOGO_HEIGHT = 178
+
+export interface MenuDemoLayout {
+  x: number
+  y: number
+  width: number
+  height: number
+  scale: number
+  angle: number
+  visible: boolean
+}
+
 export interface MenuLayout {
+  mode: 'split' | 'single'
   centerX: number
-  titleY: number
+  logoY: number
+  logoMaxWidth: number
   bestY: number
   playY: number
-  secondaryY: number
-  controlsY: number
+  settingsY: number
+  settingsSize: number
+  demo: MenuDemoLayout
   hintY: number
   installHintY: number
   playWidth: number
-  secondaryWidth: number
-  mascot: { x: number; y: number; scale: number; visible: boolean }
 }
 
-const MENU_SPAN = 560
+const SPLIT_MIN_WIDTH = 900
+const LOGO_BEST_GAP = 16
+const BEST_HEIGHT = 40
+const BEST_PLAY_GAP = 24
+const PLAY_SETTINGS_GAP = 20
+const SETTINGS_HINT_GAP = 20
+const HINT_HEIGHT = 30
 
-export function computeMenuLayout(viewport: Viewport): MenuLayout {
+/**
+ * The menu keeps one clear column of actions. Wide screens add a self-playing
+ * demo board on the right; tall screens dock it below the controls. The demo is
+ * dropped when it would crowd a small viewport.
+ */
+export function computeMenuLayout(viewport: Viewport, logoHeight = MENU_LOGO_HEIGHT): MenuLayout {
   const { insets, width, height } = viewport
   const availableWidth = Math.max(1, width - insets.left - insets.right)
   const availableHeight = Math.max(1, height - insets.top - insets.bottom)
-  const top = Math.max(insets.top + 72, Math.round((availableHeight - MENU_SPAN) / 2) - 30)
-  const landscape = width >= height
+  const split = availableWidth >= SPLIT_MIN_WIDTH && width >= height
 
-  const centerX =
-    landscape && availableWidth >= 900
-      ? insets.left + Math.round(availableWidth * 0.44)
-      : insets.left + Math.round(availableWidth / 2)
+  const contentHeight =
+    logoHeight +
+    LOGO_BEST_GAP +
+    BEST_HEIGHT +
+    BEST_PLAY_GAP +
+    MENU_PLAY_HEIGHT +
+    PLAY_SETTINGS_GAP +
+    MENU_SETTINGS_SIZE +
+    SETTINGS_HINT_GAP +
+    HINT_HEIGHT
 
-  const mascotScale = landscape
-    ? clamp(availableWidth / 1800, 0.6, 1)
-    : clamp(availableWidth / 900, 0.6, 0.85)
-  const mascotHalf = 180 * mascotScale
-  const mascotX = width - insets.right - mascotHalf - 12
-  const mascotY = landscape
-    ? insets.top + Math.round(availableHeight * 0.42)
-    : insets.top + availableHeight - 40 - mascotHalf
-  const hintY = top + 520
-  // Portrait mascots sit low; hide them when a 4:3-ish screen would make the
-  // coiled body cover the help text.
-  const mascotVisible = landscape
-    ? availableWidth >= 900
-    : mascotY - 180 * mascotScale >= hintY + 36
+  if (split) {
+    const centerX = insets.left + Math.round(availableWidth * 0.34)
+    const demoWidth = clamp(availableWidth * 0.28, 260, 400)
+    const demoScale = demoWidth / MENU_DEMO_WIDTH
+    const demoHeight = MENU_DEMO_HEIGHT * demoScale
+    const top = insets.top + Math.max(56, Math.round((availableHeight - contentHeight) * 0.42))
+    const logoY = top + logoHeight / 2
+    const bestY = top + logoHeight + LOGO_BEST_GAP + BEST_HEIGHT / 2
+    const playY = bestY + BEST_HEIGHT / 2 + BEST_PLAY_GAP + MENU_PLAY_HEIGHT / 2
+    const settingsY = playY + MENU_PLAY_HEIGHT / 2 + PLAY_SETTINGS_GAP + MENU_SETTINGS_SIZE / 2
+    const hintY = settingsY + MENU_SETTINGS_SIZE / 2 + SETTINGS_HINT_GAP + HINT_HEIGHT / 2
+
+    return {
+      mode: 'split',
+      centerX,
+      logoY,
+      logoMaxWidth: Math.min(560, Math.round(availableWidth * 0.55)),
+      bestY,
+      playY,
+      settingsY,
+      settingsSize: MENU_SETTINGS_SIZE,
+      demo: {
+        x: insets.left + availableWidth - 56 - demoWidth / 2,
+        y: insets.top + availableHeight / 2,
+        width: demoWidth,
+        height: demoHeight,
+        scale: demoScale,
+        angle: -2,
+        visible: true,
+      },
+      hintY,
+      installHintY: hintY + 36,
+      playWidth: Math.min(480, availableWidth - 48),
+    }
+  }
+
+  const centerX = insets.left + Math.round(availableWidth / 2)
+  const top = insets.top + clamp(Math.round(availableHeight * 0.08), 56, 160)
+  const logoY = top + logoHeight / 2
+  const bestY = top + logoHeight + LOGO_BEST_GAP + BEST_HEIGHT / 2
+  const playY = bestY + BEST_HEIGHT / 2 + BEST_PLAY_GAP + MENU_PLAY_HEIGHT / 2
+  const settingsY = playY + MENU_PLAY_HEIGHT / 2 + PLAY_SETTINGS_GAP + MENU_SETTINGS_SIZE / 2
+  const hintY = settingsY + MENU_SETTINGS_SIZE / 2 + SETTINGS_HINT_GAP + HINT_HEIGHT / 2
+  const installHintY = hintY + 34
+  const contentBottom = hintY + HINT_HEIGHT / 2
+  const dockTop = installHintY + 32
+  const remaining = insets.top + availableHeight - dockTop
+  const maxDemoWidth = Math.min(520, availableWidth - 48, (remaining - 48) * MENU_DEMO_ASPECT)
+  const demoVisible = remaining >= 240 && maxDemoWidth >= 240
+  const demoWidth = demoVisible ? maxDemoWidth : 0
+  const demoHeight = demoVisible ? demoWidth / MENU_DEMO_ASPECT : 0
 
   return {
+    mode: 'single',
     centerX,
-    titleY: top,
-    bestY: top + 160,
-    playY: top + 270,
-    secondaryY: top + 396,
-    controlsY: top + 476,
+    logoY,
+    logoMaxWidth: availableWidth - 48,
+    bestY,
+    playY,
+    settingsY,
+    settingsSize: MENU_SETTINGS_SIZE,
+    demo: {
+      x: centerX,
+      y: demoVisible ? dockTop + remaining / 2 : contentBottom,
+      width: demoWidth,
+      height: demoHeight,
+      scale: demoVisible ? demoWidth / MENU_DEMO_WIDTH : 0,
+      angle: 0,
+      visible: demoVisible,
+    },
     hintY,
-    installHintY: top + 560,
+    installHintY,
     playWidth: Math.min(480, availableWidth - 48),
-    secondaryWidth: Math.min(230, Math.round((availableWidth - 72) / 2)),
-    mascot: { x: mascotX, y: mascotY, scale: mascotScale, visible: mascotVisible },
   }
 }
 

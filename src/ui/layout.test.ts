@@ -106,54 +106,71 @@ describe('inlineScorePositions', () => {
 })
 
 describe('computeMenuLayout', () => {
-  it('stacks the menu inside the viewport in landscape', () => {
+  it('splits the menu on wide screens and keeps the demo clear of the CTA', () => {
     const layout = computeMenuLayout(viewport(1280, 720))
 
-    expect(layout.titleY).toBeGreaterThanOrEqual(72)
-    expect(layout.bestY - layout.titleY).toBe(160)
-    expect(layout.hintY).toBeLessThan(720)
+    expect(layout.mode).toBe('split')
+    expect(layout.demo.visible).toBe(true)
+    expect(layout.demo.angle).toBe(-2)
     expect(layout.playWidth).toBe(480)
-    expect(layout.secondaryWidth).toBe(230)
+    expect(layout.logoMaxWidth).toBe(560)
+    expect(layout.bestY).toBeGreaterThan(layout.logoY)
+    expect(layout.playY).toBeGreaterThan(layout.bestY)
+    expect(layout.settingsY).toBeGreaterThan(layout.playY)
+    expect(layout.hintY).toBeGreaterThan(layout.settingsY)
     expect(layout.installHintY).toBeGreaterThan(layout.hintY)
-    expect(layout.installHintY).toBeLessThan(720)
-    expect(layout.mascot.visible).toBe(true)
+    expect(layout.demo.x - layout.demo.width / 2).toBeGreaterThan(
+      layout.centerX + layout.playWidth / 2,
+    )
   })
 
-  it('centres the menu vertically and widens nothing beyond the screen in portrait', () => {
+  it('anchors the portrait stack high and docks the demo below it', () => {
     const layout = computeMenuLayout(viewport(720, 1558))
 
+    expect(layout.mode).toBe('single')
     expect(layout.centerX).toBe(360)
-    expect(layout.titleY).toBeGreaterThan(96)
-    expect(layout.hintY).toBeLessThan(1558)
-    expect(layout.installHintY).toBeGreaterThan(layout.hintY)
-    expect(layout.installHintY).toBeLessThan(1558)
-    expect(layout.playWidth).toBeLessThanOrEqual(720 - 48)
-    expect(layout.mascot.visible).toBe(true)
+    expect(layout.logoMaxWidth).toBe(720 - 48)
+    expect(layout.playWidth).toBe(480)
+    expect(layout.logoY).toBeLessThan(1558 * 0.2)
+    expect(layout.demo.visible).toBe(true)
+    expect(layout.demo.angle).toBe(0)
+    expect(layout.demo.y - layout.demo.height / 2).toBeGreaterThan(layout.installHintY)
+    expect(layout.demo.y + layout.demo.height / 2).toBeLessThan(1558)
   })
 
-  it('keeps the mascot inside the viewport and hides it on narrow landscape', () => {
-    for (const [width, height] of [
-      [1280, 720],
-      [1558, 720],
-      [960, 720],
-      [720, 1558],
-      [768, 1024],
-      [720, 720],
-    ] as const) {
-      const layout = computeMenuLayout(viewport(width, height))
-      const half = 180 * layout.mascot.scale
-      expect(layout.mascot.x - half, `${width}x${height}`).toBeGreaterThanOrEqual(0)
-      expect(layout.mascot.x + half, `${width}x${height}`).toBeLessThanOrEqual(width)
-      expect(layout.mascot.y - half, `${width}x${height}`).toBeGreaterThanOrEqual(0)
-      expect(layout.mascot.y + half, `${width}x${height}`).toBeLessThanOrEqual(height)
+  it('keeps the demo on a 4:3 tablet and drops it on square screens', () => {
+    expect(computeMenuLayout(viewport(768, 1024)).demo.visible).toBe(true)
+    expect(computeMenuLayout(viewport(720, 720)).demo.visible).toBe(false)
+    expect(computeMenuLayout(viewport(720, 720)).mode).toBe('single')
+  })
+
+  it('keeps every menu element inside the safe area', () => {
+    const insets = { top: 40, right: 88, bottom: 40, left: 88 }
+    const sizes: Array<readonly [number, number, Insets]> = [
+      [1280, 720, NO_INSETS],
+      [1558, 720, NO_INSETS],
+      [960, 720, NO_INSETS],
+      [720, 1558, NO_INSETS],
+      [768, 1024, NO_INSETS],
+      [720, 720, NO_INSETS],
+      [1558, 720, insets],
+    ]
+
+    for (const [width, height, edge] of sizes) {
+      const layout = computeMenuLayout(viewport(width, height, edge))
+      const tag = `${width}x${height}`
+      expect(layout.centerX, tag).toBeGreaterThanOrEqual(edge.left)
+      expect(layout.centerX, tag).toBeLessThanOrEqual(width - edge.right)
+      expect(layout.logoY, tag).toBeGreaterThanOrEqual(edge.top)
+      expect(layout.hintY, tag).toBeLessThanOrEqual(height - edge.bottom)
+      expect(layout.installHintY, tag).toBeLessThanOrEqual(height - edge.bottom)
+
+      if (!layout.demo.visible) continue
+      expect(layout.demo.scale, tag).toBeGreaterThan(0)
+      expect(layout.demo.x - layout.demo.width / 2, tag).toBeGreaterThanOrEqual(edge.left)
+      expect(layout.demo.x + layout.demo.width / 2, tag).toBeLessThanOrEqual(width - edge.right)
+      expect(layout.demo.y - layout.demo.height / 2, tag).toBeGreaterThanOrEqual(edge.top)
+      expect(layout.demo.y + layout.demo.height / 2, tag).toBeLessThanOrEqual(height - edge.bottom)
     }
-
-    expect(computeMenuLayout(viewport(720, 720)).mascot.visible).toBe(false)
-    expect(computeMenuLayout(viewport(960, 720)).mascot.visible).toBe(true)
-  })
-
-  it('hides the mascot when it would cover the help text', () => {
-    expect(computeMenuLayout(viewport(768, 1024)).mascot.visible).toBe(false)
-    expect(computeMenuLayout(viewport(720, 1558)).mascot.visible).toBe(true)
   })
 })

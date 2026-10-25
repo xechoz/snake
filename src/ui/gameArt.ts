@@ -96,7 +96,7 @@ export function drawSnakeAndFood(
       head.y,
       direction,
       cell * 0.48,
-      theme,
+      theme.ink,
       dead ? theme.danger : snakeColors.art.snakeHead,
       3.6,
       { dead, tongue },

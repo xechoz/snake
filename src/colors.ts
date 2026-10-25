@@ -71,7 +71,34 @@ const snakeArt: SnakeArtColors = {
   confetti: [accent, accentAlt, accentWarm, white, 0xff5c8a],
 }
 
+/**
+ * The title logo is a brand asset, not UI chrome: its colours never follow the
+ * current theme. Keep them here so a theme re-skin cannot wash out the wordmark.
+ */
+export interface SnakeLogoColors {
+  face: number
+  outline: number
+  depth: number
+  shadow: number
+  fruit: number
+  leaf: number
+  eye: number
+  shine: number
+}
+
+const snakeLogo: SnakeLogoColors = {
+  face: cream,
+  outline: 0x1f5a3c,
+  depth: 0x14452e,
+  shadow: 0x7be8a6,
+  fruit: 0xff5c8a,
+  leaf: accentAlt,
+  eye: ink,
+  shine: white,
+}
+
 export const snakeColors = {
   theme: snakeTheme,
   art: snakeArt,
+  logo: snakeLogo,
 }
