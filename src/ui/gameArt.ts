@@ -9,6 +9,7 @@ import {
   drawFruit,
   drawPowerUp,
   drawSnakeHead,
+  drawSuperFruit,
   type SnakeBlock,
 } from './snakeArt'
 
@@ -62,10 +63,8 @@ export function drawBoardFrame(
   graphics.strokeRect(x, y, width, width)
 }
 
-export function drawBoardActors(
+export function drawSnake(
   snakeGraphics: Phaser.GameObjects.Graphics,
-  foodGraphics: Phaser.GameObjects.Graphics,
-  powerUpGraphics: Phaser.GameObjects.Graphics,
   state: SnakeState,
   prevCells: readonly Cell[],
   board: BoardMetrics,
@@ -121,20 +120,38 @@ export function drawBoardActors(
       drawEffectFlair(snakeGraphics, head, direction, cell, state.effect.kind, time)
     }
   }
+}
 
+/** Static fruit layer. Call only when `state.foods` or the board changes. */
+export function drawFoods(
+  foodGraphics: Phaser.GameObjects.Graphics,
+  state: SnakeState,
+  board: BoardMetrics,
+  time: number,
+  theme: Theme,
+): void {
   foodGraphics.clear()
   for (const food of state.foods) {
     drawFruit(
       foodGraphics,
       cellCenterX(board, food.cell.x),
       cellCenterY(board, food.cell.y),
-      cell * 0.3,
+      board.cell * 0.3,
       food.kind,
       theme,
       time,
     )
   }
+}
 
+export function drawPickups(
+  powerUpGraphics: Phaser.GameObjects.Graphics,
+  superGraphics: Phaser.GameObjects.Graphics,
+  state: SnakeState,
+  board: BoardMetrics,
+  time: number,
+  theme: Theme,
+): void {
   powerUpGraphics.clear()
   const powerUp = state.powerUp
   if (powerUp) {
@@ -144,12 +161,24 @@ export function drawBoardActors(
       powerUpGraphics,
       cellCenterX(board, powerUp.cell.x),
       cellCenterY(board, powerUp.cell.y),
-      cell * 0.34,
+      board.cell * 0.34,
       powerUp.kind,
       time,
     )
   } else {
     powerUpGraphics.setAlpha(1)
+  }
+
+  superGraphics.clear()
+  if (state.superItem) {
+    drawSuperFruit(
+      superGraphics,
+      cellCenterX(board, state.superItem.x),
+      cellCenterY(board, state.superItem.y),
+      board.cell * 0.34,
+      time,
+      theme,
+    )
   }
 }
 

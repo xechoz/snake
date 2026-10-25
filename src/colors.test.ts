@@ -55,6 +55,9 @@ describe('snake colors', () => {
     for (const fruit of Object.values(snakeColors.art.fruits)) {
       expect(contrast(fruit.light, fruit.dark)).toBeGreaterThanOrEqual(2)
     }
+    expect(
+      contrast(snakeColors.art.superFruit.light, snakeColors.art.superFruit.dark),
+    ).toBeGreaterThanOrEqual(2)
   })
 
   it('keeps text readable in every supported role', () => {

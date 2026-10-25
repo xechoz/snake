@@ -211,6 +211,79 @@ export function drawPowerUp(
   else drawChili(graphics, x, y, radius + pulse, palette)
 }
 
+/** Ad-reward super fruit: a gold star fruit with a crown and sparkles. */
+export function drawSuperFruit(
+  graphics: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  radius: number,
+  time: number,
+  theme: Theme,
+): void {
+  const palette = snakeColors.art.superFruit
+  const pulse = Math.sin(time * 0.008) * radius * 0.08
+  const size = radius + pulse
+
+  graphics.fillStyle(palette.glow, 0.2)
+  graphics.fillCircle(x, y, size * 2.4)
+  graphics.fillStyle(palette.glow, 0.3)
+  graphics.fillCircle(x, y, size * 1.8)
+
+  graphics.fillStyle(theme.ink, 1)
+  graphics.fillCircle(x, y, size + 3)
+  graphics.fillStyle(palette.body, 1)
+  graphics.fillCircle(x, y, size)
+
+  const crownInk = [
+    [
+      x - size * 0.62,
+      y - size * 0.72,
+      x - size * 0.46,
+      y - size * 1.42,
+      x - size * 0.14,
+      y - size * 0.86,
+    ],
+    [x - size * 0.2, y - size * 0.9, x, y - size * 1.55, x + size * 0.2, y - size * 0.9],
+    [
+      x + size * 0.14,
+      y - size * 0.86,
+      x + size * 0.46,
+      y - size * 1.42,
+      x + size * 0.62,
+      y - size * 0.72,
+    ],
+  ] as const
+  for (const [ax, ay, bx, by, cx, cy] of crownInk) {
+    graphics.fillTriangle(ax, ay, bx, by, cx, cy)
+  }
+  for (const [ax, ay, bx, by, cx, cy] of crownInk) {
+    graphics.fillStyle(palette.light, 1)
+    graphics.fillTriangle(
+      ax + (bx - ax) * 0.18,
+      ay + (by - ay) * 0.14,
+      bx,
+      by + size * 0.08,
+      cx + (bx - cx) * 0.18,
+      cy + (by - cy) * 0.14,
+    )
+  }
+
+  graphics.fillStyle(palette.light, 0.95)
+  graphics.fillTriangle(x, y - size * 0.56, x - size * 0.2, y, x + size * 0.2, y)
+  graphics.fillTriangle(x, y + size * 0.56, x - size * 0.2, y, x + size * 0.2, y)
+  graphics.fillTriangle(x - size * 0.56, y, x, y - size * 0.2, x, y + size * 0.2)
+  graphics.fillTriangle(x + size * 0.56, y, x, y - size * 0.2, x, y + size * 0.2)
+  graphics.fillStyle(snakeColors.art.shine, 0.85)
+  graphics.fillCircle(x - size * 0.3, y - size * 0.35, size * 0.1)
+
+  for (let index = 0; index < 4; index += 1) {
+    const angle = time * 0.0015 + (Math.PI * index) / 2
+    const distance = size * (1.55 + 0.12 * Math.sin(time * 0.01 + index))
+    graphics.fillStyle(palette.light, 0.75)
+    graphics.fillCircle(x + Math.cos(angle) * distance, y + Math.sin(angle) * distance, size * 0.07)
+  }
+}
+
 export function drawEffectRing(
   graphics: Phaser.GameObjects.Graphics,
   x: number,

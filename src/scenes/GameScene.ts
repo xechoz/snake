@@ -10,14 +10,27 @@ import {
 } from '@mg/core'
 import { createRng, type Rng } from '@mg/core/rng'
 import Phaser from 'phaser'
+import { takeSuperReward } from '../ads'
 import { snakeConfig } from '../logic/config'
-import { createInitialState, enqueueDirection, step, tickMs } from '../logic/state'
+import { createInitialState, enqueueDirection, grantSuperItem, step, tickMs } from '../logic/state'
 import type { Cell, Direction, SnakeState } from '../logic/types'
 import { snakeSave } from '../save'
 import { drawBackdrop } from '../ui/backdrop'
 import { FloatingJoystick } from '../ui/FloatingJoystick'
-import { flashDanger, showEatFeedback, showPowerUpFeedback } from '../ui/feedback'
-import { drawBoardActors, drawBoardFrame, drawCountdownBadge } from '../ui/gameArt'
+import {
+  flashDanger,
+  showEatFeedback,
+  showFeastEndFeedback,
+  showFeastFeedback,
+  showPowerUpFeedback,
+} from '../ui/feedback'
+import {
+  drawBoardFrame,
+  drawCountdownBadge,
+  drawFoods,
+  drawPickups,
+  drawSnake,
+} from '../ui/gameArt'
 import { computeSnakeLayout, type SnakeLayout } from '../ui/layout'
 import type { GameOverInfo, HudScene } from './HudScene'
 
@@ -42,6 +55,8 @@ export class GameScene extends Phaser.Scene {
   private snakeGraphics!: Phaser.GameObjects.Graphics
   private foodGraphics!: Phaser.GameObjects.Graphics
   private powerUpGraphics!: Phaser.GameObjects.Graphics
+  private superGraphics!: Phaser.GameObjects.Graphics
+  private lastFoods: SnakeState['foods'] | null = null
   private countdownBadge!: Phaser.GameObjects.Graphics
   private countdownText!: Phaser.GameObjects.Text
   private debugOverlay?: DebugOverlay
@@ -66,9 +81,10 @@ export class GameScene extends Phaser.Scene {
     this.boardGraphics = this.add.graphics().setDepth(0)
     this.drawBoard()
 
-    this.snakeGraphics = this.add.graphics().setDepth(2)
+    this.snakeGraphics = this.add.graphics().setDepth(4)
     this.foodGraphics = this.add.graphics().setDepth(3)
-    this.powerUpGraphics = this.add.graphics().setDepth(4)
+    this.powerUpGraphics = this.add.graphics().setDepth(5)
+    this.superGraphics = this.add.graphics().setDepth(6)
 
     this.countdownBadge = this.add.graphics().setDepth(11).setAlpha(0)
     this.countdownText = this.add
@@ -151,8 +167,19 @@ export class GameScene extends Phaser.Scene {
     this.render(this.progress())
   }
 
-  currentStats(): { score: number } {
-    return { score: this.state.score }
+  currentStats(): {
+    score: number
+    feast: { remainingMs: number; totalMs: number } | null
+  } {
+    return {
+      score: this.state.score,
+      feast: this.state.feast
+        ? {
+            remainingMs: this.state.feast.remainingMs,
+            totalMs: this.state.config.feastDurationMs,
+          }
+        : null,
+    }
   }
 
   inputDirection(direction: Direction): void {
@@ -208,6 +235,7 @@ export class GameScene extends Phaser.Scene {
     const rotated = next.orientation !== this.layout.orientation && this.isPlaying()
     this.layout = next
     this.viewport = viewport
+    this.lastFoods = null
     this.drawBackdrop()
     this.drawBoard()
     this.positionCountdown()
@@ -221,8 +249,10 @@ export class GameScene extends Phaser.Scene {
     this.best = snakeSave(services).read().best
     this.newBest = false
     this.rng = createRng(randomSeed())
-    this.state = createInitialState(snakeConfig, this.rng)
+    const base = createInitialState(snakeConfig, this.rng)
+    this.state = takeSuperReward(services) ? grantSuperItem(base, this.rng) : base
     this.prevCells = [...this.state.snake]
+    this.lastFoods = null
     this.elapsed = 0
     this.paused = false
     this.finished = false
@@ -276,6 +306,18 @@ export class GameScene extends Phaser.Scene {
           label,
           services.theme,
         )
+      } else if (event.type === 'feast') {
+        services.audio.play('start')
+        showFeastFeedback(
+          this,
+          this.layout.board,
+          event.at,
+          services.i18n.t('feast.start'),
+          services.theme,
+        )
+      } else if (event.type === 'feastEnd') {
+        services.audio.play('click')
+        showFeastEndFeedback(this, this.layout.board, services.i18n.t('feast.end'), services.theme)
       } else if (event.type === 'die') {
         services.audio.play('die')
         this.cameras.main.shake(220, 0.008)
@@ -304,7 +346,7 @@ export class GameScene extends Phaser.Scene {
     const current = save.read()
     const isNewBest = this.newBest
     const best = Math.max(current.best, this.state.score)
-    save.write({ best, plays: current.plays + 1 })
+    save.write({ ...current, best, plays: current.plays + 1 })
     this.best = best
 
     if (isNewBest || won) services.platform.happyTime()
@@ -328,16 +370,29 @@ export class GameScene extends Phaser.Scene {
   }
 
   private render(progress: number): void {
-    drawBoardActors(
+    const theme = getServices().theme
+    drawSnake(
       this.snakeGraphics,
-      this.foodGraphics,
-      this.powerUpGraphics,
       this.state,
       this.prevCells,
       this.layout.board,
       progress,
       this.time.now,
-      getServices().theme,
+      theme,
+    )
+
+    if (this.state.foods !== this.lastFoods) {
+      drawFoods(this.foodGraphics, this.state, this.layout.board, this.time.now, theme)
+      this.lastFoods = this.state.foods
+    }
+
+    drawPickups(
+      this.powerUpGraphics,
+      this.superGraphics,
+      this.state,
+      this.layout.board,
+      this.time.now,
+      theme,
     )
   }
 

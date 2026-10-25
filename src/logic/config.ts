@@ -37,6 +37,7 @@ export const snakeConfig: SnakeConfig = {
   slowMaxTickMs: 240,
   fastMinTickMs: 58,
   fastScoreMultiplier: 2,
+  feastDurationMs: 20_000,
 }
 
 /**

@@ -64,6 +64,65 @@ export function showPowerUpFeedback(
   burst(scene, x, y, [color, pickup.body, theme.surface], 10, 24, 52, 460)
 }
 
+export function showFeastFeedback(
+  scene: Phaser.Scene,
+  board: BoardMetrics,
+  at: Cell,
+  label: string,
+  theme: Theme,
+): void {
+  const x = cellCenterX(board, at.x)
+  const y = cellCenterY(board, at.y)
+  const gold = snakeColors.art.superFruit.body
+
+  floatingBadge({
+    scene,
+    x,
+    y,
+    width: 210,
+    border: gold,
+    borderAlpha: 1,
+    label,
+    labelSize: 30,
+    labelColor: cssColor(snakeColors.art.superFruit.dark),
+    rise: 78,
+    duration: 900,
+    theme,
+  })
+  burst(
+    scene,
+    x,
+    y,
+    [gold, snakeColors.art.superFruit.light, snakeColors.art.confetti[0] ?? gold],
+    18,
+    30,
+    78,
+    620,
+  )
+}
+
+export function showFeastEndFeedback(
+  scene: Phaser.Scene,
+  board: BoardMetrics,
+  label: string,
+  theme: Theme,
+): void {
+  floatingBadge({
+    scene,
+    x: board.x + board.width / 2,
+    y: board.y + board.width / 2,
+    width: 190,
+    border: theme.accentWarm,
+    borderAlpha: 0.9,
+    label,
+    labelSize: 24,
+    labelColor: theme.text,
+    rise: 34,
+    duration: 700,
+    theme,
+  })
+}
+
 export function flashDanger(scene: Phaser.Scene, theme: Theme): void {
   const width = scene.scale.width
   const height = scene.scale.height

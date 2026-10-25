@@ -39,7 +39,7 @@ export function isOpposite(a: Direction, b: Direction): boolean {
 }
 
 export function tickMs(state: SnakeState): number {
-  const steps = Math.floor(state.score / state.config.speedUpEvery)
+  const steps = Math.floor(state.speedScore / state.config.speedUpEvery)
   const base = Math.max(
     state.config.minTickMs,
     state.config.baseTickMs - steps * state.config.speedUpStep,
@@ -67,10 +67,13 @@ export function createInitialState(config: SnakeConfig, rng: Rng): SnakeState {
     queue: [],
     fruitWeights: { ...config.fruitWeight },
     foods: [],
+    superItem: null,
     powerUp: null,
     effect: null,
+    feast: null,
     powerUpDrought: 0,
     score: 0,
+    speedScore: 0,
     status: 'alive',
     deathReason: null,
   }
@@ -107,9 +110,24 @@ export function boostFruitWeights(
   return { ...state, fruitWeights }
 }
 
+/** Places the ad-reward super fruit on a random free cell. */
+export function grantSuperItem(state: SnakeState, rng: Rng): SnakeState {
+  if (state.status !== 'alive' || state.superItem) return state
+
+  const free = freeCells(state)
+  if (free.length === 0) return state
+
+  const cell = free[rng.int(free.length)]
+  if (!cell) return state
+  return { ...state, superItem: cell }
+}
+
 export function step(state: SnakeState, rng: Rng): StepResult {
   if (state.status !== 'alive') return { state, events: [] }
 
+  // The feast timer follows game time: each fixed step consumes the tick that
+  // the loop is about to play, so pausing stops the clock without using frames.
+  const stepMs = tickMs(state)
   const events: SnakeEvent[] = []
   let effect = state.effect
   if (effect) {
@@ -135,6 +153,11 @@ export function step(state: SnakeState, rng: Rng): StepResult {
     }
   }
 
+  const feastActive = state.feast !== null
+  const feastRemaining = state.feast ? state.feast.remainingMs - stepMs : 0
+  const feastExpired = feastActive && feastRemaining <= 0
+  const nextFeast = feastActive && !feastExpired ? { remainingMs: feastRemaining } : null
+
   const direction = state.queue[0] ?? state.direction
   const head = state.snake[0]
   if (!head) return { state, events: [] }
@@ -156,6 +179,7 @@ export function step(state: SnakeState, rng: Rng): StepResult {
         effect,
         powerUp,
         powerUpDrought: drought,
+        feast: null,
         status: 'dead',
         deathReason: 'wall',
       },
@@ -166,7 +190,9 @@ export function step(state: SnakeState, rng: Rng): StepResult {
   const foodIndex = state.foods.findIndex((food) => sameCell(food.cell, nextHead))
   const food = foodIndex >= 0 ? state.foods[foodIndex] : null
   const eating = food !== null
-  const bodyToCheck = eating ? state.snake : state.snake.slice(0, -1)
+  const superAtHead = state.superItem !== null && sameCell(state.superItem, nextHead)
+  const grows = eating && !feastActive && !superAtHead
+  const bodyToCheck = grows ? state.snake : state.snake.slice(0, -1)
   if (bodyToCheck.some((cell) => sameCell(cell, nextHead))) {
     return {
       state: {
@@ -176,6 +202,7 @@ export function step(state: SnakeState, rng: Rng): StepResult {
         effect,
         powerUp,
         powerUpDrought: drought,
+        feast: null,
         status: 'dead',
         deathReason: 'self',
       },
@@ -187,8 +214,26 @@ export function step(state: SnakeState, rng: Rng): StepResult {
   // read, even if the timer runs out at the end of the same step.
   const multiplier = state.effect?.kind === 'fast' ? state.config.fastScoreMultiplier : 1
   const points = eating ? state.config.fruitScore[food.kind] * multiplier : 0
-  const nextSnake = eating ? [nextHead, ...state.snake] : [nextHead, ...state.snake.slice(0, -1)]
-  const nextColors = eating ? [food.kind, ...state.segmentColors] : state.segmentColors
+  const nextSnake = grows ? [nextHead, ...state.snake] : [nextHead, ...state.snake.slice(0, -1)]
+  const nextColors = grows && food ? [food.kind, ...state.segmentColors] : state.segmentColors
+
+  if (superAtHead) {
+    const cleared: SnakeState = {
+      ...state,
+      snake: nextSnake,
+      segmentColors: nextColors,
+      direction,
+      queue: state.queue.slice(1),
+      superItem: null,
+      powerUp: null,
+      effect,
+      feast: { remainingMs: state.config.feastDurationMs },
+      powerUpDrought: 0,
+      score: state.score,
+    }
+    events.push({ type: 'feast', at: nextHead })
+    return { state: { ...cleared, foods: fillFoods(cleared, rng) }, events }
+  }
 
   const picked = powerUp !== null && sameCell(powerUp.cell, nextHead) ? powerUp : null
   if (picked) {
@@ -214,8 +259,24 @@ export function step(state: SnakeState, rng: Rng): StepResult {
     foods: remainingFoods,
     powerUp,
     effect,
+    feast: nextFeast,
     powerUpDrought: drought,
     score: state.score + points,
+    speedScore: feastActive ? state.speedScore : state.speedScore + points,
+  }
+
+  if (feastActive) {
+    if (eating) {
+      events.push({ type: 'eat', at: nextHead, kind: food.kind, points, score: moved.score })
+    }
+
+    if (!eating || remainingFoods.length === 0 || feastExpired) {
+      const ended: SnakeState = { ...moved, foods: [], feast: null }
+      events.push({ type: 'feastEnd' })
+      return { state: { ...ended, foods: spawnFoods(ended, rng) }, events }
+    }
+
+    return { state: moved, events }
   }
 
   if (!eating) return { state: moved, events }
@@ -258,7 +319,7 @@ export function step(state: SnakeState, rng: Rng): StepResult {
   if (nextSnake.length >= state.config.width * state.config.height) {
     events.push({ type: 'win' })
     return {
-      state: { ...settled, foods: [], powerUp: null, effect: null, status: 'won' },
+      state: { ...settled, foods: [], powerUp: null, effect: null, feast: null, status: 'won' },
       events,
     }
   }
@@ -277,6 +338,15 @@ function spawnFoods(state: SnakeState, rng: Rng): FoodItem[] {
     const cell = free[freeIndex]
     if (!cell) break
     free.splice(freeIndex, 1)
+    foods.push({ cell, kind: pickFruitKind(state, rng) })
+  }
+  return foods
+}
+
+/** Fills every free cell with fruit while keeping fruit already on the board. */
+function fillFoods(state: SnakeState, rng: Rng): FoodItem[] {
+  const foods = [...state.foods]
+  for (const cell of freeCells(state)) {
     foods.push({ cell, kind: pickFruitKind(state, rng) })
   }
   return foods
@@ -326,6 +396,9 @@ function freeCells(state: SnakeState): Cell[] {
   }
   if (state.powerUp) {
     occupied.add(cellKey(state.powerUp.cell, state.config.width))
+  }
+  if (state.superItem) {
+    occupied.add(cellKey(state.superItem, state.config.width))
   }
 
   const free: Cell[] = []

@@ -3,12 +3,20 @@ import {
   displayTextStyle,
   getServices,
   Modal,
+  type ModalAction,
   onLayoutChange,
   readViewport,
+  rewardOfferActions,
   textStyle,
   type Viewport,
 } from '@mg/core'
 import Phaser from 'phaser'
+import {
+  canOfferSuperReward,
+  grantSuperReward,
+  hasPendingSuperReward,
+  SUPER_PLACEMENT,
+} from '../ads'
 import { snakeColors } from '../colors'
 import {
   computeSnakeLayout,
@@ -36,6 +44,8 @@ export class HudScene extends Phaser.Scene {
   private scoreCloud!: Phaser.GameObjects.Graphics
   private scoreLabel!: Phaser.GameObjects.Text
   private scoreValue!: Phaser.GameObjects.Text
+  private feastBar!: Phaser.GameObjects.Graphics
+  private lastFeastKey = ''
   private pauseButton!: PauseButton
   private modal?: Modal
   private modalRequest?: ModalRequest
@@ -64,18 +74,22 @@ export class HudScene extends Phaser.Scene {
       )
       .setOrigin(0.5)
 
+    this.feastBar = this.add.graphics()
+
     this.pauseButton = new PauseButton(this, this.layout.pause.x, this.layout.pause.y, theme, {
       size: 64,
       onClick: () => this.gameScene().pauseGame(),
     })
 
     this.applyLayout()
+    this.updateFeast(stats.feast)
     onLayoutChange(this, (viewport) => this.handleLayout(viewport))
     this.lastScore = stats.score
   }
 
   update(): void {
     const stats = this.gameScene().currentStats()
+    this.updateFeast(stats.feast)
     if (stats.score === this.lastScore) return
     this.lastScore = stats.score
     this.scoreValue.setText(String(stats.score))
@@ -122,6 +136,41 @@ export class HudScene extends Phaser.Scene {
     this.drawScoreCloud()
     this.positionScore()
     this.pauseButton.setPosition(this.layout.pause.x, this.layout.pause.y)
+    this.feastBar.clear()
+    this.lastFeastKey = ''
+    this.updateFeast(this.gameScene().currentStats().feast)
+  }
+
+  private updateFeast(feast: { remainingMs: number; totalMs: number } | null): void {
+    if (!feast) {
+      if (this.lastFeastKey !== '') {
+        this.feastBar.clear()
+        this.lastFeastKey = ''
+      }
+      return
+    }
+
+    const ratio = Math.max(0, Math.min(1, feast.remainingMs / feast.totalMs))
+    const key = `${Math.ceil(feast.remainingMs / 100)}:${Math.round(ratio * 100)}`
+    if (key === this.lastFeastKey) return
+    this.lastFeastKey = key
+    this.drawFeastBar(ratio)
+  }
+
+  private drawFeastBar(ratio: number): void {
+    const { scoreCard } = this.layout
+    const padding = 20
+    const height = 6
+    const width = scoreCard.width - padding * 2
+    const x = scoreCard.x + padding
+    const y = scoreCard.y + scoreCard.height - 16
+    const theme = getServices().theme
+
+    this.feastBar.clear()
+    this.feastBar.fillStyle(theme.borderSoft, 0.4)
+    this.feastBar.fillRoundedRect(x, y, width, height, height / 2)
+    this.feastBar.fillStyle(snakeColors.art.superFruit.body, 1)
+    this.feastBar.fillRoundedRect(x, y, Math.max(height, width * ratio), height, height / 2)
   }
 
   private drawScoreCloud(): void {
@@ -198,6 +247,8 @@ export class HudScene extends Phaser.Scene {
   private buildGameOverModal(info: GameOverInfo): void {
     const services = getServices()
     const game = this.gameScene()
+    const canOfferSuper = canOfferSuperReward(services)
+    const pendingSuper = hasPendingSuperReward(services)
 
     const reasonKey =
       info.reason === 'win' ? 'over.win' : info.reason === 'self' ? 'over.self' : 'over.wall'
@@ -205,7 +256,42 @@ export class HudScene extends Phaser.Scene {
       services.i18n.t('over.body', { best: info.best }),
       services.i18n.t(reasonKey),
       ...(info.newBest ? [services.i18n.t('over.newBest')] : []),
+      ...(canOfferSuper ? [services.i18n.t('ads.superHint')] : []),
+      ...(pendingSuper ? [services.i18n.t('ads.superReady')] : []),
     ].join('\n')
+
+    const standard: ModalAction = {
+      label: services.i18n.t('over.restart'),
+      onClick: () => game.restartGame(),
+    }
+    const menu: ModalAction = {
+      label: services.i18n.t('over.menu'),
+      variant: 'soft',
+      height: canOfferSuper ? 76 : 92,
+      onClick: () => game.goToMenu(),
+    }
+    const actions: ModalAction[] = canOfferSuper
+      ? [
+          ...rewardOfferActions({
+            ads: services.ads,
+            standard: {
+              label: services.i18n.t('over.restart'),
+              onClick: () => game.restartGame(),
+            },
+            rewarded: {
+              label: services.i18n.t('ads.super'),
+              placement: SUPER_PLACEMENT,
+              loadingLabel: services.i18n.t('ads.loading'),
+              onReward: () => {
+                grantSuperReward(services)
+                this.rebuildModal()
+              },
+            },
+            rewardedHeight: 76,
+          }),
+          menu,
+        ]
+      : [standard, menu]
 
     this.modal = new Modal(this, services.theme, {
       title: services.i18n.t(info.won ? 'over.winTitle' : 'over.title'),
@@ -213,25 +299,15 @@ export class HudScene extends Phaser.Scene {
       hero: String(info.score),
       body,
       width: 640,
-      height: 560,
-      titleFontSize: 36,
-      heroFontSize: 72,
-      bodyFontSize: 28,
+      height: canOfferSuper ? 672 : 560,
+      titleFontSize: canOfferSuper ? 32 : 36,
+      heroFontSize: canOfferSuper ? 64 : 72,
+      bodyFontSize: canOfferSuper ? 24 : 28,
       actionsLayout: 'column',
       actionWidth: 480,
       actionHeight: 92,
-      actionFontSize: 30,
-      actions: [
-        {
-          label: services.i18n.t('over.restart'),
-          onClick: () => game.restartGame(),
-        },
-        {
-          label: services.i18n.t('over.menu'),
-          variant: 'soft',
-          onClick: () => game.goToMenu(),
-        },
-      ],
+      actionFontSize: 28,
+      actions,
     })
   }
 

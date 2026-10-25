@@ -31,6 +31,11 @@ export interface ActiveEffect {
   readonly remaining: number
 }
 
+export interface FruitFeast {
+  /** Game-time milliseconds left before the remaining fruit is cleared. */
+  readonly remainingMs: number
+}
+
 export type FruitWeights = Readonly<Record<FruitKind, number>>
 
 export interface SnakeConfig {
@@ -56,6 +61,8 @@ export interface SnakeConfig {
   slowMaxTickMs: number
   fastMinTickMs: number
   fastScoreMultiplier: number
+  /** Game-time length of the ad-reward fruit feast. */
+  feastDurationMs: number
 }
 
 export type SnakeStatus = 'alive' | 'dead' | 'won'
@@ -70,11 +77,17 @@ export interface SnakeState {
   /** Current spawn odds. Starts from the config and can be raised by rewards. */
   readonly fruitWeights: FruitWeights
   readonly foods: readonly FoodItem[]
+  /** Ad-granted super fruit waiting to be eaten. */
+  readonly superItem: Cell | null
   readonly powerUp: PowerUpItem | null
   readonly effect: ActiveEffect | null
+  /** Active ad-reward fruit feast; fruits are score-only until it ends. */
+  readonly feast: FruitFeast | null
   /** Fruits eaten since the last pickup spawned, used for the pity guarantee. */
   readonly powerUpDrought: number
   readonly score: number
+  /** Score that drives the speed curve; feast points are excluded. */
+  readonly speedScore: number
   readonly status: SnakeStatus
   readonly deathReason: 'wall' | 'self' | null
 }
@@ -84,6 +97,8 @@ export type SnakeEvent =
   | { type: 'power'; at: Cell; kind: PowerUpKind; effect: EffectKind }
   | { type: 'powerExpired'; at: Cell }
   | { type: 'effectEnd'; effect: EffectKind }
+  | { type: 'feast'; at: Cell }
+  | { type: 'feastEnd' }
   | { type: 'die'; reason: 'wall' | 'self' }
   | { type: 'win' }
 

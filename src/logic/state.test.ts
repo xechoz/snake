@@ -6,6 +6,7 @@ import {
   cellKey,
   createInitialState,
   enqueueDirection,
+  grantSuperItem,
   isOpposite,
   step,
   tickMs,
@@ -37,10 +38,13 @@ function makeState(patch: Partial<SnakeState> = {}): SnakeState {
     queue: [],
     fruitWeights: { ...config.fruitWeight },
     foods: [],
+    superItem: null,
     powerUp: null,
     effect: null,
+    feast: null,
     powerUpDrought: 0,
     score: 0,
+    speedScore: patch.score ?? 0,
     status: 'alive',
     deathReason: null,
     ...patch,
@@ -52,9 +56,13 @@ describe('createInitialState', () => {
     const state = createInitialState(config, createRng(1))
     expect(state.snake).toHaveLength(3)
     expect(state.segmentColors).toEqual([null, null, null])
+    expect(state.score).toBe(0)
+    expect(state.speedScore).toBe(0)
     expect(state.status).toBe('alive')
     expect(state.fruitWeights).toEqual(config.fruitWeight)
     expect(state.fruitWeights).not.toBe(config.fruitWeight)
+    expect(state.superItem).toBeNull()
+    expect(state.feast).toBeNull()
     expect(state.foods).toHaveLength(config.foodTarget)
 
     const food = state.foods[0]
@@ -111,6 +119,195 @@ describe('fruit odds', () => {
 
     const result = step(state, createRng(1))
     expect(result.state.foods[0]?.kind).toBe('melon')
+  })
+})
+
+describe('super fruit and feast', () => {
+  it('places the ad reward on a free cell without stacking', () => {
+    const state = makeState({
+      foods: [{ cell: { x: 4, y: 4 }, kind: 'apple' }],
+      powerUp: { cell: { x: 5, y: 5 }, kind: 'ice', ttl: 10 },
+    })
+    const granted = grantSuperItem(state, createRng(1))
+
+    expect(granted.superItem).not.toBeNull()
+    expect(granted.superItem).not.toEqual({ x: 4, y: 4 })
+    expect(granted.superItem).not.toEqual({ x: 5, y: 5 })
+    expect(state.superItem).toBeNull()
+    expect(grantSuperItem(granted, createRng(2))).toBe(granted)
+  })
+
+  it('only offers the last free cell to the super fruit', () => {
+    const tiny: SnakeConfig = { ...config, width: 2, height: 2 }
+    const state = makeState({
+      config: tiny,
+      snake: [
+        { x: 0, y: 0 },
+        { x: 0, y: 1 },
+        { x: 1, y: 1 },
+      ],
+    })
+    const granted = grantSuperItem(state, createRng(1))
+    expect(granted.superItem).toEqual({ x: 1, y: 0 })
+  })
+
+  it('starts a feast, floods every free cell and never grows from the pickup', () => {
+    const state = makeState({ superItem: { x: 3, y: 2 } })
+    const result = step(state, createRng(1))
+
+    expect(result.state.snake).toHaveLength(3)
+    expect(result.state.segmentColors).toEqual([null, null, null])
+    expect(result.state.superItem).toBeNull()
+    expect(result.state.score).toBe(0)
+    expect(result.state.feast).toEqual({ remainingMs: config.feastDurationMs })
+    expect(result.state.foods).toHaveLength(config.width * config.height - 3)
+    expect(new Set(result.state.foods.map((food) => cellKey(food.cell, config.width))).size).toBe(
+      result.state.foods.length,
+    )
+    expect(result.events).toContainEqual({ type: 'feast', at: { x: 3, y: 2 } })
+  })
+
+  it('clears the board pickup when the feast starts', () => {
+    const state = makeState({
+      superItem: { x: 3, y: 2 },
+      powerUp: { cell: { x: 4, y: 4 }, kind: 'chili', ttl: 20 },
+      foods: [{ cell: { x: 5, y: 5 }, kind: 'melon' }],
+    })
+    const result = step(state, createRng(1))
+
+    expect(result.state.powerUp).toBeNull()
+    expect(result.state.foods).toHaveLength(config.width * config.height - 3)
+    expect(result.state.foods).toContainEqual({ cell: { x: 5, y: 5 }, kind: 'melon' })
+  })
+
+  it('scores feast fruit without growing or adding a colour band', () => {
+    const state = makeState({
+      feast: { remainingMs: config.feastDurationMs },
+      foods: [
+        { cell: { x: 3, y: 2 }, kind: 'grape' },
+        { cell: { x: 5, y: 5 }, kind: 'apple' },
+      ],
+    })
+    const result = step(state, createRng(1))
+
+    expect(result.state.snake).toHaveLength(3)
+    expect(result.state.segmentColors).toEqual([null, null, null])
+    expect(result.state.score).toBe(15)
+    expect(result.state.foods).toHaveLength(1)
+    expect(result.state.feast?.remainingMs).toBe(config.feastDurationMs - 145)
+    expect(result.events[0]).toMatchObject({ type: 'eat', kind: 'grape', points: 15 })
+  })
+
+  it('keeps the chili multiplier during the feast', () => {
+    const state = makeState({
+      feast: { remainingMs: config.feastDurationMs },
+      effect: { kind: 'fast', remaining: 5 },
+      foods: [
+        { cell: { x: 3, y: 2 }, kind: 'melon' },
+        { cell: { x: 5, y: 5 }, kind: 'apple' },
+      ],
+    })
+    const result = step(state, createRng(1))
+    expect(result.state.score).toBe(40)
+    expect(result.state.snake).toHaveLength(3)
+  })
+
+  it('keeps feast points out of the speed curve', () => {
+    const state = makeState({
+      feast: { remainingMs: config.feastDurationMs },
+      foods: [
+        { cell: { x: 3, y: 2 }, kind: 'melon' },
+        { cell: { x: 5, y: 5 }, kind: 'apple' },
+      ],
+    })
+    const result = step(state, createRng(1))
+
+    expect(result.state.score).toBe(20)
+    expect(result.state.speedScore).toBe(0)
+    expect(tickMs(result.state)).toBe(config.baseTickMs)
+  })
+
+  it('returns to the pre-feast speed when the feast ends', () => {
+    const state = makeState({
+      score: 300,
+      speedScore: 300,
+      feast: { remainingMs: config.feastDurationMs },
+      foods: [{ cell: { x: 3, y: 2 }, kind: 'apple' }],
+    })
+    const result = step(state, createRng(1))
+
+    expect(result.state.score).toBe(310)
+    expect(result.state.speedScore).toBe(300)
+    expect(result.state.feast).toBeNull()
+    expect(tickMs(result.state)).toBe(75)
+  })
+
+  it('still advances the speed curve on normal fruit', () => {
+    const state = makeState({
+      foods: [
+        { cell: { x: 3, y: 2 }, kind: 'apple' },
+        { cell: { x: 5, y: 5 }, kind: 'apple' },
+      ],
+    })
+    const result = step(state, createRng(1))
+
+    expect(result.state.score).toBe(10)
+    expect(result.state.speedScore).toBe(10)
+  })
+
+  it('ends early when the last feast fruit is eaten and restores normal food', () => {
+    const state = makeState({
+      feast: { remainingMs: config.feastDurationMs },
+      foods: [{ cell: { x: 3, y: 2 }, kind: 'apple' }],
+    })
+    const result = step(state, createRng(1))
+
+    expect(result.state.feast).toBeNull()
+    expect(result.state.foods).toHaveLength(config.foodTarget)
+    expect(result.events).toContainEqual({ type: 'feastEnd' })
+  })
+
+  it('clears the remaining fruit when the timer runs out', () => {
+    const state = makeState({
+      feast: { remainingMs: 100 },
+      foods: [{ cell: { x: 4, y: 4 }, kind: 'apple' }],
+    })
+    const result = step(state, createRng(1))
+
+    expect(result.state.feast).toBeNull()
+    expect(result.state.foods).toHaveLength(config.foodTarget)
+    expect(result.events).toContainEqual({ type: 'feastEnd' })
+  })
+
+  it('does not roll pickups while the feast is active', () => {
+    const state = makeState({
+      config: { ...config, powerUpChance: 1, powerUpPity: 1 },
+      feast: { remainingMs: config.feastDurationMs },
+      foods: [
+        { cell: { x: 3, y: 2 }, kind: 'apple' },
+        { cell: { x: 5, y: 5 }, kind: 'apple' },
+      ],
+    })
+    const result = step(state, createRng(1))
+    expect(result.state.powerUp).toBeNull()
+  })
+
+  it('does not spawn a normal fruit on the super fruit cell', () => {
+    const tiny: SnakeConfig = { ...config, width: 2, height: 2 }
+    const state = makeState({
+      config: tiny,
+      snake: [
+        { x: 0, y: 0 },
+        { x: 0, y: 1 },
+      ],
+      direction: 'right',
+      superItem: { x: 1, y: 1 },
+      foods: [{ cell: { x: 1, y: 0 }, kind: 'apple' }],
+    })
+    const result = step(state, createRng(1))
+
+    expect(result.state.superItem).toEqual({ x: 1, y: 1 })
+    expect(result.state.foods).toHaveLength(0)
   })
 })
 

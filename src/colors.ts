@@ -60,12 +60,20 @@ export interface PowerUpArtColors {
   readonly accent: number
 }
 
+export interface SuperFruitArtColors {
+  readonly light: number
+  readonly body: number
+  readonly dark: number
+  readonly glow: number
+}
+
 export interface SnakeArtColors {
   ink: number
   snakeHead: number
   snakeTail: number
   fruits: Record<FruitKind, FruitArtColors>
   powerUps: Record<PowerUpKind, PowerUpArtColors>
+  superFruit: SuperFruitArtColors
   effects: Record<EffectKind, number>
   leaf: number
   eyeWhite: number
@@ -91,6 +99,12 @@ const snakeArt: SnakeArtColors = {
   powerUps: {
     ice: { light: 0xe8fbff, body: 0x9be8d8, dark: 0x3aa6b8, accent: 0xffa8c0 },
     chili: { light: 0xffb08a, body: 0xf2483f, dark: 0xb21f2a, accent: 0x3fae5a },
+  },
+  superFruit: {
+    light: 0xfff3b0,
+    body: 0xffc93c,
+    dark: 0xc98a00,
+    glow: 0xfff8d6,
   },
   effects: {
     slow: 0x6ec8ff,
