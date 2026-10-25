@@ -3,6 +3,7 @@ import type Phaser from 'phaser'
 import { snakeColors } from '../colors'
 import { snakeConfig } from '../logic/config'
 import type { Cell, Direction, FruitKind, SnakeState } from '../logic/types'
+import { drawCornerSprig } from './foliage'
 import {
   drawBlockSnakeBody,
   drawEffectRing,
@@ -30,6 +31,12 @@ const DIRECTION_VECTORS: Record<Direction, Cell> = {
 /** White mat around the playfield. It also catches the head and effect rings. */
 const FRAME_MAT = 10
 const FRAME_RADIUS = 28
+/**
+ * Where the mat's rounded-corner arc crosses the 45° diagonal, relative to the
+ * playfield corner. The corner sprigs grow outward from here, so their tails
+ * touch the frame and their tips stay outside the board.
+ */
+const CORNER_ANCHOR = FRAME_RADIUS - FRAME_MAT - FRAME_RADIUS * Math.SQRT1_2
 
 export function drawBoardFrame(
   graphics: Phaser.GameObjects.Graphics,
@@ -61,6 +68,18 @@ export function drawBoardFrame(
 
   graphics.lineStyle(2, mixColor(theme.accentAlt, theme.highlight, 0.35), 0.7)
   graphics.strokeRect(x, y, width, width)
+
+  // Four static sprigs mark the frame as a frame. They sit on the mat's corner
+  // and grow outward only, so no playable cell is ever covered.
+  const diagonal = Math.SQRT1_2
+  const left = x + CORNER_ANCHOR
+  const right = x + width - CORNER_ANCHOR
+  const top = y + CORNER_ANCHOR
+  const bottom = y + width - CORNER_ANCHOR
+  drawCornerSprig(graphics, { x: left, y: top }, { x: -diagonal, y: -diagonal })
+  drawCornerSprig(graphics, { x: right, y: top }, { x: diagonal, y: -diagonal })
+  drawCornerSprig(graphics, { x: left, y: bottom }, { x: -diagonal, y: diagonal })
+  drawCornerSprig(graphics, { x: right, y: bottom }, { x: diagonal, y: diagonal })
 }
 
 export function drawSnake(
@@ -195,8 +214,11 @@ const COUNTDOWN_FRUITS = [
   kind: FruitKind
 }[]
 
-/** Countdown disc ringed with fruit, echoing the CTA decoration. */
-export function drawCountdownBadge(
+/** One fruit slot, in radians. The five charms have five slots. */
+export const COUNTDOWN_STEP_ANGLE = (Math.PI * 2) / COUNTDOWN_FRUITS.length
+
+/** Countdown disc without a border, kept as the digits' contrast plate. */
+export function drawCountdownBackdrop(
   graphics: Phaser.GameObjects.Graphics,
   centerX: number,
   centerY: number,
@@ -207,14 +229,27 @@ export function drawCountdownBadge(
   graphics.fillCircle(centerX + 2, centerY + 8, 82)
   graphics.fillStyle(theme.surface, 1)
   graphics.fillCircle(centerX, centerY, 82)
-  graphics.lineStyle(7, theme.accentInk, 1)
-  graphics.strokeCircle(centerX, centerY, 71)
+}
+
+/**
+ * The fruit wreath around the countdown. Drawing each charm at its rotated
+ * position (instead of rotating the graphics) keeps every fruit upright.
+ */
+export function drawCountdownFruits(
+  graphics: Phaser.GameObjects.Graphics,
+  centerX: number,
+  centerY: number,
+  theme: Theme,
+  ringAngle: number,
+): void {
+  graphics.clear()
 
   for (const fruit of COUNTDOWN_FRUITS) {
+    const angle = fruit.angle + ringAngle
     drawFruit(
       graphics,
-      centerX + Math.cos(fruit.angle) * fruit.distance,
-      centerY + Math.sin(fruit.angle) * fruit.distance,
+      centerX + Math.cos(angle) * fruit.distance,
+      centerY + Math.sin(angle) * fruit.distance,
       fruit.radius,
       fruit.kind,
       theme,

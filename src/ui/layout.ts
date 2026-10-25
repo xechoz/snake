@@ -303,6 +303,35 @@ export function playCharmSpots(width: number, height: number): readonly PlayChar
   ].filter((spot) => Math.abs(spot.x) - spot.radius >= MENU_PLAY_CHARM_CLEARANCE)
 }
 
+/** Half-width of the centred icon and label band on a modal action button. */
+export const ACTION_LABEL_BAND = 160
+
+/** Glow radius of the super fruit, as a multiple of its body radius. */
+export const SUPER_FRUIT_HALO = 2.4
+
+/** How far the crown reaches above the super fruit body, in radii. */
+export const SUPER_FRUIT_CROWN = 1.55
+
+export interface SuperFruitSpot {
+  readonly x: number
+  readonly y: number
+  readonly radius: number
+}
+
+/**
+ * A single super fruit resting on the right end of the rewarded action. The
+ * radius follows the button height so the crown stays on the face, and the
+ * spot sits outside the centred label band so long labels never collide.
+ */
+export function superFruitSpot(width: number, height: number): SuperFruitSpot {
+  const radius = Math.min(18, Math.max(12, height * 0.24))
+  return {
+    x: width / 2 - radius - 16,
+    y: 0,
+    radius,
+  }
+}
+
 export interface MenuSettingsLayout {
   readonly sound: Point
   readonly language: Point

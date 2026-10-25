@@ -60,6 +60,18 @@ describe('snake colors', () => {
     ).toBeGreaterThanOrEqual(2)
   })
 
+  it('keeps scenery foliage out of the edible palette', () => {
+    const fruitColors = Object.values(snakeColors.art.fruits).flatMap((fruit) => [
+      fruit.light,
+      fruit.body,
+      fruit.dark,
+    ])
+    const foliage = Object.values(snakeColors.art.foliage)
+
+    for (const color of foliage) expect(fruitColors).not.toContain(color)
+    expect(new Set(foliage).size).toBe(foliage.length)
+  })
+
   it('keeps text readable in every supported role', () => {
     const { theme } = snakeColors
 

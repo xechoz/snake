@@ -1,6 +1,14 @@
 import { mixColor, type Theme, type Viewport } from '@mg/core'
 import type Phaser from 'phaser'
 import { snakeColors } from '../colors'
+import { drawLeaf } from './foliage'
+
+/**
+ * Scenery marks across the backdrop. Leaves and vines reuse the old confetti
+ * scatter, with fewer and larger marks: the noise budget drops slightly, but
+ * what is left belongs to the fruit habitat instead of a generic party.
+ */
+const FOLIAGE_COUNT = 14
 
 /**
  * Shared cheerful backdrop for the menu and the game. Everything is drawn
@@ -35,14 +43,54 @@ export function drawBackdrop(
     drawCloud(graphics, x, y, 0.75 + (index % 3) * 0.18, 0.5)
   }
 
-  const confetti = snakeColors.art.confetti
-  for (let index = 0; index < 26; index += 1) {
+  const foliage = snakeColors.art.foliage
+  const matter = [foliage.mid, foliage.deep, foliage.light] as const
+  for (let index = 0; index < FOLIAGE_COUNT; index += 1) {
     const x = insets.left + (((index * 137) % 100) / 100) * (width - insets.left - insets.right)
     const y = insets.top + (((index * 71) % 100) / 100) * height * 0.82
-    const size = 4 + (index % 4) * 2
-    graphics.fillStyle(confetti[index % confetti.length] ?? theme.accent, 0.22)
-    if (index % 3 === 0) graphics.fillCircle(x, y, size * 0.55)
-    else graphics.fillRect(x, y, size, size)
+    const color = matter[index % matter.length] ?? foliage.mid
+    const alpha = color === foliage.light ? 0.16 : 0.22
+    const angle = ((index * 53) % 360) * (Math.PI / 180)
+    // Fewer, larger blades: a small blade at low alpha reads as a stray dash,
+    // a large one reads as foliage without needing more contrast.
+    const length = 20 + (index % 4) * 6
+
+    if (index % 3 === 1) {
+      // A shoot: two blades from one tail. Single blades alone read as dashes.
+      const spread = 0.5 + (index % 3) * 0.08
+      drawLeaf(graphics, {
+        x,
+        y,
+        length: length * 0.72,
+        width: length * 0.3,
+        angle: angle - spread,
+        color,
+        alpha,
+      })
+      drawLeaf(graphics, {
+        x,
+        y,
+        length,
+        width: length * 0.4,
+        angle: angle + spread,
+        color,
+        alpha,
+      })
+      continue
+    }
+
+    if (index % 3 === 0) {
+      drawLeaf(graphics, {
+        x,
+        y,
+        length: length * 0.62,
+        width: length * 0.26,
+        angle: angle - 0.5,
+        color,
+        alpha,
+      })
+    }
+    drawLeaf(graphics, { x, y, length, width: length * 0.4, angle, color, alpha })
   }
 
   graphics.fillStyle(mixColor(theme.accentAlt, theme.highlight, 0.55), 1)

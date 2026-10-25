@@ -14,7 +14,7 @@ import { canOfferSuperReward, grantSuperReward, hasPendingSuperReward } from '..
 import { snakeColors } from '../colors'
 import { CloseButton } from '../ui/CloseButton'
 import { playGameOverEffects, spawnBestCrown, spawnCrown } from '../ui/celebration'
-import { fruitDecoration } from '../ui/fruitDecoration'
+import { fruitDecoration, superFruitDecoration } from '../ui/fruitDecoration'
 import {
   computeBestCrown,
   computeGameOverOverlay,
@@ -301,7 +301,9 @@ export class HudScene extends Phaser.Scene {
           grant: () => grantSuperReward(services),
           restart,
         }).map((action, index) =>
-          index === 0 ? { ...action, decoration: fruitDecoration } : action,
+          index === 0
+            ? { ...action, decoration: fruitDecoration }
+            : { ...action, decoration: superFruitDecoration },
         )
       : [
           {

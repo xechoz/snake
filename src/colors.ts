@@ -67,6 +67,17 @@ export interface SuperFruitArtColors {
   readonly glow: number
 }
 
+/**
+ * Scenery greens. Kept separate from the fruit palettes on purpose: leaves and
+ * vines must never borrow an edible colour, or the backdrop starts reading as
+ * something to pick up.
+ */
+export interface FoliageArtColors {
+  readonly deep: number
+  readonly mid: number
+  readonly light: number
+}
+
 export interface SnakeArtColors {
   ink: number
   snakeHead: number
@@ -75,6 +86,7 @@ export interface SnakeArtColors {
   powerUps: Record<PowerUpKind, PowerUpArtColors>
   superFruit: SuperFruitArtColors
   effects: Record<EffectKind, number>
+  foliage: FoliageArtColors
   leaf: number
   eyeWhite: number
   shine: number
@@ -109,6 +121,11 @@ const snakeArt: SnakeArtColors = {
   effects: {
     slow: 0x6ec8ff,
     fast: 0xff8a3d,
+  },
+  foliage: {
+    deep: 0x2f7d5b,
+    mid: 0x4fae7e,
+    light: 0x9fd8bb,
   },
   leaf: accentAlt,
   eyeWhite: white,

@@ -1,6 +1,7 @@
 import type { Insets, Viewport } from '@mg/core'
 import { describe, expect, it } from 'vitest'
 import {
+  ACTION_LABEL_BAND,
   computeBestCrown,
   computeGameOverOverlay,
   computeMenuLayout,
@@ -14,6 +15,9 @@ import {
   MENU_PLAY_HEIGHT,
   playCharmSpots,
   type Rect,
+  SUPER_FRUIT_CROWN,
+  SUPER_FRUIT_HALO,
+  superFruitSpot,
 } from './layout'
 
 const NO_INSETS: Insets = { top: 0, right: 0, bottom: 0, left: 0 }
@@ -300,6 +304,27 @@ describe('playCharmSpots', () => {
       const badgeBottom = layout.bestY + 21
 
       expect(fruitTop - badgeBottom, `${width}x${height}`).toBeGreaterThanOrEqual(8)
+    }
+  })
+})
+
+describe('superFruitSpot', () => {
+  it('sits on the right end of the rewarded action, clear of the label band', () => {
+    for (const height of [76, 92, 64]) {
+      const spot = superFruitSpot(480, height)
+
+      expect(spot.radius, `height ${height}`).toBeGreaterThanOrEqual(12)
+      expect(spot.radius, `height ${height}`).toBeLessThanOrEqual(18)
+      // Ink rim of the fruit body stays on the face.
+      expect(spot.x + spot.radius + 3, `height ${height}`).toBeLessThanOrEqual(480 / 2)
+      // Crown (plus tween bob) stays inside the face.
+      expect(spot.radius * SUPER_FRUIT_CROWN + 2, `height ${height}`).toBeLessThanOrEqual(
+        height / 2,
+      )
+      // The glow never reaches the centred icon and label band.
+      expect(spot.x - spot.radius * SUPER_FRUIT_HALO, `height ${height}`).toBeGreaterThanOrEqual(
+        ACTION_LABEL_BAND,
+      )
     }
   })
 })

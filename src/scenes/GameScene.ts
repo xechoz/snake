@@ -25,8 +25,10 @@ import {
   showPowerUpFeedback,
 } from '../ui/feedback'
 import {
+  COUNTDOWN_STEP_ANGLE,
   drawBoardFrame,
-  drawCountdownBadge,
+  drawCountdownBackdrop,
+  drawCountdownFruits,
   drawFoods,
   drawPickups,
   drawSnake,
@@ -34,7 +36,9 @@ import {
 import { computeSnakeLayout, type SnakeLayout } from '../ui/layout'
 import type { GameOverInfo, HudScene } from './HudScene'
 
-const COUNTDOWN_MS = 1800
+const COUNTDOWN_STEP_MS = 1000
+const COUNTDOWN_STEPS = 3
+const COUNTDOWN_MS = COUNTDOWN_STEP_MS * COUNTDOWN_STEPS
 const GAME_OVER_DELAY_MS = 700
 const COMBO_WINDOW_MS = 1200
 /** Major pentatonic ladder for consecutive eats, the "do-re-mi" feel of Yoshi fruit chains. */
@@ -64,6 +68,10 @@ export class GameScene extends Phaser.Scene {
   private superGraphics!: Phaser.GameObjects.Graphics
   private lastFoods: SnakeState['foods'] | null = null
   private countdownBadge!: Phaser.GameObjects.Graphics
+  private countdownFruits!: Phaser.GameObjects.Graphics
+  private countdownArt!: Phaser.GameObjects.Container
+  /** Tween proxy for the fruit wreath's current rotation. */
+  private readonly countdownRing = { angle: 0 }
   private countdownText!: Phaser.GameObjects.Text
   private debugOverlay?: DebugOverlay
   private removeHiddenListener?: () => void
@@ -92,7 +100,14 @@ export class GameScene extends Phaser.Scene {
     this.powerUpGraphics = this.add.graphics().setDepth(5)
     this.superGraphics = this.add.graphics().setDepth(6)
 
-    this.countdownBadge = this.add.graphics().setDepth(11).setAlpha(0)
+    this.countdownBadge = this.add.graphics()
+    this.countdownFruits = this.add.graphics()
+    drawCountdownBackdrop(this.countdownBadge, 0, 0, theme)
+    this.drawCountdownRing()
+    this.countdownArt = this.add
+      .container(0, 0, [this.countdownBadge, this.countdownFruits])
+      .setDepth(11)
+      .setAlpha(0)
     this.countdownText = this.add
       .text(0, 0, '', displayTextStyle(theme, 96, theme.text, true, 0, 5))
       .setOrigin(0.5)
@@ -132,24 +147,29 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.countdownActive) {
-      const previous = Math.ceil(this.countdownMs / 600)
+      const previous = Math.ceil(this.countdownMs / COUNTDOWN_STEP_MS)
       this.countdownMs -= frame
       if (this.countdownMs <= 0) {
         this.countdownActive = false
+        this.tweens.killTweensOf(this.countdownRing)
         // The two-character "开始" needs a smaller face than a single digit.
         this.countdownText.setFontSize(56)
         this.countdownText.setText(getServices().i18n.t('go'))
         this.popCountdown()
         this.tweens.add({
-          targets: [this.countdownText, this.countdownBadge],
+          targets: [this.countdownText, this.countdownArt],
           alpha: 0,
           duration: 320,
           delay: 180,
           onComplete: () => this.countdownText.setText(''),
         })
       } else {
-        const current = Math.ceil(this.countdownMs / 600)
-        if (current !== previous) this.popCountdown()
+        const current = Math.ceil(this.countdownMs / COUNTDOWN_STEP_MS)
+        if (current !== previous) {
+          this.popCountdown()
+          // Three beats: the ring steps when 3 appears, then with 2 and 1.
+          this.stepCountdownRing(COUNTDOWN_STEPS - current + 1)
+        }
         this.countdownText.setText(String(current))
       }
       this.render(0)
@@ -201,9 +221,9 @@ export class GameScene extends Phaser.Scene {
     const services = getServices()
     this.paused = true
     this.countdownActive = false
-    this.tweens.killTweensOf([this.countdownText, this.countdownBadge])
+    this.tweens.killTweensOf([this.countdownText, this.countdownArt, this.countdownRing])
     this.countdownText.setAlpha(0)
-    this.countdownBadge.setAlpha(0)
+    this.countdownArt.setAlpha(0)
     this.joystick.setEnabled(false)
     services.platform.gameplayStop()
     services.audio.play('pause')
@@ -268,15 +288,39 @@ export class GameScene extends Phaser.Scene {
   }
 
   private startCountdown(): void {
-    this.tweens.killTweensOf([this.countdownText, this.countdownBadge])
+    this.tweens.killTweensOf([this.countdownText, this.countdownArt, this.countdownRing])
     this.resetEatChain()
     this.countdownActive = true
     this.countdownMs = COUNTDOWN_MS
+    this.countdownRing.angle = 0
+    this.drawCountdownRing()
     this.countdownText.setFontSize(96)
-    this.countdownText.setText(String(Math.ceil(this.countdownMs / 600)))
+    this.countdownText.setText(String(Math.ceil(this.countdownMs / COUNTDOWN_STEP_MS)))
     this.countdownText.setAlpha(1).setScale(1)
-    this.countdownBadge.setAlpha(1)
+    this.countdownArt.setAlpha(1)
     this.popCountdown()
+    this.stepCountdownRing(1)
+  }
+
+  private stepCountdownRing(step: number): void {
+    const target = step * COUNTDOWN_STEP_ANGLE
+    this.tweens.killTweensOf(this.countdownRing)
+    this.tweens.add({
+      targets: this.countdownRing,
+      angle: target,
+      duration: 240,
+      delay: 60,
+      ease: 'Cubic.out',
+      onUpdate: () => this.drawCountdownRing(),
+      onComplete: () => {
+        this.countdownRing.angle = target
+        this.drawCountdownRing()
+      },
+    })
+  }
+
+  private drawCountdownRing(): void {
+    drawCountdownFruits(this.countdownFruits, 0, 0, getServices().theme, this.countdownRing.angle)
   }
 
   private popCountdown(): void {
@@ -460,7 +504,7 @@ export class GameScene extends Phaser.Scene {
     const centerX = x + width / 2
     const centerY = y + width / 2
     this.countdownText.setPosition(centerX, centerY)
-    drawCountdownBadge(this.countdownBadge, centerX, centerY, getServices().theme)
+    this.countdownArt.setPosition(centerX, centerY)
   }
 
   private hud(): HudScene | undefined {
