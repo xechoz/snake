@@ -62,9 +62,11 @@ describe('snake colors', () => {
 
     expect(contrast(theme.accentInk, theme.bg)).toBeGreaterThanOrEqual(4.5)
     expect(contrast(theme.accentInk, theme.surface)).toBeGreaterThanOrEqual(4.5)
-    expect(contrast(theme.onAccent, theme.accent)).toBeGreaterThanOrEqual(3)
+    expect(contrast(theme.onAccent, theme.accent)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(theme.onAccent, theme.accentHover)).toBeGreaterThanOrEqual(4.5)
     expect(contrast(theme.onDanger, theme.danger)).toBeGreaterThanOrEqual(4.5)
     expect(contrast(theme.muted, theme.bg)).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(theme.muted, theme.surface)).toBeGreaterThanOrEqual(4.5)
   })
 
   it('darkens the accent on hover instead of washing it out', () => {

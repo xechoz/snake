@@ -68,8 +68,7 @@ export class MenuScene extends Phaser.Scene {
       )
       .setOrigin(0.5)
 
-    const primaryTheme = { ...theme, ink: theme.accentInk }
-    this.playButton = new Button(this, 0, 0, services.i18n.t('menu.play'), primaryTheme, {
+    this.playButton = new Button(this, 0, 0, services.i18n.t('menu.play'), theme, {
       width: initial.playWidth,
       height: 100,
       fontSize: 32,

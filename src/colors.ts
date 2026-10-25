@@ -8,9 +8,9 @@ const accentAlt = 0x2fb673
 const accentWarm = 0xffc94d
 const cream = 0xfff9ec
 
-const accent = 0xffe08a
-const accentHover = 0xf7d26d
-const accentInk = 0x8a5a00
+const accent = 0xffb020
+const accentHover = 0xf09300
+const accentInk = 0x0369a1
 
 function cssColor(color: number): string {
   return `#${color.toString(16).padStart(6, '0')}`
@@ -27,7 +27,7 @@ const snakeTheme = {
   accentAlt,
   accentWarm,
   accentInk,
-  onAccent: accentInk,
+  onAccent: ink,
   text: cssColor(ink),
   textMuted: cssColor(muted),
   muted,

@@ -13,6 +13,7 @@ import { snakeColors } from '../colors'
 import {
   computeSnakeLayout,
   inlineScorePositions,
+  type Rect,
   SCORE_LABEL_SIZE,
   SCORE_VALUE_SIZE,
   type SnakeLayout,
@@ -32,7 +33,7 @@ type ModalRequest = { kind: 'pause' } | { kind: 'over'; info: GameOverInfo }
 
 export class HudScene extends Phaser.Scene {
   private layout!: SnakeLayout
-  private scoreCard!: Phaser.GameObjects.Graphics
+  private scoreCloud!: Phaser.GameObjects.Graphics
   private scoreLabel!: Phaser.GameObjects.Text
   private scoreValue!: Phaser.GameObjects.Text
   private pauseButton!: PauseButton
@@ -50,7 +51,7 @@ export class HudScene extends Phaser.Scene {
     const stats = this.gameScene().currentStats()
     this.layout = computeSnakeLayout(readViewport(this))
 
-    this.scoreCard = this.add.graphics()
+    this.scoreCloud = this.add.graphics()
     this.scoreLabel = this.add
       .text(0, 0, services.i18n.t('hud.score'), textStyle(theme, SCORE_LABEL_SIZE, theme.textMuted))
       .setOrigin(0.5)
@@ -118,36 +119,19 @@ export class HudScene extends Phaser.Scene {
   }
 
   private applyLayout(): void {
-    this.drawScoreCard()
+    this.drawScoreCloud()
     this.positionScore()
     this.pauseButton.setPosition(this.layout.pause.x, this.layout.pause.y)
   }
 
-  private drawScoreCard(): void {
+  private drawScoreCloud(): void {
     const theme = getServices().theme
-    const { scoreCard } = this.layout
-    const radius = Math.min(theme.radiusLarge, scoreCard.height / 2)
-    const graphics = this.scoreCard
+    const bounds = this.layout.scoreCard
 
-    graphics.clear()
-    graphics.fillStyle(theme.shadow, 0.12)
-    graphics.fillRoundedRect(
-      scoreCard.x + 2,
-      scoreCard.y + 6,
-      scoreCard.width,
-      scoreCard.height,
-      radius,
-    )
-    graphics.fillStyle(theme.surface, 1)
-    graphics.fillRoundedRect(scoreCard.x, scoreCard.y, scoreCard.width, scoreCard.height, radius)
-    graphics.lineStyle(1, theme.borderSoft, 1)
-    graphics.strokeRoundedRect(
-      scoreCard.x + 0.5,
-      scoreCard.y + 0.5,
-      scoreCard.width - 1,
-      scoreCard.height - 1,
-      radius,
-    )
+    this.scoreCloud.clear()
+    // The soft lift keeps the cloud a UI surface instead of backdrop scenery.
+    fillCloudShape(this.scoreCloud, bounds, 6, theme.shadow, 0.08)
+    fillCloudShape(this.scoreCloud, bounds, 0, theme.surface, 0.95)
   }
 
   private positionScore(): void {
@@ -225,6 +209,7 @@ export class HudScene extends Phaser.Scene {
 
     this.modal = new Modal(this, services.theme, {
       title: services.i18n.t(info.won ? 'over.winTitle' : 'over.title'),
+      titleRibbon: false,
       hero: String(info.score),
       body,
       width: 640,
@@ -281,6 +266,30 @@ export class HudScene extends Phaser.Scene {
   private gameScene(): GameScene {
     return this.scene.get('Game') as GameScene
   }
+}
+
+function fillCloudShape(
+  graphics: Phaser.GameObjects.Graphics,
+  bounds: Rect,
+  offsetY: number,
+  color: number,
+  alpha: number,
+): void {
+  const { x, y, width, height } = bounds
+  const top = y + offsetY
+
+  graphics.fillStyle(color, alpha)
+  graphics.fillRoundedRect(
+    x + width * 0.03,
+    top + height * 0.36,
+    width * 0.94,
+    height * 0.56,
+    height * 0.28,
+  )
+  graphics.fillCircle(x + width * 0.2, top + height * 0.44, height * 0.25)
+  graphics.fillCircle(x + width * 0.42, top + height * 0.32, height * 0.3)
+  graphics.fillCircle(x + width * 0.64, top + height * 0.34, height * 0.29)
+  graphics.fillCircle(x + width * 0.82, top + height * 0.46, height * 0.22)
 }
 
 function layoutsEqual(a: SnakeLayout, b: SnakeLayout): boolean {
