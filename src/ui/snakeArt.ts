@@ -486,10 +486,12 @@ function drawIceCream(
     coneTop + size * 0.75,
   )
 
+  // Offsets stay relative to the centre: `coneTop` is absolute, so reusing it
+  // here would add `y` twice and detach the scoops from the cone.
   const scoops = [
-    { x: -size * 0.32, y: coneTop - size * 0.42, r: size * 0.58, color: palette.body },
-    { x: size * 0.32, y: coneTop - size * 0.42, r: size * 0.58, color: palette.accent },
-    { x: 0, y: coneTop - size * 0.92, r: size * 0.55, color: palette.light },
+    { x: -size * 0.32, y: -size * 0.52, r: size * 0.58, color: palette.body },
+    { x: size * 0.32, y: -size * 0.52, r: size * 0.58, color: palette.accent },
+    { x: 0, y: -size * 1.02, r: size * 0.55, color: palette.light },
   ]
   for (const scoop of scoops) {
     graphics.fillStyle(snakeColors.art.ink, 1)
@@ -500,7 +502,7 @@ function drawIceCream(
     graphics.fillCircle(x + scoop.x - scoop.r * 0.25, y + scoop.y - scoop.r * 0.3, scoop.r * 0.22)
   }
   graphics.fillStyle(palette.dark, 1)
-  graphics.fillCircle(x + size * 0.55, y + coneTop - size * 0.85, size * 0.13)
+  graphics.fillCircle(x + size * 0.55, y - size * 0.95, size * 0.13)
 }
 
 function drawChili(
