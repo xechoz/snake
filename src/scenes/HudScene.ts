@@ -6,17 +6,11 @@ import {
   type ModalAction,
   onLayoutChange,
   readViewport,
-  rewardOfferActions,
   textStyle,
   type Viewport,
 } from '@mg/core'
 import Phaser from 'phaser'
-import {
-  canOfferSuperReward,
-  grantSuperReward,
-  hasPendingSuperReward,
-  SUPER_PLACEMENT,
-} from '../ads'
+import { canOfferSuperReward, grantSuperReward, hasPendingSuperReward } from '../ads'
 import { snakeColors } from '../colors'
 import { CloseButton } from '../ui/CloseButton'
 import { playGameOverEffects, spawnCrown } from '../ui/celebration'
@@ -34,6 +28,7 @@ import {
   type SnakeLayout,
 } from '../ui/layout'
 import { PauseButton } from '../ui/PauseButton'
+import { superOfferActions } from '../ui/superOfferActions'
 import type { GameScene } from './GameScene'
 
 export interface GameOverInfo {
@@ -283,29 +278,27 @@ export class HudScene extends Phaser.Scene {
       ...(pendingSuper ? [services.i18n.t('ads.superReady')] : []),
     ].join('\n')
 
-    const restart: ModalAction = {
-      label: services.i18n.t('over.restart'),
-      onClick: () => game.restartGame(),
+    const restart = (): void => {
+      // The ad callback may resolve after the player already closed the modal
+      // or restarted; only restart while this game-over modal is still open.
+      if (!this.modal?.active) return
+      game.restartGame()
     }
     const actions: ModalAction[] = canOfferSuper
-      ? rewardOfferActions({
+      ? superOfferActions({
           ads: services.ads,
-          standard: {
-            label: services.i18n.t('over.restart'),
-            onClick: () => game.restartGame(),
-          },
-          rewarded: {
-            label: services.i18n.t('ads.super'),
-            placement: SUPER_PLACEMENT,
-            loadingLabel: services.i18n.t('ads.loading'),
-            onReward: () => {
-              grantSuperReward(services)
-              this.rebuildModal()
-            },
-          },
-          rewardedHeight: 76,
+          standardLabel: services.i18n.t('over.restart'),
+          rewardedLabel: services.i18n.t('ads.super'),
+          loadingLabel: services.i18n.t('ads.loading'),
+          grant: () => grantSuperReward(services),
+          restart,
         })
-      : [restart]
+      : [
+          {
+            label: services.i18n.t('over.restart'),
+            onClick: restart,
+          },
+        ]
 
     this.modal = new Modal(this, services.theme, {
       title: services.i18n.t(info.won ? 'over.winTitle' : 'over.title'),
