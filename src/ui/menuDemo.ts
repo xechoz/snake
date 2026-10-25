@@ -1,4 +1,4 @@
-import { getServices } from '@mg/core'
+import { getServices, mixColor } from '@mg/core'
 import type Phaser from 'phaser'
 import { snakeColors } from '../colors'
 import type { FruitKind } from '../logic/types'
@@ -260,18 +260,15 @@ function drawFrame(
   boardHeight: number,
 ): void {
   const theme = getServices().theme
-  const outerWidth = boardWidth + (PADDING + 4) * 2
-  const outerHeight = boardHeight + (PADDING + 4) * 2
+  const mat = PADDING + 4
+  const outerWidth = boardWidth + mat * 2
+  const outerHeight = boardHeight + mat * 2
   const left = -outerWidth / 2
   const top = -outerHeight / 2
-  const radius = 26
+  const radius = 20
 
-  graphics.fillStyle(theme.shadow, 0.14)
-  graphics.fillRoundedRect(left + 6, top + 10, outerWidth, outerHeight, radius)
-  graphics.fillStyle(theme.ink, 1)
-  graphics.fillRoundedRect(left, top, outerWidth, outerHeight, radius)
   graphics.fillStyle(theme.surface, 1)
-  graphics.fillRoundedRect(left + 4, top + 4, outerWidth - 8, outerHeight - 8, radius - 4)
+  graphics.fillRoundedRect(left, top, outerWidth, outerHeight, radius)
   graphics.fillStyle(theme.board, 1)
   graphics.fillRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight)
 
@@ -288,6 +285,7 @@ function drawFrame(
     }
   }
 
-  graphics.lineStyle(1, theme.borderSoft, 1)
+  // Same edge language as the real board.
+  graphics.lineStyle(2, mixColor(theme.accentAlt, theme.highlight, 0.35), 0.7)
   graphics.strokeRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight)
 }

@@ -26,21 +26,26 @@ const DIRECTION_VECTORS: Record<Direction, Cell> = {
   right: { x: 1, y: 0 },
 }
 
+/** White mat around the playfield. It also catches the head and effect rings. */
+const FRAME_MAT = 10
+const FRAME_RADIUS = 28
+
 export function drawBoardFrame(
   graphics: Phaser.GameObjects.Graphics,
   board: BoardMetrics,
   theme: Theme,
 ): void {
   const { x, y, width, cell } = board
-  const radius = 30
 
   graphics.clear()
-  graphics.fillStyle(theme.shadow, 0.16)
-  graphics.fillRoundedRect(x - 10, y - 2, width + 20, width + 28, radius + 4)
-  graphics.fillStyle(theme.ink, 1)
-  graphics.fillRoundedRect(x - 16, y - 16, width + 32, width + 32, radius)
   graphics.fillStyle(theme.surface, 1)
-  graphics.fillRoundedRect(x - 10, y - 10, width + 20, width + 20, radius - 6)
+  graphics.fillRoundedRect(
+    x - FRAME_MAT,
+    y - FRAME_MAT,
+    width + FRAME_MAT * 2,
+    width + FRAME_MAT * 2,
+    FRAME_RADIUS,
+  )
   graphics.fillStyle(theme.board, 1)
   graphics.fillRect(x, y, width, width)
 
