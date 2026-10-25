@@ -1,7 +1,15 @@
 import { createRng } from '@mg/core/rng'
 import { describe, expect, it } from 'vitest'
-import { snakeConfig } from './config'
-import { cellKey, createInitialState, enqueueDirection, isOpposite, step, tickMs } from './state'
+import { highValueFruits, snakeConfig } from './config'
+import {
+  boostFruitWeights,
+  cellKey,
+  createInitialState,
+  enqueueDirection,
+  isOpposite,
+  step,
+  tickMs,
+} from './state'
 import type { SnakeConfig, SnakeState } from './types'
 
 const config: SnakeConfig = {
@@ -27,6 +35,7 @@ function makeState(patch: Partial<SnakeState> = {}): SnakeState {
     segmentColors: snake.map(() => null),
     direction: 'right',
     queue: [],
+    fruitWeights: { ...config.fruitWeight },
     foods: [],
     powerUp: null,
     effect: null,
@@ -44,6 +53,8 @@ describe('createInitialState', () => {
     expect(state.snake).toHaveLength(3)
     expect(state.segmentColors).toEqual([null, null, null])
     expect(state.status).toBe('alive')
+    expect(state.fruitWeights).toEqual(config.fruitWeight)
+    expect(state.fruitWeights).not.toBe(config.fruitWeight)
     expect(state.foods).toHaveLength(config.foodTarget)
 
     const food = state.foods[0]
@@ -65,6 +76,41 @@ describe('createInitialState', () => {
         state.snake.some((cell) => cellKey(cell, multi.width) === cellKey(food.cell, multi.width)),
       ).toBe(false)
     }
+  })
+})
+
+describe('fruit odds', () => {
+  it('exposes the high-value fruits used by reward boosts', () => {
+    expect(highValueFruits).toEqual(['grape', 'berry', 'melon'])
+    for (const kind of highValueFruits) {
+      expect(config.fruitScore[kind]).toBeGreaterThanOrEqual(15)
+    }
+  })
+
+  it('multiplies only the selected weights without mutating the old state', () => {
+    const state = makeState()
+    const boosted = boostFruitWeights(state, 2, highValueFruits)
+
+    expect(boosted.fruitWeights).toEqual({
+      apple: 3,
+      orange: 3,
+      lemon: 3,
+      grape: 4,
+      berry: 4,
+      melon: 2,
+    })
+    expect(state.fruitWeights).toEqual(config.fruitWeight)
+    expect(config.fruitWeight.grape).toBe(2)
+  })
+
+  it('uses the state weights for the next fruit', () => {
+    const state = makeState({
+      foods: [{ cell: { x: 3, y: 2 }, kind: 'apple' }],
+      fruitWeights: { apple: 0, orange: 0, lemon: 0, grape: 0, berry: 0, melon: 1 },
+    })
+
+    const result = step(state, createRng(1))
+    expect(result.state.foods[0]?.kind).toBe('melon')
   })
 })
 

@@ -65,6 +65,7 @@ export function createInitialState(config: SnakeConfig, rng: Rng): SnakeState {
     segmentColors: snake.map(() => null),
     direction: 'right',
     queue: [],
+    fruitWeights: { ...config.fruitWeight },
     foods: [],
     powerUp: null,
     effect: null,
@@ -86,6 +87,24 @@ export function enqueueDirection(state: SnakeState, direction: Direction): Snake
   if (state.queue.length >= 2) return state
 
   return { ...state, queue: [...state.queue, direction] }
+}
+
+/**
+ * Multiplies the spawn weight of the given fruits for the rest of the run.
+ * Rewarded ads can use this with `highValueFruits`; apply it to the current
+ * state for an immediate boost, or to a fresh initial state for the next run.
+ * Repeated calls stack.
+ */
+export function boostFruitWeights(
+  state: SnakeState,
+  multiplier: number,
+  kinds: readonly FruitKind[],
+): SnakeState {
+  const fruitWeights: Record<FruitKind, number> = { ...state.fruitWeights }
+  for (const kind of kinds) {
+    fruitWeights[kind] *= multiplier
+  }
+  return { ...state, fruitWeights }
 }
 
 export function step(state: SnakeState, rng: Rng): StepResult {
@@ -258,7 +277,7 @@ function spawnFoods(state: SnakeState, rng: Rng): FoodItem[] {
     const cell = free[freeIndex]
     if (!cell) break
     free.splice(freeIndex, 1)
-    foods.push({ cell, kind: pickFruitKind(state.config, rng) })
+    foods.push({ cell, kind: pickFruitKind(state, rng) })
   }
   return foods
 }
@@ -287,11 +306,11 @@ function rollPowerUp(
   }
 }
 
-function pickFruitKind(config: SnakeConfig, rng: Rng): FruitKind {
-  const total = FRUIT_KINDS.reduce((sum, kind) => sum + config.fruitWeight[kind], 0)
+function pickFruitKind(state: SnakeState, rng: Rng): FruitKind {
+  const total = FRUIT_KINDS.reduce((sum, kind) => sum + state.fruitWeights[kind], 0)
   let roll = rng.next() * total
   for (const kind of FRUIT_KINDS) {
-    roll -= config.fruitWeight[kind]
+    roll -= state.fruitWeights[kind]
     if (roll < 0) return kind
   }
   return FRUIT_KINDS[0]

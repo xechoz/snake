@@ -1,4 +1,4 @@
-import type { SnakeConfig } from './types'
+import { FRUIT_KINDS, type FruitKind, type SnakeConfig } from './types'
 
 export const snakeConfig: SnakeConfig = {
   width: 20,
@@ -38,3 +38,11 @@ export const snakeConfig: SnakeConfig = {
   fastMinTickMs: 58,
   fastScoreMultiplier: 2,
 }
+
+/**
+ * Fruits worth at least 15 points. Rewarded ads can boost these weights
+ * without changing the base config or having to know the fruit list.
+ */
+export const highValueFruits: readonly FruitKind[] = FRUIT_KINDS.filter(
+  (kind) => snakeConfig.fruitScore[kind] >= 15,
+)

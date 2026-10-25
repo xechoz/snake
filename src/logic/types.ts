@@ -31,6 +31,8 @@ export interface ActiveEffect {
   readonly remaining: number
 }
 
+export type FruitWeights = Readonly<Record<FruitKind, number>>
+
 export interface SnakeConfig {
   width: number
   height: number
@@ -42,7 +44,7 @@ export interface SnakeConfig {
   /** Fruit slots on the board. Ad rewards can raise this without changing the rules. */
   foodTarget: number
   fruitScore: Record<FruitKind, number>
-  /** Relative spawn weight per fruit kind. */
+  /** Base relative spawn weight per fruit kind; copied into state at run start. */
   fruitWeight: Record<FruitKind, number>
   powerUpChance: number
   /** Fruits eaten without a pickup are capped here before one is guaranteed. */
@@ -65,6 +67,8 @@ export interface SnakeState {
   readonly segmentColors: readonly (FruitKind | null)[]
   readonly direction: Direction
   readonly queue: readonly Direction[]
+  /** Current spawn odds. Starts from the config and can be raised by rewards. */
+  readonly fruitWeights: FruitWeights
   readonly foods: readonly FoodItem[]
   readonly powerUp: PowerUpItem | null
   readonly effect: ActiveEffect | null
