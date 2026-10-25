@@ -43,6 +43,11 @@ const GAME_OVER_DELAY_MS = 700
 const COMBO_WINDOW_MS = 1200
 /** Major pentatonic ladder for consecutive eats, the "do-re-mi" feel of Yoshi fruit chains. */
 const EAT_STEPS = [0, 2, 4, 7, 9, 12, 14, 16]
+/** Feast bites are dense; keep them quiet and skip overlapping retriggers. */
+const FEAST_EAT_GAIN = 0.35
+const FEAST_EAT_MIN_MS = 240
+/** Cap the feast pitch ladder at +7 semitones so long feasts never turn shrill. */
+const FEAST_EAT_MAX_STEP = 4
 
 export class GameScene extends Phaser.Scene {
   private state!: SnakeState
@@ -60,6 +65,8 @@ export class GameScene extends Phaser.Scene {
   /** Consecutive eats within COMBO_WINDOW_MS, transposed up for the eat sound. */
   private eatChain = 0
   private lastEatAt = Number.NEGATIVE_INFINITY
+  /** Last quiet feast bite, used to avoid stacking the 230ms crunch samples. */
+  private lastFeastEatAt = Number.NEGATIVE_INFINITY
   private backdropGraphics!: Phaser.GameObjects.Graphics
   private boardGraphics!: Phaser.GameObjects.Graphics
   private snakeGraphics!: Phaser.GameObjects.Graphics
@@ -337,13 +344,15 @@ export class GameScene extends Phaser.Scene {
   private advance(): void {
     const services = getServices()
     const oldCells = this.state.snake
+    const wasFeast = this.state.feast !== null
     const result = step(this.state, this.rng)
     this.prevCells = result.state.snake.map((cell, index) => oldCells[index] ?? cell)
     this.state = result.state
 
     for (const event of result.events) {
       if (event.type === 'eat') {
-        this.playEatSound()
+        const grew = result.state.snake.length > oldCells.length
+        this.playEatSound(grew, wasFeast)
         showEatFeedback(this, this.layout.board, event.at, event.kind, event.points, services.theme)
       } else if (event.type === 'power') {
         services.audio.play(event.effect === 'fast' ? 'boost' : 'slow')
@@ -358,6 +367,7 @@ export class GameScene extends Phaser.Scene {
           services.theme,
         )
       } else if (event.type === 'feast') {
+        this.resetEatChain()
         services.audio.play('start')
         showFeastFeedback(
           this,
@@ -367,6 +377,7 @@ export class GameScene extends Phaser.Scene {
           services.theme,
         )
       } else if (event.type === 'feastEnd') {
+        this.resetEatChain()
         services.audio.play('click')
         showFeastEndFeedback(this, this.layout.board, services.i18n.t('feast.end'), services.theme)
       } else if (event.type === 'die') {
@@ -387,20 +398,34 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private playEatSound(): void {
+  private playEatSound(grew: boolean, feast: boolean): void {
     const now = this.time.now
+    const audio = getServices().audio
+
+    // During the feast most bites only score. Keep those quiet, fixed-pitch and
+    // spaced so the 230ms crunch samples do not pile up into noise.
+    if (feast && !grew) {
+      if (now - this.lastFeastEatAt < FEAST_EAT_MIN_MS) return
+      this.lastFeastEatAt = now
+      audio.play('eat', { gain: FEAST_EAT_GAIN })
+      return
+    }
+
     this.eatChain =
       now - this.lastEatAt <= COMBO_WINDOW_MS
         ? Math.min(this.eatChain + 1, EAT_STEPS.length - 1)
         : 0
     this.lastEatAt = now
-    const step = EAT_STEPS[this.eatChain]
-    getServices().audio.play('eat', { pitch: 2 ** (step / 12) })
+    if (feast) this.lastFeastEatAt = now
+    const maxStep = feast ? FEAST_EAT_MAX_STEP : EAT_STEPS.length - 1
+    const step = EAT_STEPS[Math.min(this.eatChain, maxStep)] ?? 0
+    audio.play('eat', { pitch: 2 ** (step / 12) })
   }
 
   private resetEatChain(): void {
     this.eatChain = 0
     this.lastEatAt = Number.NEGATIVE_INFINITY
+    this.lastFeastEatAt = Number.NEGATIVE_INFINITY
   }
 
   private finish(): void {

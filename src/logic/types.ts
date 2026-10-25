@@ -34,6 +34,8 @@ export interface ActiveEffect {
 export interface FruitFeast {
   /** Game-time milliseconds left before the remaining fruit is cleared. */
   readonly remainingMs: number
+  /** Feast fruit eaten so far; every `feastGrowthEvery` bite grows the snake. */
+  readonly eaten: number
 }
 
 export type FruitWeights = Readonly<Record<FruitKind, number>>
@@ -63,6 +65,8 @@ export interface SnakeConfig {
   fastScoreMultiplier: number
   /** Game-time length of the ad-reward fruit feast. */
   feastDurationMs: number
+  /** Feast fruit eaten per extra snake segment; the rest only score. */
+  feastGrowthEvery: number
 }
 
 export type SnakeStatus = 'alive' | 'dead' | 'won'
@@ -81,7 +85,7 @@ export interface SnakeState {
   readonly superItem: Cell | null
   readonly powerUp: PowerUpItem | null
   readonly effect: ActiveEffect | null
-  /** Active ad-reward fruit feast; fruits are score-only until it ends. */
+  /** Active ad-reward fruit feast; fruits score and grow the snake until it ends. */
   readonly feast: FruitFeast | null
   /** Fruits eaten since the last pickup spawned, used for the pity guarantee. */
   readonly powerUpDrought: number

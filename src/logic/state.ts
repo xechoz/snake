@@ -156,7 +156,6 @@ export function step(state: SnakeState, rng: Rng): StepResult {
   const feastActive = state.feast !== null
   const feastRemaining = state.feast ? state.feast.remainingMs - stepMs : 0
   const feastExpired = feastActive && feastRemaining <= 0
-  const nextFeast = feastActive && !feastExpired ? { remainingMs: feastRemaining } : null
 
   const direction = state.queue[0] ?? state.direction
   const head = state.snake[0]
@@ -191,7 +190,11 @@ export function step(state: SnakeState, rng: Rng): StepResult {
   const food = foodIndex >= 0 ? state.foods[foodIndex] : null
   const eating = food !== null
   const superAtHead = state.superItem !== null && sameCell(state.superItem, nextHead)
-  const grows = eating && !feastActive && !superAtHead
+  const feastEaten = state.feast ? state.feast.eaten + (eating ? 1 : 0) : 0
+  const feastGrows = feastActive && eating && feastEaten % state.config.feastGrowthEvery === 0
+  const grows = superAtHead || (eating && (!feastActive || feastGrows))
+  const nextFeast =
+    feastActive && !feastExpired ? { remainingMs: feastRemaining, eaten: feastEaten } : null
   const bodyToCheck = grows ? state.snake : state.snake.slice(0, -1)
   if (bodyToCheck.some((cell) => sameCell(cell, nextHead))) {
     return {
@@ -215,7 +218,7 @@ export function step(state: SnakeState, rng: Rng): StepResult {
   const multiplier = state.effect?.kind === 'fast' ? state.config.fastScoreMultiplier : 1
   const points = eating ? state.config.fruitScore[food.kind] * multiplier : 0
   const nextSnake = grows ? [nextHead, ...state.snake] : [nextHead, ...state.snake.slice(0, -1)]
-  const nextColors = grows && food ? [food.kind, ...state.segmentColors] : state.segmentColors
+  const nextColors = grows ? [food?.kind ?? null, ...state.segmentColors] : state.segmentColors
 
   if (superAtHead) {
     const cleared: SnakeState = {
@@ -227,7 +230,7 @@ export function step(state: SnakeState, rng: Rng): StepResult {
       superItem: null,
       powerUp: null,
       effect,
-      feast: { remainingMs: state.config.feastDurationMs },
+      feast: { remainingMs: state.config.feastDurationMs, eaten: 0 },
       powerUpDrought: 0,
       score: state.score,
     }
@@ -268,6 +271,16 @@ export function step(state: SnakeState, rng: Rng): StepResult {
   if (feastActive) {
     if (eating) {
       events.push({ type: 'eat', at: nextHead, kind: food.kind, points, score: moved.score })
+    }
+
+    // Feast fruit now grows the snake, so the last bite can fill the board
+    // before the feast would otherwise fall through to a normal respawn.
+    if (nextSnake.length >= state.config.width * state.config.height) {
+      events.push({ type: 'win' })
+      return {
+        state: { ...moved, foods: [], powerUp: null, effect: null, feast: null, status: 'won' },
+        events,
+      }
     }
 
     if (!eating || remainingFoods.length === 0 || feastExpired) {
