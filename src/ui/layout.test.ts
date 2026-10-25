@@ -8,6 +8,7 @@ import {
   GAME_OVER_MODAL_HEIGHT_ADS,
   GAME_OVER_MODAL_WIDTH,
   inlineScorePositions,
+  MENU_LOGO_HEIGHT,
   type Rect,
 } from './layout'
 
@@ -238,9 +239,14 @@ describe('computeMenuLayout', () => {
     expect(layout.logoMaxWidth).toBe(560)
     expect(layout.bestY).toBeGreaterThan(layout.logoY)
     expect(layout.playY).toBeGreaterThan(layout.bestY)
-    expect(layout.settingsY).toBeGreaterThan(layout.playY)
-    expect(layout.hintY).toBeGreaterThan(layout.settingsY)
+    expect(layout.hintY).toBeGreaterThan(layout.playY)
     expect(layout.installHintY).toBeGreaterThan(layout.hintY)
+    expect(layout.settings.sound.x).toBeLessThan(layout.settings.language.x)
+    expect(layout.settings.language.x + layout.settings.size / 2).toBe(1280 - 24)
+    expect(layout.settings.language.y).toBeLessThan(layout.logoY)
+    expect(layout.settings.sound.y + layout.settings.size / 2).toBeLessThan(
+      layout.demo.y - layout.demo.height / 2,
+    )
     expect(layout.demo.x - layout.demo.width / 2).toBeGreaterThan(
       layout.centerX + layout.playWidth / 2,
     )
@@ -254,6 +260,9 @@ describe('computeMenuLayout', () => {
     expect(layout.logoMaxWidth).toBe(720 - 48)
     expect(layout.playWidth).toBe(480)
     expect(layout.logoY).toBeLessThan(1558 * 0.2)
+    expect(layout.settings.sound.y + layout.settings.size / 2).toBeLessThanOrEqual(
+      layout.logoY - MENU_LOGO_HEIGHT / 2,
+    )
     expect(layout.demo.visible).toBe(true)
     expect(layout.demo.angle).toBe(0)
     expect(layout.demo.y - layout.demo.height / 2).toBeGreaterThan(layout.installHintY)
@@ -286,6 +295,19 @@ describe('computeMenuLayout', () => {
       expect(layout.logoY, tag).toBeGreaterThanOrEqual(edge.top)
       expect(layout.hintY, tag).toBeLessThanOrEqual(height - edge.bottom)
       expect(layout.installHintY, tag).toBeLessThanOrEqual(height - edge.bottom)
+
+      for (const point of [layout.settings.sound, layout.settings.language]) {
+        expect(point.x - layout.settings.size / 2, tag).toBeGreaterThanOrEqual(edge.left)
+        expect(point.x + layout.settings.size / 2, tag).toBeLessThanOrEqual(width - edge.right)
+        expect(point.y - layout.settings.size / 2, tag).toBeGreaterThanOrEqual(edge.top)
+        expect(point.y + layout.settings.size / 2, tag).toBeLessThanOrEqual(height - edge.bottom)
+      }
+
+      if (layout.mode === 'single') {
+        expect(layout.settings.sound.y + layout.settings.size / 2, tag).toBeLessThanOrEqual(
+          layout.logoY - MENU_LOGO_HEIGHT / 2,
+        )
+      }
 
       if (!layout.demo.visible) continue
       expect(layout.demo.scale, tag).toBeGreaterThan(0)

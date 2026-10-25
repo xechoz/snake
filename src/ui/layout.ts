@@ -237,9 +237,15 @@ export function computeSnakeLayout(viewport: Viewport): SnakeLayout {
 export const MENU_DEMO_WIDTH = 312
 export const MENU_DEMO_HEIGHT = 220
 export const MENU_DEMO_ASPECT = MENU_DEMO_WIDTH / MENU_DEMO_HEIGHT
-export const MENU_SETTINGS_SIZE = 88
-export const MENU_PLAY_HEIGHT = 100
+export const MENU_SETTINGS_SIZE = 64
+export const MENU_PLAY_HEIGHT = 108
 export const MENU_LOGO_HEIGHT = 178
+
+export interface MenuSettingsLayout {
+  readonly sound: Point
+  readonly language: Point
+  readonly size: number
+}
 
 export interface MenuDemoLayout {
   x: number
@@ -258,8 +264,7 @@ export interface MenuLayout {
   logoMaxWidth: number
   bestY: number
   playY: number
-  settingsY: number
-  settingsSize: number
+  settings: MenuSettingsLayout
   demo: MenuDemoLayout
   hintY: number
   installHintY: number
@@ -270,12 +275,16 @@ const SPLIT_MIN_WIDTH = 900
 const LOGO_BEST_GAP = 16
 const BEST_HEIGHT = 40
 const BEST_PLAY_GAP = 24
-const PLAY_SETTINGS_GAP = 20
-const SETTINGS_HINT_GAP = 20
+const PLAY_HINT_GAP = 28
 const HINT_HEIGHT = 30
+const SETTINGS_EDGE = 24
+const SETTINGS_TOP = 20
+const SETTINGS_GAP = 12
+const HEADER_CLEARANCE = 12
 
 /**
- * The menu keeps one clear column of actions. Wide screens add a self-playing
+ * The menu keeps one clear column of actions and pushes the secondary controls
+ * (sound, language) into the top-right corner. Wide screens add a self-playing
  * demo board on the right; tall screens dock it below the controls. The demo is
  * dropped when it would crowd a small viewport.
  */
@@ -284,6 +293,7 @@ export function computeMenuLayout(viewport: Viewport, logoHeight = MENU_LOGO_HEI
   const availableWidth = Math.max(1, width - insets.left - insets.right)
   const availableHeight = Math.max(1, height - insets.top - insets.bottom)
   const split = availableWidth >= SPLIT_MIN_WIDTH && width >= height
+  const settings = computeSettingsLayout(width, insets)
 
   const contentHeight =
     logoHeight +
@@ -291,9 +301,7 @@ export function computeMenuLayout(viewport: Viewport, logoHeight = MENU_LOGO_HEI
     BEST_HEIGHT +
     BEST_PLAY_GAP +
     MENU_PLAY_HEIGHT +
-    PLAY_SETTINGS_GAP +
-    MENU_SETTINGS_SIZE +
-    SETTINGS_HINT_GAP +
+    PLAY_HINT_GAP +
     HINT_HEIGHT
 
   if (split) {
@@ -301,12 +309,17 @@ export function computeMenuLayout(viewport: Viewport, logoHeight = MENU_LOGO_HEI
     const demoWidth = clamp(availableWidth * 0.28, 260, 400)
     const demoScale = demoWidth / MENU_DEMO_WIDTH
     const demoHeight = MENU_DEMO_HEIGHT * demoScale
-    const top = insets.top + Math.max(56, Math.round((availableHeight - contentHeight) * 0.42))
+    const top =
+      insets.top +
+      Math.max(
+        56,
+        Math.round((availableHeight - contentHeight) * 0.42),
+        SETTINGS_TOP + MENU_SETTINGS_SIZE + HEADER_CLEARANCE,
+      )
     const logoY = top + logoHeight / 2
     const bestY = top + logoHeight + LOGO_BEST_GAP + BEST_HEIGHT / 2
     const playY = bestY + BEST_HEIGHT / 2 + BEST_PLAY_GAP + MENU_PLAY_HEIGHT / 2
-    const settingsY = playY + MENU_PLAY_HEIGHT / 2 + PLAY_SETTINGS_GAP + MENU_SETTINGS_SIZE / 2
-    const hintY = settingsY + MENU_SETTINGS_SIZE / 2 + SETTINGS_HINT_GAP + HINT_HEIGHT / 2
+    const hintY = playY + MENU_PLAY_HEIGHT / 2 + PLAY_HINT_GAP + HINT_HEIGHT / 2
 
     return {
       mode: 'split',
@@ -315,8 +328,7 @@ export function computeMenuLayout(viewport: Viewport, logoHeight = MENU_LOGO_HEI
       logoMaxWidth: Math.min(560, Math.round(availableWidth * 0.55)),
       bestY,
       playY,
-      settingsY,
-      settingsSize: MENU_SETTINGS_SIZE,
+      settings,
       demo: {
         x: insets.left + availableWidth - 56 - demoWidth / 2,
         y: insets.top + availableHeight / 2,
@@ -333,12 +345,16 @@ export function computeMenuLayout(viewport: Viewport, logoHeight = MENU_LOGO_HEI
   }
 
   const centerX = insets.left + Math.round(availableWidth / 2)
-  const top = insets.top + clamp(Math.round(availableHeight * 0.08), 56, 160)
+  const top =
+    insets.top +
+    Math.max(
+      clamp(Math.round(availableHeight * 0.08), 56, 160),
+      SETTINGS_TOP + MENU_SETTINGS_SIZE + HEADER_CLEARANCE,
+    )
   const logoY = top + logoHeight / 2
   const bestY = top + logoHeight + LOGO_BEST_GAP + BEST_HEIGHT / 2
   const playY = bestY + BEST_HEIGHT / 2 + BEST_PLAY_GAP + MENU_PLAY_HEIGHT / 2
-  const settingsY = playY + MENU_PLAY_HEIGHT / 2 + PLAY_SETTINGS_GAP + MENU_SETTINGS_SIZE / 2
-  const hintY = settingsY + MENU_SETTINGS_SIZE / 2 + SETTINGS_HINT_GAP + HINT_HEIGHT / 2
+  const hintY = playY + MENU_PLAY_HEIGHT / 2 + PLAY_HINT_GAP + HINT_HEIGHT / 2
   const installHintY = hintY + 34
   const contentBottom = hintY + HINT_HEIGHT / 2
   const dockTop = installHintY + 32
@@ -355,8 +371,7 @@ export function computeMenuLayout(viewport: Viewport, logoHeight = MENU_LOGO_HEI
     logoMaxWidth: availableWidth - 48,
     bestY,
     playY,
-    settingsY,
-    settingsSize: MENU_SETTINGS_SIZE,
+    settings,
     demo: {
       x: centerX,
       y: demoVisible ? dockTop + remaining / 2 : contentBottom,
@@ -369,6 +384,17 @@ export function computeMenuLayout(viewport: Viewport, logoHeight = MENU_LOGO_HEI
     hintY,
     installHintY,
     playWidth: Math.min(480, availableWidth - 48),
+  }
+}
+
+function computeSettingsLayout(width: number, insets: Viewport['insets']): MenuSettingsLayout {
+  const languageX = width - insets.right - SETTINGS_EDGE - MENU_SETTINGS_SIZE / 2
+  const soundX = languageX - MENU_SETTINGS_SIZE - SETTINGS_GAP
+  const y = insets.top + SETTINGS_TOP + MENU_SETTINGS_SIZE / 2
+  return {
+    sound: { x: soundX, y },
+    language: { x: languageX, y },
+    size: MENU_SETTINGS_SIZE,
   }
 }
 

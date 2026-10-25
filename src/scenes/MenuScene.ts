@@ -15,21 +15,25 @@ import Phaser from 'phaser'
 import { snakeSave } from '../save'
 import { drawBackdrop } from '../ui/backdrop'
 import { hasTouchInput } from '../ui/device'
-import { computeMenuLayout, type MenuLayout } from '../ui/layout'
+import { computeMenuLayout, MENU_PLAY_HEIGHT, type MenuLayout } from '../ui/layout'
 import { createSnakeLogo, type SnakeLogo } from '../ui/logo'
 import { createMenuDemo, type MenuDemo } from '../ui/menuDemo'
 
 const CONTROL_ICON_DESKTOP = 160
 const CONTROL_ICON_TOUCH = 56
 const BEST_BADGE = 42
-const SETTINGS_GAP = 20
+const PLAY_GLOW_PADDING = 16
+const PLAY_FONT_SIZE = 34
+const SETTINGS_FONT_SIZE = 30
 
 export class MenuScene extends Phaser.Scene {
   private backdrop!: Phaser.GameObjects.Graphics
   private logo!: SnakeLogo
   private bestLabel!: Phaser.GameObjects.Text
   private bestStar!: Phaser.GameObjects.Graphics
+  private playGlow!: Phaser.GameObjects.Graphics
   private playButton!: Button
+  private playWidth = 0
   private soundButton!: Button
   private languageButton!: Button
   private demo!: MenuDemo
@@ -68,19 +72,21 @@ export class MenuScene extends Phaser.Scene {
       )
       .setOrigin(0.5)
 
+    this.playGlow = this.add.graphics()
+    this.playWidth = initial.playWidth
     this.playButton = new Button(this, 0, 0, services.i18n.t('menu.play'), theme, {
       width: initial.playWidth,
-      height: 100,
-      fontSize: 32,
+      height: MENU_PLAY_HEIGHT,
+      fontSize: PLAY_FONT_SIZE,
       icon: 'play',
       onClick: () => this.startGame(),
     })
 
     this.soundButton = new Button(this, 0, 0, '', theme, {
-      width: initial.settingsSize,
-      height: initial.settingsSize,
-      variant: 'soft',
-      fontSize: 34,
+      width: initial.settings.size,
+      height: initial.settings.size,
+      variant: 'ghost',
+      fontSize: SETTINGS_FONT_SIZE,
       icon: services.settings.value.sound ? 'soundOn' : 'soundOff',
       onClick: () => {
         services.audio.play('click')
@@ -90,10 +96,10 @@ export class MenuScene extends Phaser.Scene {
     })
 
     this.languageButton = new Button(this, 0, 0, '', theme, {
-      width: initial.settingsSize,
-      height: initial.settingsSize,
-      variant: 'soft',
-      fontSize: 34,
+      width: initial.settings.size,
+      height: initial.settings.size,
+      variant: 'ghost',
+      fontSize: SETTINGS_FONT_SIZE,
       icon: 'globe',
       onClick: () => {
         services.audio.play('click')
@@ -157,9 +163,9 @@ export class MenuScene extends Phaser.Scene {
     this.drawBest(layout)
 
     this.playButton.setPosition(layout.centerX, layout.playY)
-    const settingsOffset = layout.settingsSize / 2 + SETTINGS_GAP / 2
-    this.soundButton.setPosition(layout.centerX - settingsOffset, layout.settingsY)
-    this.languageButton.setPosition(layout.centerX + settingsOffset, layout.settingsY)
+    this.drawPlayGlow(layout)
+    this.soundButton.setPosition(layout.settings.sound.x, layout.settings.sound.y)
+    this.languageButton.setPosition(layout.settings.language.x, layout.settings.language.y)
 
     const gap = 14
     const total = this.controlIconWidth + gap + this.hint.width
@@ -177,6 +183,26 @@ export class MenuScene extends Phaser.Scene {
       .setScale(layout.demo.scale)
       .setAngle(layout.demo.angle)
       .setVisible(layout.demo.visible)
+  }
+
+  private drawPlayGlow(layout: MenuLayout): void {
+    const theme = getServices().theme
+    const width = this.playWidth + PLAY_GLOW_PADDING * 2
+    const height = MENU_PLAY_HEIGHT + PLAY_GLOW_PADDING * 2
+    const radius = Math.min(theme.radius + PLAY_GLOW_PADDING, height / 2)
+    const glow = this.playGlow
+    glow.clear()
+    glow.setPosition(layout.centerX, layout.playY)
+    glow.fillStyle(theme.accent, 0.1)
+    glow.fillRoundedRect(
+      -width / 2 - PLAY_GLOW_PADDING / 2,
+      -height / 2 - PLAY_GLOW_PADDING / 2,
+      width + PLAY_GLOW_PADDING,
+      height + PLAY_GLOW_PADDING,
+      radius + PLAY_GLOW_PADDING / 2,
+    )
+    glow.fillStyle(theme.accent, 0.16)
+    glow.fillRoundedRect(-width / 2, -height / 2, width, height, radius)
   }
 
   private drawBest(layout: MenuLayout): void {
@@ -241,9 +267,10 @@ export class MenuScene extends Phaser.Scene {
 
     this.bestStar.setAlpha(0)
     this.bestLabel.setAlpha(0)
+    this.playGlow.setAlpha(0).setScale(1)
     this.playButton.setAlpha(0).setScale(0.9)
-    this.soundButton.setAlpha(0).setScale(0.9)
-    this.languageButton.setAlpha(0).setScale(0.9)
+    this.soundButton.setAlpha(0)
+    this.languageButton.setAlpha(0)
     this.controlsIcon.setAlpha(0)
     this.hint.setAlpha(0)
     this.demo.container.setAlpha(0)
@@ -256,6 +283,13 @@ export class MenuScene extends Phaser.Scene {
       delay: 220,
     })
     this.tweens.add({
+      targets: [this.soundButton, this.languageButton],
+      alpha: 1,
+      duration: 260,
+      delay: 60,
+      ease: 'Quad.out',
+    })
+    this.tweens.add({
       targets: this.playButton,
       alpha: 1,
       scale: 1,
@@ -264,12 +298,11 @@ export class MenuScene extends Phaser.Scene {
       ease: 'Back.out',
     })
     this.tweens.add({
-      targets: [this.soundButton, this.languageButton],
+      targets: this.playGlow,
       alpha: 1,
-      scale: 1,
-      duration: 380,
-      delay: 260,
-      ease: 'Back.out',
+      duration: 360,
+      delay: 220,
+      onComplete: () => this.startPlayGlowPulse(),
     })
     this.tweens.add({
       targets: [this.controlsIcon, this.hint],
@@ -281,6 +314,19 @@ export class MenuScene extends Phaser.Scene {
     if (this.installHint) {
       this.tweens.add({ targets: this.installHint, alpha: 1, duration: 340, delay: 460 })
     }
+  }
+
+  /** A slow breathing halo keeps the CTA alive without moving its hit area. */
+  private startPlayGlowPulse(): void {
+    this.tweens.add({
+      targets: this.playGlow,
+      alpha: 0.55,
+      scale: 1.025,
+      duration: 1700,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.inOut',
+    })
   }
 
   private shouldShowInstallHint(): boolean {
