@@ -182,6 +182,20 @@ export function drawPickups(
   }
 }
 
+const COUNTDOWN_FRUITS = [
+  { angle: -2.68, distance: 86, radius: 15, kind: 'apple' },
+  { angle: -1.52, distance: 91, radius: 13, kind: 'melon' },
+  { angle: -0.22, distance: 87, radius: 14, kind: 'lemon' },
+  { angle: 1.08, distance: 89, radius: 15, kind: 'grape' },
+  { angle: 2.32, distance: 85, radius: 13, kind: 'berry' },
+] as const satisfies readonly {
+  angle: number
+  distance: number
+  radius: number
+  kind: FruitKind
+}[]
+
+/** Countdown disc ringed with fruit, echoing the CTA decoration. */
 export function drawCountdownBadge(
   graphics: Phaser.GameObjects.Graphics,
   centerX: number,
@@ -195,6 +209,18 @@ export function drawCountdownBadge(
   graphics.fillCircle(centerX, centerY, 82)
   graphics.lineStyle(7, theme.accentInk, 1)
   graphics.strokeCircle(centerX, centerY, 71)
+
+  for (const fruit of COUNTDOWN_FRUITS) {
+    drawFruit(
+      graphics,
+      centerX + Math.cos(fruit.angle) * fruit.distance,
+      centerY + Math.sin(fruit.angle) * fruit.distance,
+      fruit.radius,
+      fruit.kind,
+      theme,
+      0,
+    )
+  }
 }
 
 export function cellCenterX(board: BoardMetrics, x: number): number {

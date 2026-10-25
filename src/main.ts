@@ -5,6 +5,7 @@ import { GameScene } from './scenes/GameScene'
 import { HudScene } from './scenes/HudScene'
 import { MenuScene } from './scenes/MenuScene'
 import { drawBackdrop } from './ui/backdrop'
+import { fruitDecoration } from './ui/fruitDecoration'
 import { createSnakeLogo } from './ui/logo'
 
 const eatSamples = [
@@ -21,6 +22,7 @@ createGame({
   menuScene: 'Menu',
   backdrop: drawBackdrop,
   titleLogo: (scene) => createSnakeLogo(scene),
+  tapDecoration: fruitDecoration,
   audioSamples: { eat: eatSamples },
   scenes: [MenuScene, GameScene, HudScene],
 })

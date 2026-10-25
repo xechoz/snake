@@ -1,6 +1,7 @@
 import type { Insets, Viewport } from '@mg/core'
 import { describe, expect, it } from 'vitest'
 import {
+  computeBestCrown,
   computeGameOverOverlay,
   computeMenuLayout,
   computeSnakeLayout,
@@ -9,6 +10,9 @@ import {
   GAME_OVER_MODAL_WIDTH,
   inlineScorePositions,
   MENU_LOGO_HEIGHT,
+  MENU_PLAY_CHARM_CLEARANCE,
+  MENU_PLAY_HEIGHT,
+  playCharmSpots,
   type Rect,
 } from './layout'
 
@@ -224,6 +228,78 @@ describe('computeGameOverOverlay', () => {
           }
         }
       }
+    }
+  })
+})
+
+describe('computeBestCrown', () => {
+  it('hangs a small crown on the number at the end of the best line', () => {
+    const screen = { width: 1280, height: 720 }
+    const bodyTop = -18
+    const lineWidth = 148
+    const crown = computeBestCrown(screen, bodyTop, lineWidth, 28)
+    const art = crown.size * 0.58
+    const lineRight = screen.width / 2 + lineWidth / 2
+    const lineTop = screen.height / 2 + bodyTop
+
+    expect(crown.size).toBe(32)
+    expect(crown.x - art / 2).toBeCloseTo(lineRight)
+    expect(crown.y).toBeGreaterThan(lineTop)
+    expect(crown.y - art / 2).toBeLessThan(lineTop)
+  })
+
+  it('shrinks with the ad-card body font and keeps the same corner', () => {
+    const screen = { width: 720, height: 1558 }
+    const normal = computeBestCrown(screen, -10, 120, 28)
+    const ads = computeBestCrown(screen, -10, 120, 24)
+
+    expect(ads.size).toBeLessThan(normal.size)
+    expect(ads.x - normal.x).toBeLessThan(2)
+    expect(ads.y - normal.y).toBeLessThan(1)
+  })
+})
+
+describe('playCharmSpots', () => {
+  it('scatters fruit over the CTA without covering its centre', () => {
+    const spots = playCharmSpots(480, MENU_PLAY_HEIGHT)
+
+    expect(spots).toHaveLength(6)
+    for (const spot of spots) {
+      expect(Math.abs(spot.x) - spot.radius).toBeGreaterThan(MENU_PLAY_CHARM_CLEARANCE)
+      expect(Math.abs(spot.x) + spot.radius).toBeLessThanOrEqual(480 / 2)
+      expect(spot.y - spot.radius).toBeGreaterThanOrEqual(-MENU_PLAY_HEIGHT / 2 - 8)
+      expect(spot.y + spot.radius).toBeLessThanOrEqual(MENU_PLAY_HEIGHT / 2)
+      expect(spot.angle).not.toBe(0)
+    }
+    expect(new Set(spots.map((spot) => spot.angle)).size).toBeGreaterThanOrEqual(4)
+  })
+
+  it('fits the shorter modal action button', () => {
+    for (const spot of playCharmSpots(480, 92)) {
+      expect(Math.abs(spot.x) - spot.radius).toBeGreaterThan(MENU_PLAY_CHARM_CLEARANCE)
+      expect(Math.abs(spot.y) + spot.radius).toBeLessThan(92 / 2 + 6)
+    }
+  })
+
+  it('keeps clear of the best badge above the CTA', () => {
+    const sizes = [
+      [1280, 720],
+      [720, 1558],
+      [768, 1024],
+    ] as const
+
+    for (const [width, height] of sizes) {
+      const layout = computeMenuLayout(viewport(width, height))
+      // 1.2x radius covers the stem and leaf drawn above the fruit body.
+      const fruitTop = Math.min(
+        ...playCharmSpots(layout.playWidth, MENU_PLAY_HEIGHT).map(
+          (spot) => layout.playY + spot.y - spot.radius * 1.2,
+        ),
+      )
+      // BEST_BADGE / 2, the star medallion drawn by MenuScene.
+      const badgeBottom = layout.bestY + 21
+
+      expect(fruitTop - badgeBottom, `${width}x${height}`).toBeGreaterThanOrEqual(8)
     }
   })
 })

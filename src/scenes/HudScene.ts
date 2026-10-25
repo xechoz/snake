@@ -13,8 +13,10 @@ import Phaser from 'phaser'
 import { canOfferSuperReward, grantSuperReward, hasPendingSuperReward } from '../ads'
 import { snakeColors } from '../colors'
 import { CloseButton } from '../ui/CloseButton'
-import { playGameOverEffects, spawnCrown } from '../ui/celebration'
+import { playGameOverEffects, spawnBestCrown, spawnCrown } from '../ui/celebration'
+import { fruitDecoration } from '../ui/fruitDecoration'
 import {
+  computeBestCrown,
   computeGameOverOverlay,
   computeSnakeLayout,
   GAME_OVER_MODAL_HEIGHT,
@@ -53,6 +55,7 @@ export class HudScene extends Phaser.Scene {
   private modalRequest?: ModalRequest
   private closeButton?: CloseButton
   private crown?: Phaser.GameObjects.Container
+  private bestCrown?: Phaser.GameObjects.Container
   private lastScore = -1
 
   constructor() {
@@ -227,6 +230,7 @@ export class HudScene extends Phaser.Scene {
 
     this.modal = new Modal(this, services.theme, {
       title: services.i18n.t('pause.title'),
+      titleRibbon: false,
       body: services.i18n.t('pause.body'),
       width: 640,
       height: 500,
@@ -239,16 +243,20 @@ export class HudScene extends Phaser.Scene {
       actions: [
         {
           label: services.i18n.t('pause.resume'),
+          icon: 'play',
+          decoration: fruitDecoration,
           onClick: () => game.resumeGame(),
         },
         {
           label: services.i18n.t('pause.restart'),
           variant: 'soft',
+          icon: 'restart',
           onClick: () => game.restartGame(),
         },
         {
           label: services.i18n.t('pause.menu'),
           variant: 'soft',
+          icon: 'home',
           onClick: () => game.goToMenu(),
         },
       ],
@@ -292,13 +300,19 @@ export class HudScene extends Phaser.Scene {
           loadingLabel: services.i18n.t('ads.loading'),
           grant: () => grantSuperReward(services),
           restart,
-        })
+        }).map((action, index) =>
+          index === 0 ? { ...action, decoration: fruitDecoration } : action,
+        )
       : [
           {
             label: services.i18n.t('over.restart'),
+            icon: 'restart',
+            decoration: fruitDecoration,
             onClick: restart,
           },
         ]
+
+    const bodyFontSize = canOfferSuper ? 24 : 28
 
     this.modal = new Modal(this, services.theme, {
       title: services.i18n.t(info.won ? 'over.winTitle' : 'over.title'),
@@ -309,7 +323,7 @@ export class HudScene extends Phaser.Scene {
       height: canOfferSuper ? GAME_OVER_MODAL_HEIGHT_ADS : GAME_OVER_MODAL_HEIGHT,
       titleFontSize: canOfferSuper ? 32 : 36,
       heroFontSize: canOfferSuper ? 64 : 72,
-      bodyFontSize: canOfferSuper ? 24 : 28,
+      bodyFontSize,
       actionsLayout: 'column',
       actionWidth: 480,
       actionHeight: 92,
@@ -317,12 +331,28 @@ export class HudScene extends Phaser.Scene {
       actions,
     })
 
+    if (info.best > 0) this.showBestCrown(this.modal, bodyFontSize)
+
     this.closeButton = new CloseButton(this, overlay.close.x, overlay.close.y, services.theme, {
       size: overlay.closeSize,
       onClick: () => game.goToMenu(),
     }).setDepth(1100)
 
     return overlay
+  }
+
+  private showBestCrown(modal: Modal, bodyFontSize: number): void {
+    const body = modal.bodyText
+    if (!body) return
+    const firstLine = body.getWrappedText(body.text)[0] ?? ''
+    const probe = this.make.text({ text: firstLine, style: body.style }, false)
+    const lineWidth = probe.width
+    probe.destroy()
+
+    this.bestCrown = spawnBestCrown(
+      this,
+      computeBestCrown(this.scale, body.y, lineWidth, bodyFontSize),
+    )
   }
 
   private showCrown(overlay: GameOverOverlay): void {
@@ -344,6 +374,11 @@ export class HudScene extends Phaser.Scene {
       this.tweens.killTweensOf(this.crown)
       this.crown.destroy()
       this.crown = undefined
+    }
+    if (this.bestCrown) {
+      this.tweens.killTweensOf(this.bestCrown)
+      this.bestCrown.destroy()
+      this.bestCrown = undefined
     }
   }
 

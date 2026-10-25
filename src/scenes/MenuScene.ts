@@ -15,6 +15,7 @@ import Phaser from 'phaser'
 import { snakeSave } from '../save'
 import { drawBackdrop } from '../ui/backdrop'
 import { hasTouchInput } from '../ui/device'
+import { fruitDecoration } from '../ui/fruitDecoration'
 import { computeMenuLayout, MENU_PLAY_HEIGHT, type MenuLayout } from '../ui/layout'
 import { createSnakeLogo, type SnakeLogo } from '../ui/logo'
 import { createMenuDemo, type MenuDemo } from '../ui/menuDemo'
@@ -24,7 +25,8 @@ const CONTROL_ICON_TOUCH = 56
 const BEST_BADGE = 42
 const PLAY_GLOW_PADDING = 16
 const PLAY_FONT_SIZE = 34
-const SETTINGS_FONT_SIZE = 30
+const SETTINGS_ICON_SIZE = 30
+const SETTINGS_LABEL_SIZE = 26
 
 export class MenuScene extends Phaser.Scene {
   private backdrop!: Phaser.GameObjects.Graphics
@@ -79,14 +81,15 @@ export class MenuScene extends Phaser.Scene {
       height: MENU_PLAY_HEIGHT,
       fontSize: PLAY_FONT_SIZE,
       icon: 'play',
+      decoration: fruitDecoration,
       onClick: () => this.startGame(),
     })
 
     this.soundButton = new Button(this, 0, 0, '', theme, {
       width: initial.settings.size,
       height: initial.settings.size,
-      variant: 'ghost',
-      fontSize: SETTINGS_FONT_SIZE,
+      variant: 'soft',
+      fontSize: SETTINGS_ICON_SIZE,
       icon: services.settings.value.sound ? 'soundOn' : 'soundOff',
       onClick: () => {
         services.audio.play('click')
@@ -95,12 +98,11 @@ export class MenuScene extends Phaser.Scene {
       },
     })
 
-    this.languageButton = new Button(this, 0, 0, '', theme, {
+    this.languageButton = new Button(this, 0, 0, services.i18n.lang === 'zh' ? '中' : 'EN', theme, {
       width: initial.settings.size,
       height: initial.settings.size,
-      variant: 'ghost',
-      fontSize: SETTINGS_FONT_SIZE,
-      icon: 'globe',
+      variant: 'soft',
+      fontSize: SETTINGS_LABEL_SIZE,
       onClick: () => {
         services.audio.play('click')
         services.setLang(services.i18n.lang === 'zh' ? 'en' : 'zh')

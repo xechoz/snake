@@ -78,6 +78,40 @@ export function computeGameOverOverlay(
   }
 }
 
+const BEST_CROWN_SCALE = 1.15
+const BEST_CROWN_ART_RATIO = 0.58
+const BEST_CROWN_RIGHT_OVERHANG = 0.5
+const BEST_CROWN_TOP_OVERHANG = 0.12
+
+export interface BestCrown {
+  /** Container center in screen space. */
+  readonly x: number
+  readonly y: number
+  /** Scale passed to `drawCrownArt`; the visible art is about 58% of it. */
+  readonly size: number
+}
+
+/**
+ * Superscript crown on the "best" body line of the result card.
+ * `bodyTop` and `firstLineWidth` are card-local values from the modal body
+ * text (origin 0.5/0, centered in the card). The crown overlaps the number's
+ * top-right corner instead of floating above the whole line.
+ */
+export function computeBestCrown(
+  screen: { readonly width: number; readonly height: number },
+  bodyTop: number,
+  firstLineWidth: number,
+  bodyFontSize: number,
+): BestCrown {
+  const size = Math.round(bodyFontSize * BEST_CROWN_SCALE)
+  const art = size * BEST_CROWN_ART_RATIO
+  return {
+    x: screen.width / 2 + firstLineWidth / 2 + art * BEST_CROWN_RIGHT_OVERHANG,
+    y: screen.height / 2 + bodyTop + art * BEST_CROWN_TOP_OVERHANG,
+    size,
+  }
+}
+
 function computeBurstPoints(
   screen: { readonly width: number; readonly height: number },
   card: Rect,
@@ -241,6 +275,34 @@ export const MENU_SETTINGS_SIZE = 64
 export const MENU_PLAY_HEIGHT = 108
 export const MENU_LOGO_HEIGHT = 178
 
+/** Quiet band in the middle of the CTA reserved for the play icon and label. */
+export const MENU_PLAY_CHARM_CLEARANCE = 62
+
+export interface PlayCharmSpot {
+  readonly x: number
+  readonly y: number
+  readonly radius: number
+  readonly angle: number
+}
+
+/**
+ * A scattered handful of fruit resting on the play button. Coordinates are
+ * relative to the button centre, so a layout change keeps the arrangement
+ * attached. Spots stay clear of the centred icon/label band.
+ */
+export function playCharmSpots(width: number, height: number): readonly PlayCharmSpot[] {
+  const edge = width / 2
+  const top = height / 2
+  return [
+    { x: -edge + 34, y: -top * 0.37, radius: 22, angle: -16 },
+    { x: -edge + 116, y: -top * 0.7, radius: 18, angle: 13 },
+    { x: edge - 40, y: -top * 0.44, radius: 21, angle: 17 },
+    { x: edge - 118, y: -top * 0.74, radius: 16, angle: -11 },
+    { x: -edge + 148, y: top * 0.59, radius: 16, angle: 21 },
+    { x: edge - 150, y: top * 0.56, radius: 17, angle: -19 },
+  ].filter((spot) => Math.abs(spot.x) - spot.radius >= MENU_PLAY_CHARM_CLEARANCE)
+}
+
 export interface MenuSettingsLayout {
   readonly sound: Point
   readonly language: Point
@@ -274,7 +336,7 @@ export interface MenuLayout {
 const SPLIT_MIN_WIDTH = 900
 const LOGO_BEST_GAP = 16
 const BEST_HEIGHT = 40
-const BEST_PLAY_GAP = 24
+const BEST_PLAY_GAP = 34
 const PLAY_HINT_GAP = 28
 const HINT_HEIGHT = 30
 const SETTINGS_EDGE = 24
