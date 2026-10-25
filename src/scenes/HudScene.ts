@@ -18,8 +18,15 @@ import {
   SUPER_PLACEMENT,
 } from '../ads'
 import { snakeColors } from '../colors'
+import { CloseButton } from '../ui/CloseButton'
+import { playGameOverEffects, spawnCrown } from '../ui/celebration'
 import {
+  computeGameOverOverlay,
   computeSnakeLayout,
+  GAME_OVER_MODAL_HEIGHT,
+  GAME_OVER_MODAL_HEIGHT_ADS,
+  GAME_OVER_MODAL_WIDTH,
+  type GameOverOverlay,
   inlineScorePositions,
   type Rect,
   SCORE_LABEL_SIZE,
@@ -49,6 +56,8 @@ export class HudScene extends Phaser.Scene {
   private pauseButton!: PauseButton
   private modal?: Modal
   private modalRequest?: ModalRequest
+  private closeButton?: CloseButton
+  private crown?: Phaser.GameObjects.Container
   private lastScore = -1
 
   constructor() {
@@ -114,14 +123,16 @@ export class HudScene extends Phaser.Scene {
   showGameOver(info: GameOverInfo): void {
     if (this.modal?.active) return
     this.modalRequest = { kind: 'over', info }
-    this.buildGameOverModal(info)
-    if (info.newBest || info.won) this.celebrate()
+    const overlay = this.buildGameOverModal(info)
+    playGameOverEffects(this, { rich: info.newBest || info.won, bursts: overlay.bursts })
+    if (info.newBest) this.showCrown(overlay)
   }
 
   closeModal(): void {
     this.modal?.close()
     this.modal = undefined
     this.modalRequest = undefined
+    this.destroyOverlay()
   }
 
   private handleLayout(viewport: Viewport): void {
@@ -204,10 +215,15 @@ export class HudScene extends Phaser.Scene {
   private rebuildModal(): void {
     const request = this.modalRequest
     if (!request || !this.modal?.active) return
+    this.destroyOverlay()
     this.modal.close()
     this.modal = undefined
-    if (request.kind === 'pause') this.buildPauseModal()
-    else this.buildGameOverModal(request.info)
+    if (request.kind === 'pause') {
+      this.buildPauseModal()
+      return
+    }
+    const overlay = this.buildGameOverModal(request.info)
+    if (request.info.newBest) this.showCrown(overlay)
   }
 
   private buildPauseModal(): void {
@@ -244,11 +260,18 @@ export class HudScene extends Phaser.Scene {
     })
   }
 
-  private buildGameOverModal(info: GameOverInfo): void {
+  private buildGameOverModal(info: GameOverInfo): GameOverOverlay {
     const services = getServices()
     const game = this.gameScene()
     const canOfferSuper = canOfferSuperReward(services)
     const pendingSuper = hasPendingSuperReward(services)
+
+    const overlay = computeGameOverOverlay(this.scale, {
+      width: GAME_OVER_MODAL_WIDTH,
+      height: canOfferSuper ? GAME_OVER_MODAL_HEIGHT_ADS : GAME_OVER_MODAL_HEIGHT,
+      titleFontSize: canOfferSuper ? 32 : 36,
+      heroFontSize: canOfferSuper ? 64 : 72,
+    })
 
     const reasonKey =
       info.reason === 'win' ? 'over.win' : info.reason === 'self' ? 'over.self' : 'over.wall'
@@ -260,46 +283,37 @@ export class HudScene extends Phaser.Scene {
       ...(pendingSuper ? [services.i18n.t('ads.superReady')] : []),
     ].join('\n')
 
-    const standard: ModalAction = {
+    const restart: ModalAction = {
       label: services.i18n.t('over.restart'),
       onClick: () => game.restartGame(),
     }
-    const menu: ModalAction = {
-      label: services.i18n.t('over.menu'),
-      variant: 'soft',
-      height: canOfferSuper ? 76 : 92,
-      onClick: () => game.goToMenu(),
-    }
     const actions: ModalAction[] = canOfferSuper
-      ? [
-          ...rewardOfferActions({
-            ads: services.ads,
-            standard: {
-              label: services.i18n.t('over.restart'),
-              onClick: () => game.restartGame(),
+      ? rewardOfferActions({
+          ads: services.ads,
+          standard: {
+            label: services.i18n.t('over.restart'),
+            onClick: () => game.restartGame(),
+          },
+          rewarded: {
+            label: services.i18n.t('ads.super'),
+            placement: SUPER_PLACEMENT,
+            loadingLabel: services.i18n.t('ads.loading'),
+            onReward: () => {
+              grantSuperReward(services)
+              this.rebuildModal()
             },
-            rewarded: {
-              label: services.i18n.t('ads.super'),
-              placement: SUPER_PLACEMENT,
-              loadingLabel: services.i18n.t('ads.loading'),
-              onReward: () => {
-                grantSuperReward(services)
-                this.rebuildModal()
-              },
-            },
-            rewardedHeight: 76,
-          }),
-          menu,
-        ]
-      : [standard, menu]
+          },
+          rewardedHeight: 76,
+        })
+      : [restart]
 
     this.modal = new Modal(this, services.theme, {
       title: services.i18n.t(info.won ? 'over.winTitle' : 'over.title'),
       titleRibbon: false,
       hero: String(info.score),
       body,
-      width: 640,
-      height: canOfferSuper ? 672 : 560,
+      width: GAME_OVER_MODAL_WIDTH,
+      height: canOfferSuper ? GAME_OVER_MODAL_HEIGHT_ADS : GAME_OVER_MODAL_HEIGHT,
       titleFontSize: canOfferSuper ? 32 : 36,
       heroFontSize: canOfferSuper ? 64 : 72,
       bodyFontSize: canOfferSuper ? 24 : 28,
@@ -309,33 +323,34 @@ export class HudScene extends Phaser.Scene {
       actionFontSize: 28,
       actions,
     })
+
+    this.closeButton = new CloseButton(this, overlay.close.x, overlay.close.y, services.theme, {
+      size: overlay.closeSize,
+      onClick: () => game.goToMenu(),
+    }).setDepth(1100)
+
+    return overlay
   }
 
-  private celebrate(): void {
-    const theme = getServices().theme
-    const colors = snakeColors.art.confetti
-    const width = this.scale.width
-    for (let index = 0; index < 42; index += 1) {
-      const piece = this.add
-        .rectangle(
-          Phaser.Math.Between(20, width - 20),
-          Phaser.Math.Between(-80, -10),
-          Phaser.Math.Between(7, 13),
-          Phaser.Math.Between(10, 18),
-          colors[index % colors.length] ?? theme.accent,
-        )
-        .setDepth(1100)
-        .setAngle(Phaser.Math.Between(0, 360))
-      this.tweens.add({
-        targets: piece,
-        y: this.scale.height + 40,
-        angle: piece.angle + Phaser.Math.Between(180, 540),
-        alpha: { from: 1, to: 0.2 },
-        duration: Phaser.Math.Between(1400, 2600),
-        delay: Phaser.Math.Between(0, 420),
-        ease: 'Quad.in',
-        onComplete: () => piece.destroy(),
-      })
+  private showCrown(overlay: GameOverOverlay): void {
+    this.crown = spawnCrown(this, {
+      x: overlay.crown.x,
+      y: overlay.crown.y,
+      size: overlay.crownSize,
+      theme: getServices().theme,
+    })
+  }
+
+  private destroyOverlay(): void {
+    if (this.closeButton) {
+      this.tweens.killTweensOf(this.closeButton)
+      this.closeButton.destroy()
+      this.closeButton = undefined
+    }
+    if (this.crown) {
+      this.tweens.killTweensOf(this.crown)
+      this.crown.destroy()
+      this.crown = undefined
     }
   }
 

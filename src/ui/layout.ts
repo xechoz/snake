@@ -13,6 +13,99 @@ export interface Point {
   y: number
 }
 
+export const GAME_OVER_MODAL_WIDTH = 640
+export const GAME_OVER_MODAL_HEIGHT = 470
+export const GAME_OVER_MODAL_HEIGHT_ADS = 600
+
+const MODAL_SCREEN_MARGIN = 48
+const CLOSE_INSET = 44
+const CLOSE_SIZE = 56
+const CROWN_GAP = 16
+const BURST_MARGIN = 24
+const BURST_SIDE_ROOM = 96
+
+export interface GameOverOverlaySpec {
+  readonly width: number
+  readonly height: number
+  readonly titleFontSize: number
+  readonly heroFontSize: number
+}
+
+export interface GameOverOverlay {
+  readonly card: Rect
+  readonly close: Point
+  readonly closeSize: number
+  readonly crown: Point
+  readonly crownSize: number
+  /** Burst origins: top-left, top-right, bottom-left, bottom-right of the card. */
+  readonly bursts: readonly [Point, Point, Point, Point]
+}
+
+/**
+ * Mirrors `Modal`'s clamping so scene-level decorations (the close button,
+ * crown and fireworks) land on the card instead of guessing its bounds.
+ * Decoration points stay outside the card, or above/below it on narrow screens.
+ */
+export function computeGameOverOverlay(
+  screen: { readonly width: number; readonly height: number },
+  spec: GameOverOverlaySpec,
+): GameOverOverlay {
+  const width = Math.min(spec.width, screen.width - MODAL_SCREEN_MARGIN)
+  const height = Math.min(spec.height, screen.height - MODAL_SCREEN_MARGIN)
+  const card = {
+    x: (screen.width - width) / 2,
+    y: (screen.height - height) / 2,
+    width,
+    height,
+  }
+  const crownSize = Math.round(spec.heroFontSize * 0.9)
+  const crown = {
+    x: card.x + card.width / 2,
+    y: Math.max(crownSize / 2 + CROWN_GAP, card.y - CROWN_GAP),
+  }
+  const close = {
+    x: card.x + card.width - CLOSE_INSET,
+    y: card.y + CLOSE_INSET,
+  }
+
+  return {
+    card,
+    close,
+    closeSize: CLOSE_SIZE,
+    crown,
+    crownSize,
+    bursts: computeBurstPoints(screen, card),
+  }
+}
+
+function computeBurstPoints(
+  screen: { readonly width: number; readonly height: number },
+  card: Rect,
+): readonly [Point, Point, Point, Point] {
+  const sideRoom = Math.min(card.x, screen.width - (card.x + card.width))
+  if (sideRoom >= BURST_SIDE_ROOM) {
+    return [
+      { x: card.x / 2, y: card.y + card.height * 0.22 },
+      { x: screen.width - card.x / 2, y: card.y + card.height * 0.32 },
+      { x: card.x / 2, y: card.y + card.height * 0.72 },
+      { x: screen.width - card.x / 2, y: card.y + card.height * 0.82 },
+    ]
+  }
+
+  const top = Math.max(BURST_MARGIN, card.y / 2)
+  const below = screen.height - (card.y + card.height)
+  const bottom = Math.min(
+    screen.height - BURST_MARGIN,
+    card.y + card.height + Math.max(BURST_MARGIN, below / 2),
+  )
+  return [
+    { x: card.x + card.width * 0.18, y: top },
+    { x: card.x + card.width * 0.82, y: top },
+    { x: card.x + card.width * 0.24, y: bottom },
+    { x: card.x + card.width * 0.76, y: bottom },
+  ]
+}
+
 export const SCORE_LABEL_SIZE = 26
 export const SCORE_VALUE_SIZE = 72
 export const SCORE_INLINE_GAP = 16
