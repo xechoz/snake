@@ -16,9 +16,107 @@
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <meta name="description" content="Snake · classic arcade mini game" />
     <title>Snake · Mini Games</title>
+    <style>
+      #mg-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        pointer-events: none;
+        color: #332b45;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background:
+          radial-gradient(circle at 82% 16%, rgb(255 176 32 / 26%) 0 7rem, transparent 7.1rem),
+          linear-gradient(180deg, #e3f2fa 0%, #eef8ef 52%, #fff4e2 100%);
+        transition: opacity 0.24s ease;
+      }
+      #mg-splash[data-hidden] {
+        opacity: 0;
+      }
+      #mg-splash .mg-splash__mark {
+        display: grid;
+        gap: 1.3rem;
+        justify-items: center;
+      }
+      #mg-splash .mg-splash__word {
+        font-size: clamp(2.8rem, 12vw, 5.5rem);
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        line-height: 0.9;
+      }
+      #mg-splash .mg-splash__word span {
+        color: #ffb020;
+      }
+      #mg-splash .mg-splash__dots {
+        display: flex;
+        gap: 0.55rem;
+        align-items: center;
+      }
+      #mg-splash .mg-splash__dots i {
+        width: 0.8rem;
+        height: 0.8rem;
+        border-radius: 50%;
+        background: #349064;
+        animation: mg-splash-bounce 1s ease-in-out infinite;
+      }
+      #mg-splash .mg-splash__dots i:nth-child(2) {
+        background: #ffb020;
+        animation-delay: 0.12s;
+      }
+      #mg-splash .mg-splash__dots i:nth-child(3) {
+        background: #ff7a59;
+        animation-delay: 0.24s;
+      }
+      @keyframes mg-splash-bounce {
+        0%,
+        100% {
+          transform: translateY(0);
+          opacity: 0.55;
+        }
+        50% {
+          transform: translateY(-0.55rem);
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #mg-splash .mg-splash__dots i {
+          animation: none;
+          opacity: 1;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="mg-splash" role="status" aria-label="Loading Snake">
+      <div class="mg-splash__mark">
+        <div class="mg-splash__word">SNAKE<span>.</span></div>
+        <div class="mg-splash__dots" aria-hidden="true"><i></i><i></i><i></i></div>
+      </div>
+    </div>
     <div id="game"></div>
+    <script>
+      ;(() => {
+        const splash = document.getElementById('mg-splash')
+        const game = document.getElementById('game')
+        if (!splash || !game) return
+        let hidden = false
+        const observer = new MutationObserver(() => {
+          if (game.querySelector('canvas')) hide()
+        })
+        const hide = () => {
+          if (hidden) return
+          hidden = true
+          observer.disconnect()
+          splash.dataset.hidden = ''
+          window.setTimeout(() => splash.remove(), 260)
+        }
+        observer.observe(game, { childList: true, subtree: true })
+        if (game.querySelector('canvas')) hide()
+        window.setTimeout(hide, 15000)
+      })()
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
