@@ -15,6 +15,7 @@ import { snakeConfig } from '../logic/config'
 import { createInitialState, enqueueDirection, grantSuperItem, step, tickMs } from '../logic/state'
 import type { Cell, Direction, SnakeState } from '../logic/types'
 import { snakeSave } from '../save'
+import { resolveSkin, type SkinPalette, type SnakeSkinId } from '../skins'
 import { drawBackdrop } from '../ui/backdrop'
 import { FloatingJoystick } from '../ui/FloatingJoystick'
 import {
@@ -52,6 +53,7 @@ const FEAST_EAT_MAX_STEP = 4
 export class GameScene extends Phaser.Scene {
   private state!: SnakeState
   private rng!: Rng
+  private skin!: SkinPalette
   private viewport!: Viewport
   private layout!: SnakeLayout
   private prevCells: Cell[] = []
@@ -285,9 +287,18 @@ export class GameScene extends Phaser.Scene {
 
   private resetGame(): void {
     const services = getServices()
-    this.best = snakeSave(services).read().best
+    const save = snakeSave(services).read()
+    this.best = save.best
     this.newBest = false
     this.rng = createRng(randomSeed())
+    const lastSkin = this.registry.get('lastSkin') as SnakeSkinId | undefined
+    const skin = resolveSkin(this.rng, {
+      unlocked: save.unlockedSkins,
+      active: save.activeSkin,
+      last: lastSkin,
+    })
+    this.skin = skin.palette
+    this.registry.set('lastSkin', skin.id)
     const base = createInitialState(snakeConfig, this.rng)
     this.state = takeSuperReward(services) ? grantSuperItem(base, this.rng) : base
     this.prevCells = [...this.state.snake]
@@ -489,6 +500,7 @@ export class GameScene extends Phaser.Scene {
       progress,
       this.time.now,
       theme,
+      this.skin,
     )
 
     if (this.state.foods !== this.lastFoods) {

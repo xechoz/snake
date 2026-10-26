@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { snakeColors } from './colors'
+import { skinGradient, snakeColors } from './colors'
+import { SNAKE_SKINS } from './skins'
 
 function read(relativePath: string): string {
   return readFileSync(new URL(relativePath, import.meta.url), 'utf8')
@@ -101,12 +102,21 @@ describe('snake colors', () => {
     expect(contrast(logo.ribbonHead, logo.outline)).toBeGreaterThanOrEqual(3)
     // The fruit is decorative and always carries a dark outline.
     expect(contrast(logo.fruit, logo.outline)).toBeGreaterThanOrEqual(2.5)
-    // The lockup keeps the playable snake's blue gradient.
+    // The static lockup is the brand fallback; the menu may recolor it.
     expect(logo.ribbonHead).toBe(snakeColors.art.snakeHead)
     expect(logo.ribbonTail).toBe(snakeColors.art.snakeTail)
 
     const source = read('./ui/logo.ts')
     const themeRefs = source.match(/theme\.[a-zA-Z]+/g) ?? []
     expect(themeRefs.every((ref) => ref === 'theme.font')).toBe(true)
+  })
+
+  it('anchors every skin gradient on its three fruit body colours', () => {
+    for (const skin of SNAKE_SKINS) {
+      const [head, middle, tail] = skin.palette
+      expect(skinGradient(skin.palette, 0)).toBe(snakeColors.art.fruits[head].body)
+      expect(skinGradient(skin.palette, 0.5)).toBe(snakeColors.art.fruits[middle].body)
+      expect(skinGradient(skin.palette, 1)).toBe(snakeColors.art.fruits[tail].body)
+    }
   })
 })

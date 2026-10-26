@@ -1,5 +1,6 @@
 import type { Theme } from '@mg/core'
 import type { EffectKind, FruitKind, PowerUpKind } from './logic/types'
+import type { SkinPalette } from './skins'
 
 const ink = 0x332b45
 const white = 0xffffff
@@ -140,9 +141,28 @@ const snakeArt: SnakeArtColors = {
   confetti: [accent, accentAlt, accentWarm, white, 0xff5c8a],
 }
 
+function mixRgb(from: number, to: number, t: number): number {
+  const amount = Math.max(0, Math.min(1, t))
+  const channel = (shift: number): number => {
+    const start = (from >> shift) & 0xff
+    const end = (to >> shift) & 0xff
+    return Math.round(start + (end - start) * amount)
+  }
+  return (channel(16) << 16) | (channel(8) << 8) | channel(0)
+}
+
+/** The snake's base body gradient, independent of which fruit it has eaten. */
+export function skinGradient(skin: SkinPalette, t: number): number {
+  const fruits = snakeArt.fruits
+  return t < 0.5
+    ? mixRgb(fruits[skin[0]].body, fruits[skin[1]].body, t * 2)
+    : mixRgb(fruits[skin[1]].body, fruits[skin[2]].body, (t - 0.5) * 2)
+}
+
 /**
  * The title logo is a brand asset, not UI chrome: its colours never follow the
- * current theme. Keep them here so a theme re-skin cannot wash out the wordmark.
+ * current theme. The blue lockup is the fallback; the menu can recolor it to
+ * match the run's skin. Keep them here so a theme re-skin cannot wash it out.
  */
 export interface SnakeLogoColors {
   face: number
@@ -166,7 +186,7 @@ const snakeLogo: SnakeLogoColors = {
   leaf: accentAlt,
   eye: ink,
   shine: white,
-  // The wordmark lockup follows the playable snake's blue palette.
+  // Brand fallback; the menu overrides these with the run's skin colours.
   ribbonHead: 0x7dd3fc,
   ribbonTail: 0x0369a1,
 }

@@ -7,12 +7,15 @@ import {
   isStandalone,
   maybeEnterFullscreen,
   onLayoutChange,
+  randomSeed,
   readViewport,
   textStyle,
   type Viewport,
 } from '@mg/core'
+import { createRng } from '@mg/core/rng'
 import Phaser from 'phaser'
 import { snakeSave } from '../save'
+import { resolveSkin } from '../skins'
 import { drawBackdrop } from '../ui/backdrop'
 import { hasTouchInput } from '../ui/device'
 import { fruitDecoration } from '../ui/fruitDecoration'
@@ -58,7 +61,12 @@ export class MenuScene extends Phaser.Scene {
   create(): void {
     const services = getServices()
     const theme = services.theme
-    const best = snakeSave(services).read().best
+    const save = snakeSave(services).read()
+    const best = save.best
+    const menuSkin = resolveSkin(createRng(randomSeed()), {
+      unlocked: save.unlockedSkins,
+      active: save.activeSkin,
+    })
     const viewport = readViewport(this)
     this.touch = hasTouchInput()
     this.showInstallHint = this.shouldShowInstallHint()
@@ -68,7 +76,7 @@ export class MenuScene extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor(theme.bg)
     this.backdrop = this.add.graphics()
-    this.logo = createSnakeLogo(this)
+    this.logo = createSnakeLogo(this, menuSkin.palette)
     const initial = computeMenuLayout(viewport, this.logo.height, this.touch, this.showInstallHint)
 
     this.bestStar = this.add.graphics()
@@ -119,7 +127,7 @@ export class MenuScene extends Phaser.Scene {
       },
     })
 
-    this.demo = createMenuDemo(this)
+    this.demo = createMenuDemo(this, menuSkin.palette)
     this.controlsIcon = this.add.graphics()
     this.drawControlHint()
 

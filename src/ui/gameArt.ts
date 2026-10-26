@@ -1,8 +1,9 @@
 import { mixColor, type Theme } from '@mg/core'
 import type Phaser from 'phaser'
-import { snakeColors } from '../colors'
+import { skinGradient, snakeColors } from '../colors'
 import { snakeConfig } from '../logic/config'
 import type { Cell, Direction, FruitKind, SnakeState } from '../logic/types'
+import type { SkinPalette } from '../skins'
 import { drawCornerSprig } from './foliage'
 import {
   drawBlockSnakeBody,
@@ -31,6 +32,8 @@ const DIRECTION_VECTORS: Record<Direction, Cell> = {
 /** White mat around the playfield. It also catches the head and effect rings. */
 const FRAME_MAT = 10
 const FRAME_RADIUS = 28
+/** How much of an eaten fruit's colour shows through the skin base. */
+const FRUIT_TINT = 0.42
 /**
  * Where the mat's rounded-corner arc crosses the 45° diagonal, relative to the
  * playfield corner. The corner sprigs grow outward from here, so their tails
@@ -90,6 +93,7 @@ export function drawSnake(
   progress: number,
   time: number,
   theme: Theme,
+  skin: SkinPalette | null,
 ): void {
   const snake = state.snake
   const cell = board.cell
@@ -107,7 +111,7 @@ export function drawSnake(
     return {
       x: point.x,
       y: point.y,
-      color: segmentColor(state.segmentColors[index] ?? null, t, theme, dead),
+      color: segmentColor(state.segmentColors[index] ?? null, t, theme, dead, skin),
     }
   })
 
@@ -120,7 +124,11 @@ export function drawSnake(
     const cycle = time % 2500
     const tongue = !dead && cycle < 240 ? Math.sin((cycle / 240) * Math.PI) : 0
     const headKind = state.segmentColors[0] ?? null
-    const headColor = headKind ? snakeColors.art.fruits[headKind].light : snakeColors.art.snakeHead
+    const headColor = headKind
+      ? snakeColors.art.fruits[headKind].light
+      : skin
+        ? snakeColors.art.fruits[skin[0]].light
+        : snakeColors.art.snakeHead
     drawSnakeHead(
       snakeGraphics,
       head.x,
@@ -275,14 +283,21 @@ export function segmentColor(
   t: number,
   theme: Theme,
   dead: boolean,
+  skin: SkinPalette | null,
 ): number {
-  const color = kind
+  const fruit = kind
     ? mixColor(
         snakeColors.art.fruits[kind].light,
         snakeColors.art.fruits[kind].dark,
         Math.min(1, t * 1.15),
       )
-    : mixColor(snakeColors.art.snakeHead, snakeColors.art.snakeTail, t)
+    : null
+  const base = skin ? skinGradient(skin, t) : null
+  const color = base
+    ? fruit
+      ? mixColor(base, fruit, FRUIT_TINT)
+      : base
+    : (fruit ?? mixColor(snakeColors.art.snakeHead, snakeColors.art.snakeTail, t))
   return dead ? mixColor(color, theme.muted, 0.55) : color
 }
 

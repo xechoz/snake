@@ -2,6 +2,7 @@ import { getServices, mixColor } from '@mg/core'
 import type Phaser from 'phaser'
 import { snakeColors } from '../colors'
 import type { FruitKind } from '../logic/types'
+import type { SkinPalette } from '../skins'
 import { segmentColor } from './gameArt'
 import { MENU_DEMO_HEIGHT, MENU_DEMO_WIDTH } from './layout'
 import { drawBlockSnakeBody, drawFruit, drawSnakeHead, type SnakeBlock } from './snakeArt'
@@ -62,7 +63,7 @@ export interface MenuDemo {
  * A tiny self-playing board used as the menu's hero art. It shows turning,
  * eating and growing instead of explaining them in two lines of copy.
  */
-export function createMenuDemo(scene: Phaser.Scene): MenuDemo {
+export function createMenuDemo(scene: Phaser.Scene, skin: SkinPalette | null = null): MenuDemo {
   const theme = getServices().theme
   const boardWidth = COLS * CELL
   const boardHeight = ROWS * CELL
@@ -103,7 +104,7 @@ export function createMenuDemo(scene: Phaser.Scene): MenuDemo {
       return {
         x: point.x,
         y: point.y,
-        color: segmentColor(segmentColors[segmentIndex] ?? null, t, theme, false),
+        color: segmentColor(segmentColors[segmentIndex] ?? null, t, theme, false, skin),
       }
     })
     drawBlockSnakeBody(snake, blocks, CELL, theme.ink, 2.2)
@@ -121,7 +122,11 @@ export function createMenuDemo(scene: Phaser.Scene): MenuDemo {
         { x: head.x - next.x, y: head.y - next.y },
         CELL * 0.48,
         theme.ink,
-        headKind ? snakeColors.art.fruits[headKind].light : snakeColors.art.snakeHead,
+        headKind
+          ? snakeColors.art.fruits[headKind].light
+          : skin
+            ? snakeColors.art.fruits[skin[0]].light
+            : snakeColors.art.snakeHead,
         3.2,
         { tongue },
       )

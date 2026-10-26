@@ -1,6 +1,7 @@
 import { cssColor, getServices, mixColor } from '@mg/core'
 import type Phaser from 'phaser'
-import { type SnakeLogoColors, snakeColors } from '../colors'
+import { type SnakeLogoColors, skinGradient, snakeColors } from '../colors'
+import type { SkinPalette } from '../skins'
 import { drawBlockSnakeBody, drawSnakeHead, type Point, type SnakeBlock } from './snakeArt'
 
 const FONT_SIZE = 104
@@ -30,10 +31,10 @@ interface Glyph {
   height: number
 }
 
-export function createSnakeLogo(scene: Phaser.Scene): SnakeLogo {
+export function createSnakeLogo(scene: Phaser.Scene, skin: SkinPalette | null = null): SnakeLogo {
   const services = getServices()
   const font = services.theme.font
-  const logo = snakeColors.logo
+  const logo = skin ? logoForSkin(skin) : snakeColors.logo
   const title = displayTitle(services.i18n.t('game.title'))
   const glyphs = title.map((character) => createGlyph(scene, character, font, logo))
   const totalWidth =
@@ -64,6 +65,7 @@ export function createSnakeLogo(scene: Phaser.Scene): SnakeLogo {
     totalWidth,
     ribbonY,
     logo,
+    skin,
   )
   const ribbon = scene.add.graphics()
   drawBlockSnakeBody(ribbon, blocks, cell, logo.outline, RIBBON_OUTLINE)
@@ -168,6 +170,17 @@ export function createSnakeLogo(scene: Phaser.Scene): SnakeLogo {
   return { container, width, height, playEntrance }
 }
 
+function logoForSkin(skin: SkinPalette): SnakeLogoColors {
+  const fruits = snakeColors.art.fruits
+  return {
+    ...snakeColors.logo,
+    shadow: fruits[skin[0]].light,
+    fruit: fruits[skin[1]].body,
+    ribbonHead: fruits[skin[0]].light,
+    ribbonTail: fruits[skin[2]].dark,
+  }
+}
+
 function displayTitle(title: string): string[] {
   const latin = /^[\x20-\x7e]+$/.test(title)
   return [...(latin ? title.toUpperCase() : title)]
@@ -232,7 +245,12 @@ interface RibbonLayout {
  * The logo underline is a cell-aligned snake like the one on the board: equal
  * rounded tiles, orthogonal steps only, built from the tail towards the head.
  */
-function createRibbon(totalWidth: number, ribbonY: number, logo: SnakeLogoColors): RibbonLayout {
+function createRibbon(
+  totalWidth: number,
+  ribbonY: number,
+  logo: SnakeLogoColors,
+  skin: SkinPalette | null,
+): RibbonLayout {
   const startX = -totalWidth / 2 - RIBBON_TAIL_PAD
   const endX = totalWidth / 2 + RIBBON_HEAD_PAD
   const span = endX - startX
@@ -263,7 +281,9 @@ function createRibbon(totalWidth: number, ribbonY: number, logo: SnakeLogoColors
     .map((point, index) => ({
       x: point.x,
       y: point.y,
-      color: mixColor(logo.ribbonTail, logo.ribbonHead, index / last),
+      color: skin
+        ? skinGradient(skin, 1 - index / last)
+        : mixColor(logo.ribbonTail, logo.ribbonHead, index / last),
     }))
     .reverse()
 
