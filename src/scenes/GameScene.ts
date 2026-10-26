@@ -249,7 +249,9 @@ export class GameScene extends Phaser.Scene {
     try {
       const services = getServices()
       this.hud()?.closeModal()
-      await services.ads.showInterstitial()
+      // The portal only allows midgame ads at natural breaks, never on a
+      // navigation action such as resuming from the pause menu.
+      if (!this.isPortalHost()) await services.ads.showInterstitial()
       this.paused = false
       this.joystick.setEnabled(true)
       // The resume tap is a fresh user gesture; Safari may have interrupted the
@@ -272,7 +274,9 @@ export class GameScene extends Phaser.Scene {
     if (this.restarting || this.adsActive()) return
     this.restarting = true
     try {
-      if (options.commercial !== false) await getServices().ads.showInterstitial()
+      if (options.commercial !== false && !(this.isPortalHost() && this.paused)) {
+        await getServices().ads.showInterstitial()
+      }
       this.scene.stop('Hud')
       this.scene.restart()
     } finally {
@@ -288,6 +292,10 @@ export class GameScene extends Phaser.Scene {
 
   private adsActive(): boolean {
     return getServices().ads.active
+  }
+
+  private isPortalHost(): boolean {
+    return getServices().platform.name === 'crazygames'
   }
 
   private handleLayout(viewport: Viewport): void {
