@@ -7,7 +7,7 @@ export interface SuperOfferActionsOptions {
   rewardedLabel: string
   loadingLabel: string
   grant: () => void
-  restart: () => void
+  restart: (options?: { commercial?: boolean }) => void
 }
 
 /**
@@ -28,7 +28,7 @@ export function superOfferActions(options: SuperOfferActionsOptions): ModalActio
       label: options.standardLabel,
       variant: 'primary',
       height: 92,
-      onClick: options.restart,
+      onClick: () => options.restart(),
     },
     {
       label: options.rewardedLabel,
@@ -40,7 +40,7 @@ export function superOfferActions(options: SuperOfferActionsOptions): ModalActio
       onClick: async () => {
         const outcome = await options.ads.showRewarded(SUPER_PLACEMENT)
         if (outcome === 'rewarded') options.grant()
-        options.restart()
+        options.restart({ commercial: false })
       },
     },
   ]

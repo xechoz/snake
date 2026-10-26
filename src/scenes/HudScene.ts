@@ -15,7 +15,7 @@ import { canOfferSuperReward, grantSuperReward } from '../ads'
 import { snakeColors } from '../colors'
 import { CloseButton } from '../ui/CloseButton'
 import { playGameOverEffects, spawnCrown } from '../ui/celebration'
-import { fruitDecoration, superFruitDecoration } from '../ui/fruitDecoration'
+import { fruitDecoration } from '../ui/fruitDecoration'
 import {
   computeGameOverOverlay,
   computeSnakeLayout,
@@ -305,11 +305,11 @@ export class HudScene extends Phaser.Scene {
       heroFontSize: GAME_OVER_HERO_SIZE,
     })
 
-    const restart = (): void => {
+    const restart = (options?: { commercial?: boolean }): void => {
       // The ad callback may resolve after the player already closed the modal
       // or restarted; only restart while this game-over modal is still open.
       if (!this.modal?.active) return
-      game.restartGame()
+      void game.restartGame(options)
     }
     const actions: ModalAction[] = canOfferSuper
       ? superOfferActions({
@@ -320,9 +320,7 @@ export class HudScene extends Phaser.Scene {
           grant: () => grantSuperReward(services),
           restart,
         }).map((action, index) =>
-          index === 0
-            ? { ...action, decoration: fruitDecoration }
-            : { ...action, decoration: superFruitDecoration },
+          index === 0 ? { ...action, decoration: fruitDecoration } : action,
         )
       : [
           {

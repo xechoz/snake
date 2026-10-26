@@ -60,6 +60,8 @@ export class GameScene extends Phaser.Scene {
   private elapsed = 0
   private paused = false
   private finished = false
+  private resuming = false
+  private restarting = false
   private countdownActive = false
   private countdownMs = 0
   private best = 0
@@ -221,7 +223,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   inputDirection(direction: Direction): void {
-    if (this.paused || this.finished || this.state.status !== 'alive') return
+    if (this.adsActive() || this.paused || this.finished || this.state.status !== 'alive') return
     const next = enqueueDirection(this.state, direction)
     if (next === this.state) return
     this.state = next
@@ -229,7 +231,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   pauseGame(): void {
-    if (this.paused || this.finished || this.state.status !== 'alive') return
+    if (this.adsActive() || this.paused || this.finished || this.state.status !== 'alive') return
     const services = getServices()
     this.paused = true
     this.countdownActive = false
@@ -242,31 +244,51 @@ export class GameScene extends Phaser.Scene {
     this.hud()?.showPause()
   }
 
-  resumeGame(): void {
-    const services = getServices()
-    this.paused = false
-    this.joystick.setEnabled(true)
-    this.hud()?.closeModal()
-    // The resume tap is a fresh user gesture; Safari may have interrupted the
-    // audio context while the page was in the background.
-    services.audio.unlock()
-    this.startCountdown()
-    services.platform.gameplayStart()
+  async resumeGame(): Promise<void> {
+    if (this.resuming || this.adsActive() || !this.paused || this.finished) return
+    this.resuming = true
+    try {
+      const services = getServices()
+      this.hud()?.closeModal()
+      await services.ads.showInterstitial()
+      this.paused = false
+      this.joystick.setEnabled(true)
+      // The resume tap is a fresh user gesture; Safari may have interrupted the
+      // audio context while the page was in the background.
+      services.audio.unlock()
+      this.startCountdown()
+      services.platform.gameplayStart()
+    } finally {
+      this.resuming = false
+    }
   }
 
   togglePause(): void {
-    if (this.paused) this.resumeGame()
+    if (this.adsActive()) return
+    if (this.paused) void this.resumeGame()
     else this.pauseGame()
   }
 
-  restartGame(): void {
-    this.scene.stop('Hud')
-    this.scene.restart()
+  async restartGame(options: { commercial?: boolean } = {}): Promise<void> {
+    if (this.restarting || this.adsActive()) return
+    this.restarting = true
+    try {
+      if (options.commercial !== false) await getServices().ads.showInterstitial()
+      this.scene.stop('Hud')
+      this.scene.restart()
+    } finally {
+      this.restarting = false
+    }
   }
 
   goToMenu(): void {
+    if (this.adsActive()) return
     this.scene.stop('Hud')
     this.scene.start('Menu')
+  }
+
+  private adsActive(): boolean {
+    return getServices().ads.active
   }
 
   private handleLayout(viewport: Viewport): void {

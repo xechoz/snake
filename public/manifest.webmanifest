@@ -1,9 +1,9 @@
 {
   "id": "./",
-  "name": "贪吃蛇 · Mini Games",
-  "short_name": "贪吃蛇",
-  "description": "经典贪吃蛇：吃果实变长，别撞墙，也别咬到自己。",
-  "lang": "zh-CN",
+  "name": "Snake · Mini Games",
+  "short_name": "Snake",
+  "description": "Classic Snake: eat fruit, grow longer, and avoid the walls and yourself.",
+  "lang": "en",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

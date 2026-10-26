@@ -5,6 +5,7 @@ import {
   getServices,
   isEmbedded,
   isStandalone,
+  LANG_SHORT,
   maybeEnterFullscreen,
   onLayoutChange,
   randomSeed,
@@ -19,6 +20,7 @@ import { resolveSkin } from '../skins'
 import { drawBackdrop } from '../ui/backdrop'
 import { hasTouchInput } from '../ui/device'
 import { fruitDecoration } from '../ui/fruitDecoration'
+import { LanguageModal } from '../ui/LanguageModal'
 import {
   computeMenuLayout,
   MENU_PLAY_HEIGHT,
@@ -46,6 +48,7 @@ export class MenuScene extends Phaser.Scene {
   private playWidth = 0
   private soundButton!: Button
   private languageButton!: Button
+  private languageModal?: LanguageModal
   private demo!: MenuDemo
   private hint!: Phaser.GameObjects.Text
   private controlsIcon!: Phaser.GameObjects.Graphics
@@ -114,17 +117,13 @@ export class MenuScene extends Phaser.Scene {
       },
     })
 
-    this.languageButton = new Button(this, 0, 0, services.i18n.lang === 'zh' ? '中' : 'EN', theme, {
+    this.languageButton = new Button(this, 0, 0, LANG_SHORT[services.i18n.lang], theme, {
       width: initial.settings.size,
       height: initial.settings.size,
       variant: 'soft',
       minHitSize: this.touch ? MENU_SETTINGS_HIT : undefined,
       fontSize: SETTINGS_LABEL_SIZE,
-      onClick: () => {
-        services.audio.play('click')
-        services.setLang(services.i18n.lang === 'zh' ? 'en' : 'zh')
-        this.scene.restart()
-      },
+      onClick: () => this.openLanguage(),
     })
 
     this.demo = createMenuDemo(this, menuSkin.palette)
@@ -150,16 +149,17 @@ export class MenuScene extends Phaser.Scene {
     }
 
     this.applyLayout(viewport, initial)
-    onLayoutChange(this, (next) =>
+    onLayoutChange(this, (next) => {
+      this.languageModal?.close()
       this.applyLayout(
         next,
         computeMenuLayout(next, this.logo.height, this.touch, this.showInstallHint),
-      ),
-    )
+      )
+    })
     this.playEntrance()
 
-    this.input.keyboard?.once('keydown-ENTER', () => this.startGame())
-    this.input.keyboard?.once('keydown-SPACE', () => this.startGame())
+    this.input.keyboard?.on('keydown-ENTER', () => this.startGame())
+    this.input.keyboard?.on('keydown-SPACE', () => this.startGame())
 
     // If the Preload request did not land, the first menu tap retries it.
     if (!this.scale.fullscreen.active) {
@@ -168,11 +168,30 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private startGame(): void {
+    if (this.languageModal) return
     const services = getServices()
     maybeEnterFullscreen(this.scale)
     services.audio.unlock()
     services.audio.play('click')
     this.scene.start('Game')
+  }
+
+  private openLanguage(): void {
+    if (this.languageModal) return
+    const services = getServices()
+    services.audio.play('click')
+    this.languageModal = new LanguageModal(this, {
+      theme: services.theme,
+      current: services.i18n.lang,
+      title: services.i18n.t('core.language'),
+      onSelect: (lang) => {
+        services.setLang(lang)
+        this.scene.restart()
+      },
+      onClose: () => {
+        this.languageModal = undefined
+      },
+    })
   }
 
   private applyLayout(viewport: Viewport, layout: MenuLayout): void {

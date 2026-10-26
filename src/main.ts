@@ -17,7 +17,7 @@ createGame({
   id: 'snake',
   design: { base: 720 },
   theme: snakeColors.theme,
-  defaultLang: 'zh',
+  defaultLang: 'en',
   i18n: snakeI18n,
   menuScene: 'Menu',
   backdrop: drawBackdrop,
