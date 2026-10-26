@@ -151,7 +151,7 @@ function mixRgb(from: number, to: number, t: number): number {
   return (channel(16) << 16) | (channel(8) << 8) | channel(0)
 }
 
-/** The snake's base body gradient, independent of which fruit it has eaten. */
+/** Logo ribbon gradient in eating order: oldest/tail (t=0) → newest/head (t=1). */
 export function skinGradient(skin: SkinPalette, t: number): number {
   const fruits = snakeArt.fruits
   return t < 0.5

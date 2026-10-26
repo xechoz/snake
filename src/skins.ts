@@ -3,7 +3,7 @@ import type { FruitKind } from './logic/types'
 
 export type SnakeSkinId = 'orchard' | 'berry' | 'tropic' | 'dusk'
 
-/** Three body colours, ordered head → tail. */
+/** Three starting fruit colours in eating order, oldest (tail) → newest (head). */
 export type SkinPalette = readonly [FruitKind, FruitKind, FruitKind]
 
 export interface SnakeSkin {
@@ -14,15 +14,20 @@ export interface SnakeSkin {
 
 /**
  * Curated skins keep the starting snake legible and stop two pastel fruits from
- * fighting each other. Lemon is never first: its pale yellow makes the white
- * eye nearly invisible on the head.
+ * fighting each other. Lemon is never last: the last fruit is the head, and its
+ * pale yellow makes the white eye nearly invisible.
  */
 export const SNAKE_SKINS = [
-  { id: 'orchard', palette: ['orange', 'apple', 'lemon'], unlock: 'default' },
+  { id: 'orchard', palette: ['lemon', 'orange', 'apple'], unlock: 'default' },
   { id: 'berry', palette: ['grape', 'berry', 'apple'], unlock: 'default' },
   { id: 'tropic', palette: ['melon', 'lemon', 'orange'], unlock: 'default' },
   { id: 'dusk', palette: ['apple', 'orange', 'grape'], unlock: 'default' },
 ] as const satisfies readonly SnakeSkin[]
+
+/** Head → tail colours for a fresh run: the last fruit eaten is the head. */
+export function startingSegmentColors(palette: SkinPalette): readonly FruitKind[] {
+  return [palette[2], palette[1], palette[0]]
+}
 
 export interface SkinChoice {
   readonly unlocked: readonly SnakeSkinId[]

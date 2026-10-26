@@ -51,7 +51,11 @@ export function tickMs(state: SnakeState): number {
   return Math.max(state.config.fastMinTickMs, Math.round(base * state.config.fastFactor))
 }
 
-export function createInitialState(config: SnakeConfig, rng: Rng): SnakeState {
+export function createInitialState(
+  config: SnakeConfig,
+  rng: Rng,
+  startingFruits: readonly FruitKind[] = [],
+): SnakeState {
   const headX = Math.floor(config.width / 2)
   const headY = Math.floor(config.height / 2)
   const snake: Cell[] = []
@@ -62,7 +66,7 @@ export function createInitialState(config: SnakeConfig, rng: Rng): SnakeState {
   const base: SnakeState = {
     config,
     snake,
-    segmentColors: snake.map(() => null),
+    segmentColors: snake.map((_, index) => startingFruits[index] ?? null),
     direction: 'right',
     queue: [],
     fruitWeights: { ...config.fruitWeight },

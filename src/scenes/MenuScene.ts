@@ -16,7 +16,7 @@ import {
 import { createRng } from '@mg/core/rng'
 import Phaser from 'phaser'
 import { snakeSave } from '../save'
-import { resolveSkin } from '../skins'
+import { resolveSkin, startingSegmentColors } from '../skins'
 import { drawBackdrop } from '../ui/backdrop'
 import { hasTouchInput } from '../ui/device'
 import { fruitDecoration } from '../ui/fruitDecoration'
@@ -126,7 +126,7 @@ export class MenuScene extends Phaser.Scene {
       onClick: () => this.openLanguage(),
     })
 
-    this.demo = createMenuDemo(this, menuSkin.palette)
+    this.demo = createMenuDemo(this, startingSegmentColors(menuSkin.palette))
     this.controlsIcon = this.add.graphics()
     this.drawControlHint()
 

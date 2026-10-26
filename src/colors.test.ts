@@ -113,10 +113,10 @@ describe('snake colors', () => {
 
   it('anchors every skin gradient on its three fruit body colours', () => {
     for (const skin of SNAKE_SKINS) {
-      const [head, middle, tail] = skin.palette
-      expect(skinGradient(skin.palette, 0)).toBe(snakeColors.art.fruits[head].body)
+      const [tail, middle, head] = skin.palette
+      expect(skinGradient(skin.palette, 0)).toBe(snakeColors.art.fruits[tail].body)
       expect(skinGradient(skin.palette, 0.5)).toBe(snakeColors.art.fruits[middle].body)
-      expect(skinGradient(skin.palette, 1)).toBe(snakeColors.art.fruits[tail].body)
+      expect(skinGradient(skin.palette, 1)).toBe(snakeColors.art.fruits[head].body)
     }
   })
 })

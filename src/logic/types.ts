@@ -74,7 +74,7 @@ export type SnakeStatus = 'alive' | 'dead' | 'won'
 export interface SnakeState {
   readonly config: SnakeConfig
   readonly snake: readonly Cell[]
-  /** One entry per snake cell; the fruit that segment was born from, or null for the skin base. */
+  /** One entry per snake cell; the fruit that segment was born from, or null for no fruit. */
   readonly segmentColors: readonly (FruitKind | null)[]
   readonly direction: Direction
   readonly queue: readonly Direction[]

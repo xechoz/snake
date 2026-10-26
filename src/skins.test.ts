@@ -1,7 +1,13 @@
 import { createRng } from '@mg/core/rng'
 import { describe, expect, it } from 'vitest'
 import { snakeColors } from './colors'
-import { resolveSkin, SNAKE_SKINS, type SnakeSkin, selectableSkins } from './skins'
+import {
+  resolveSkin,
+  SNAKE_SKINS,
+  type SnakeSkin,
+  selectableSkins,
+  startingSegmentColors,
+} from './skins'
 
 describe('snake skins', () => {
   it('has unique ids and valid, distinct three-fruit palettes', () => {
@@ -13,8 +19,16 @@ describe('snake skins', () => {
       expect(new Set(skin.palette).size).toBe(3)
       for (const kind of skin.palette) expect(fruits.has(kind)).toBe(true)
       // Lemon's pale yellow gives the white eye almost no contrast.
-      expect(skin.palette[0]).not.toBe('lemon')
+      expect(skin.palette[2]).not.toBe('lemon')
     }
+  })
+
+  it('starts with the palette reversed, so the newest fruit is the head', () => {
+    expect(startingSegmentColors(['lemon', 'orange', 'apple'])).toEqual([
+      'apple',
+      'orange',
+      'lemon',
+    ])
   })
 
   it('ships every current skin as default', () => {

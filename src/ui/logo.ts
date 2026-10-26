@@ -174,10 +174,10 @@ function logoForSkin(skin: SkinPalette): SnakeLogoColors {
   const fruits = snakeColors.art.fruits
   return {
     ...snakeColors.logo,
-    shadow: fruits[skin[0]].light,
+    shadow: fruits[skin[2]].light,
     fruit: fruits[skin[1]].body,
-    ribbonHead: fruits[skin[0]].light,
-    ribbonTail: fruits[skin[2]].dark,
+    ribbonHead: fruits[skin[2]].light,
+    ribbonTail: fruits[skin[0]].dark,
   }
 }
 
@@ -282,7 +282,7 @@ function createRibbon(
       x: point.x,
       y: point.y,
       color: skin
-        ? skinGradient(skin, 1 - index / last)
+        ? skinGradient(skin, index / last)
         : mixColor(logo.ribbonTail, logo.ribbonHead, index / last),
     }))
     .reverse()

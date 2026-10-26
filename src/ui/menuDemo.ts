@@ -2,7 +2,6 @@ import { getServices, mixColor } from '@mg/core'
 import type Phaser from 'phaser'
 import { snakeColors } from '../colors'
 import type { FruitKind } from '../logic/types'
-import type { SkinPalette } from '../skins'
 import { segmentColor } from './gameArt'
 import { MENU_DEMO_HEIGHT, MENU_DEMO_WIDTH } from './layout'
 import { drawBlockSnakeBody, drawFruit, drawSnakeHead, type SnakeBlock } from './snakeArt'
@@ -63,7 +62,10 @@ export interface MenuDemo {
  * A tiny self-playing board used as the menu's hero art. It shows turning,
  * eating and growing instead of explaining them in two lines of copy.
  */
-export function createMenuDemo(scene: Phaser.Scene, skin: SkinPalette | null = null): MenuDemo {
+export function createMenuDemo(
+  scene: Phaser.Scene,
+  startingFruits: readonly FruitKind[] = [],
+): MenuDemo {
   const theme = getServices().theme
   const boardWidth = COLS * CELL
   const boardHeight = ROWS * CELL
@@ -77,7 +79,7 @@ export function createMenuDemo(scene: Phaser.Scene, skin: SkinPalette | null = n
 
   let cells: Cell[] = cloneCells(START)
   let previous: Cell[] = cloneCells(START)
-  let segmentColors: (FruitKind | null)[] = cells.map(() => null)
+  let segmentColors: (FruitKind | null)[] = cells.map((_, index) => startingFruits[index] ?? null)
   let fruit: Cell | null = firstFood()
   let fruitIndex = 0
   let demoRound = 0
@@ -104,7 +106,7 @@ export function createMenuDemo(scene: Phaser.Scene, skin: SkinPalette | null = n
       return {
         x: point.x,
         y: point.y,
-        color: segmentColor(segmentColors[segmentIndex] ?? null, t, theme, false, skin),
+        color: segmentColor(segmentColors[segmentIndex] ?? null, t, theme, false),
       }
     })
     drawBlockSnakeBody(snake, blocks, CELL, theme.ink, 2.2)
@@ -122,11 +124,7 @@ export function createMenuDemo(scene: Phaser.Scene, skin: SkinPalette | null = n
         { x: head.x - next.x, y: head.y - next.y },
         CELL * 0.48,
         theme.ink,
-        headKind
-          ? snakeColors.art.fruits[headKind].light
-          : skin
-            ? snakeColors.art.fruits[skin[0]].light
-            : snakeColors.art.snakeHead,
+        headKind ? snakeColors.art.fruits[headKind].light : snakeColors.art.snakeHead,
         3.2,
         { tongue },
       )
@@ -181,7 +179,7 @@ export function createMenuDemo(scene: Phaser.Scene, skin: SkinPalette | null = n
       onComplete: () => {
         cells = cloneCells(START)
         previous = cloneCells(START)
-        segmentColors = cells.map(() => null)
+        segmentColors = cells.map((_, index) => startingFruits[index] ?? null)
         fruit = firstFood()
         fruitIndex = 0
         demoRound += 1

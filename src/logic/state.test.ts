@@ -77,6 +77,15 @@ describe('createInitialState', () => {
     ).toBe(false)
   })
 
+  it('paints starting fruit colours from head to tail without scoring', () => {
+    const state = createInitialState(config, createRng(1), ['apple', 'orange', 'lemon'])
+
+    expect(state.segmentColors).toEqual(['apple', 'orange', 'lemon'])
+    expect(state.score).toBe(0)
+    expect(state.speedScore).toBe(0)
+    expect(state.snake).toHaveLength(3)
+  })
+
   it('supports multiple fruit slots for future rewards', () => {
     const multi: SnakeConfig = { ...config, foodTarget: 3 }
     const state = createInitialState(multi, createRng(7))
