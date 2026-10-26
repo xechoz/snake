@@ -274,6 +274,8 @@ export const MENU_DEMO_ASPECT = MENU_DEMO_WIDTH / MENU_DEMO_HEIGHT
 export const MENU_SETTINGS_SIZE = 64
 export const MENU_PLAY_HEIGHT = 108
 export const MENU_LOGO_HEIGHT = 178
+export const MENU_HINT_HEIGHT = 34
+export const MENU_INSTALL_HINT_HEIGHT = 56
 
 /** Quiet band in the middle of the CTA reserved for the play icon and label. */
 export const MENU_PLAY_CHARM_CLEARANCE = 62
@@ -367,19 +369,33 @@ const LOGO_BEST_GAP = 16
 const BEST_HEIGHT = 40
 const BEST_PLAY_GAP = 34
 const PLAY_HINT_GAP = 28
-const HINT_HEIGHT = 30
 const SETTINGS_EDGE = 24
 const SETTINGS_TOP = 20
 const SETTINGS_GAP = 12
 const HEADER_CLEARANCE = 12
+const INSTALL_HINT_GAP = 12
+const DEMO_GAP = 24
+const DEMO_MIN_WIDTH = 240
+const DEMO_MIN_HEIGHT = 180
+const DEMO_MAX_WIDTH = 560
+const BOTTOM_BAND_MIN = 150
+const BOTTOM_BAND_MAX = 310
+const BOTTOM_BAND_RATIO = 0.19
+const BOTTOM_BAND_FLOOR = 24
 
 /**
  * The menu keeps one clear column of actions and pushes the secondary controls
  * (sound, language) into the top-right corner. Wide screens add a self-playing
- * demo board on the right; tall screens dock it below the controls. The demo is
+ * demo board on the right. Portrait screens reserve the lower fifth of the
+ * screen for the CTA and its hints instead of pinning the button to the bottom
+ * edge, and float the demo between the best line and the CTA. The demo is
  * dropped when it would crowd a small viewport.
  */
-export function computeMenuLayout(viewport: Viewport, logoHeight = MENU_LOGO_HEIGHT): MenuLayout {
+export function computeMenuLayout(
+  viewport: Viewport,
+  logoHeight = MENU_LOGO_HEIGHT,
+  showInstallHint = false,
+): MenuLayout {
   const { insets, width, height } = viewport
   const availableWidth = Math.max(1, width - insets.left - insets.right)
   const availableHeight = Math.max(1, height - insets.top - insets.bottom)
@@ -393,7 +409,7 @@ export function computeMenuLayout(viewport: Viewport, logoHeight = MENU_LOGO_HEI
     BEST_PLAY_GAP +
     MENU_PLAY_HEIGHT +
     PLAY_HINT_GAP +
-    HINT_HEIGHT
+    MENU_HINT_HEIGHT
 
   if (split) {
     const centerX = insets.left + Math.round(availableWidth * 0.34)
@@ -410,7 +426,7 @@ export function computeMenuLayout(viewport: Viewport, logoHeight = MENU_LOGO_HEI
     const logoY = top + logoHeight / 2
     const bestY = top + logoHeight + LOGO_BEST_GAP + BEST_HEIGHT / 2
     const playY = bestY + BEST_HEIGHT / 2 + BEST_PLAY_GAP + MENU_PLAY_HEIGHT / 2
-    const hintY = playY + MENU_PLAY_HEIGHT / 2 + PLAY_HINT_GAP + HINT_HEIGHT / 2
+    const hintY = playY + MENU_PLAY_HEIGHT / 2 + PLAY_HINT_GAP + MENU_HINT_HEIGHT / 2
 
     return {
       mode: 'split',
@@ -430,7 +446,7 @@ export function computeMenuLayout(viewport: Viewport, logoHeight = MENU_LOGO_HEI
         visible: true,
       },
       hintY,
-      installHintY: hintY + 36,
+      installHintY: hintY + MENU_HINT_HEIGHT / 2 + INSTALL_HINT_GAP + MENU_INSTALL_HINT_HEIGHT / 2,
       playWidth: Math.min(480, availableWidth - 48),
     }
   }
@@ -444,16 +460,33 @@ export function computeMenuLayout(viewport: Viewport, logoHeight = MENU_LOGO_HEI
     )
   const logoY = top + logoHeight / 2
   const bestY = top + logoHeight + LOGO_BEST_GAP + BEST_HEIGHT / 2
-  const playY = bestY + BEST_HEIGHT / 2 + BEST_PLAY_GAP + MENU_PLAY_HEIGHT / 2
-  const hintY = playY + MENU_PLAY_HEIGHT / 2 + PLAY_HINT_GAP + HINT_HEIGHT / 2
-  const installHintY = hintY + 34
-  const contentBottom = hintY + HINT_HEIGHT / 2
-  const dockTop = installHintY + 32
-  const remaining = insets.top + availableHeight - dockTop
-  const maxDemoWidth = Math.min(520, availableWidth - 48, (remaining - 48) * MENU_DEMO_ASPECT)
-  const demoVisible = remaining >= 240 && maxDemoWidth >= 240
-  const demoWidth = demoVisible ? maxDemoWidth : 0
-  const demoHeight = demoVisible ? demoWidth / MENU_DEMO_ASPECT : 0
+
+  // Leave a readable footer band under the CTA instead of docking the button to
+  // the screen edge. The hints live inside that band, below the primary action,
+  // so a two-line install note never crowds the button or the controls hint.
+  const installFooter = showInstallHint ? INSTALL_HINT_GAP + MENU_INSTALL_HINT_HEIGHT : 0
+  const footerHeight = PLAY_HINT_GAP + MENU_HINT_HEIGHT + installFooter
+  const bottomBand = Math.max(
+    clamp(Math.round(availableHeight * BOTTOM_BAND_RATIO), BOTTOM_BAND_MIN, BOTTOM_BAND_MAX),
+    footerHeight + BOTTOM_BAND_FLOOR,
+  )
+  const playBottom = insets.top + availableHeight - bottomBand
+  const playY = playBottom - MENU_PLAY_HEIGHT / 2
+  const hintY = playBottom + PLAY_HINT_GAP + MENU_HINT_HEIGHT / 2
+  const installHintY =
+    hintY + MENU_HINT_HEIGHT / 2 + INSTALL_HINT_GAP + MENU_INSTALL_HINT_HEIGHT / 2
+
+  const demoTop = bestY + BEST_HEIGHT / 2 + DEMO_GAP
+  const demoBottom = playY - MENU_PLAY_HEIGHT / 2 - DEMO_GAP
+  const demoSpace = Math.max(0, demoBottom - demoTop)
+  const demoMaxWidth = Math.min(DEMO_MAX_WIDTH, availableWidth - 96)
+  const demoHeight = Math.max(
+    0,
+    Math.min(demoMaxWidth / MENU_DEMO_ASPECT, demoSpace - DEMO_GAP * 2),
+  )
+  const demoWidth = demoHeight * MENU_DEMO_ASPECT
+  const demoVisible = demoHeight >= DEMO_MIN_HEIGHT && demoWidth >= DEMO_MIN_WIDTH
+  const demoY = demoTop + demoSpace / 2
 
   return {
     mode: 'single',
@@ -465,9 +498,9 @@ export function computeMenuLayout(viewport: Viewport, logoHeight = MENU_LOGO_HEI
     settings,
     demo: {
       x: centerX,
-      y: demoVisible ? dockTop + remaining / 2 : contentBottom,
-      width: demoWidth,
-      height: demoHeight,
+      y: demoVisible ? demoY : demoBottom,
+      width: demoVisible ? demoWidth : 0,
+      height: demoVisible ? demoHeight : 0,
       scale: demoVisible ? demoWidth / MENU_DEMO_WIDTH : 0,
       angle: 0,
       visible: demoVisible,

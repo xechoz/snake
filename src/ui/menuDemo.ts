@@ -94,12 +94,16 @@ export function createMenuDemo(scene: Phaser.Scene): MenuDemo {
     })
 
     snake.clear()
-    const blocks: SnakeBlock[] = points.map((point, index) => {
-      const t = points.length <= 1 ? 0 : index / (points.length - 1)
+    // The head cell is drawn as a circle below. Leaving its square body tile in
+    // the body pass would make the tile's ink corners poke out around the
+    // circular head, reading as a second, squarish border.
+    const blocks: SnakeBlock[] = points.slice(1).map((point, index) => {
+      const segmentIndex = index + 1
+      const t = points.length <= 1 ? 0 : segmentIndex / (points.length - 1)
       return {
         x: point.x,
         y: point.y,
-        color: segmentColor(segmentColors[index] ?? null, t, theme, false),
+        color: segmentColor(segmentColors[segmentIndex] ?? null, t, theme, false),
       }
     })
     drawBlockSnakeBody(snake, blocks, CELL, theme.ink, 2.2)
@@ -115,10 +119,10 @@ export function createMenuDemo(scene: Phaser.Scene): MenuDemo {
         head.x,
         head.y,
         { x: head.x - next.x, y: head.y - next.y },
-        CELL * 0.44,
+        CELL * 0.48,
         theme.ink,
         headKind ? snakeColors.art.fruits[headKind].light : snakeColors.art.snakeHead,
-        3,
+        3.2,
         { tongue },
       )
     }
@@ -137,20 +141,31 @@ export function createMenuDemo(scene: Phaser.Scene): MenuDemo {
     }
   }
 
-  const burst = (cell: Cell): void => {
-    const ring = scene.add.graphics()
-    ring.lineStyle(3, theme.accentWarm, 0.95)
-    ring.strokeCircle(0, 0, 13)
-    ring.setPosition(cellX(cell.x), cellY(cell.y))
-    container.add(ring)
-    scene.tweens.add({
-      targets: ring,
-      scale: 2.4,
-      alpha: 0,
-      duration: 420,
-      ease: 'Cubic.out',
-      onComplete: () => ring.destroy(),
-    })
+  // A few flecks flying outward instead of a stroked ring: a ring around the
+  // head reads as one more border, which is exactly what we are removing.
+  const burst = (cell: Cell, kind: FruitKind): void => {
+    const x = cellX(cell.x)
+    const y = cellY(cell.y)
+    const colors = [snakeColors.art.fruits[kind].body, theme.accentWarm, theme.surface]
+    const count = 6
+
+    for (let index = 0; index < count; index += 1) {
+      const color = colors[index % colors.length] ?? theme.accentWarm
+      const dot = scene.add.circle(x, y, 4, color)
+      container.add(dot)
+      const angle = (Math.PI * 2 * index) / count
+      const distance = 24 + (index % 3) * 8
+      scene.tweens.add({
+        targets: dot,
+        x: x + Math.cos(angle) * distance,
+        y: y + Math.sin(angle) * distance,
+        alpha: 0,
+        scale: 0.4,
+        duration: 420,
+        ease: 'Quad.out',
+        onComplete: () => dot.destroy(),
+      })
+    }
   }
 
   const reset = (): void => {
@@ -214,7 +229,7 @@ export function createMenuDemo(scene: Phaser.Scene): MenuDemo {
       onComplete: () => {
         progress = 1
         if (!eating) return
-        if (targetFruit) burst(targetFruit)
+        if (targetFruit) burst(targetFruit, fruitKindAt(fruitIndex + demoRound))
         fruitIndex += 1
         const nextFood = FOOD[fruitIndex]
         fruit = nextFood ? { ...nextFood } : null

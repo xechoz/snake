@@ -43,6 +43,7 @@ export class MenuScene extends Phaser.Scene {
   private controlsIcon!: Phaser.GameObjects.Graphics
   private installHint?: Phaser.GameObjects.Text
   private touch = false
+  private showInstallHint = false
   private controlIconWidth = CONTROL_ICON_TOUCH
 
   constructor() {
@@ -55,6 +56,7 @@ export class MenuScene extends Phaser.Scene {
     const best = snakeSave(services).read().best
     const viewport = readViewport(this)
     this.touch = hasTouchInput()
+    this.showInstallHint = this.shouldShowInstallHint()
     this.controlIconWidth = this.touch ? CONTROL_ICON_TOUCH : CONTROL_ICON_DESKTOP
 
     services.platform.gameplayStop()
@@ -62,7 +64,7 @@ export class MenuScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(theme.bg)
     this.backdrop = this.add.graphics()
     this.logo = createSnakeLogo(this)
-    const initial = computeMenuLayout(viewport, this.logo.height)
+    const initial = computeMenuLayout(viewport, this.logo.height, this.showInstallHint)
 
     this.bestStar = this.add.graphics()
     this.bestLabel = this.add
@@ -123,7 +125,7 @@ export class MenuScene extends Phaser.Scene {
       )
       .setOrigin(0.5)
 
-    if (this.shouldShowInstallHint()) {
+    if (this.showInstallHint) {
       this.installHint = this.add
         .text(0, 0, services.i18n.t('menu.fullscreenHint'), {
           ...textStyle(theme, 22, theme.textMuted),
@@ -134,7 +136,7 @@ export class MenuScene extends Phaser.Scene {
 
     this.applyLayout(viewport, initial)
     onLayoutChange(this, (next) =>
-      this.applyLayout(next, computeMenuLayout(next, this.logo.height)),
+      this.applyLayout(next, computeMenuLayout(next, this.logo.height, this.showInstallHint)),
     )
     this.playEntrance()
 

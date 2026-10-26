@@ -10,6 +10,8 @@ import {
   GAME_OVER_MODAL_HEIGHT_ADS,
   GAME_OVER_MODAL_WIDTH,
   inlineScorePositions,
+  MENU_HINT_HEIGHT,
+  MENU_INSTALL_HINT_HEIGHT,
   MENU_LOGO_HEIGHT,
   MENU_PLAY_CHARM_CLEARANCE,
   MENU_PLAY_HEIGHT,
@@ -353,21 +355,51 @@ describe('computeMenuLayout', () => {
     )
   })
 
-  it('anchors the portrait stack high and docks the demo below it', () => {
+  it('raises the portrait CTA and puts the hint footer below it', () => {
     const layout = computeMenuLayout(viewport(720, 1558))
 
     expect(layout.mode).toBe('single')
     expect(layout.centerX).toBe(360)
     expect(layout.logoMaxWidth).toBe(720 - 48)
     expect(layout.playWidth).toBe(480)
-    expect(layout.logoY).toBeLessThan(1558 * 0.2)
-    expect(layout.settings.sound.y + layout.settings.size / 2).toBeLessThanOrEqual(
-      layout.logoY - MENU_LOGO_HEIGHT / 2,
-    )
+    expect(layout.playY).toBeGreaterThan(1558 * 0.72)
+    expect(layout.playY).toBeLessThan(1558 * 0.82)
+    expect(layout.playY + MENU_PLAY_HEIGHT / 2).toBeLessThanOrEqual(1558 * 0.84)
+    expect(layout.hintY).toBeGreaterThan(layout.playY + MENU_PLAY_HEIGHT / 2)
+    expect(layout.installHintY).toBeGreaterThan(layout.hintY)
     expect(layout.demo.visible).toBe(true)
     expect(layout.demo.angle).toBe(0)
-    expect(layout.demo.y - layout.demo.height / 2).toBeGreaterThan(layout.installHintY)
-    expect(layout.demo.y + layout.demo.height / 2).toBeLessThan(1558)
+    expect(layout.demo.y - layout.demo.height / 2).toBeGreaterThan(layout.bestY)
+    expect(layout.demo.y + layout.demo.height / 2).toBeLessThan(layout.playY - MENU_PLAY_HEIGHT / 2)
+  })
+
+  it('reserves two lines for the install hint without crowding the CTA footer', () => {
+    const insets = { top: 0, right: 0, bottom: 40, left: 0 }
+    const layout = computeMenuLayout(viewport(720, 1558, insets), MENU_LOGO_HEIGHT, true)
+    const hintBottom = layout.hintY + MENU_HINT_HEIGHT / 2
+    const installTop = layout.installHintY - MENU_INSTALL_HINT_HEIGHT / 2
+
+    expect(installTop).toBeGreaterThan(hintBottom)
+    expect(layout.installHintY + MENU_INSTALL_HINT_HEIGHT / 2).toBeLessThanOrEqual(
+      1558 - insets.bottom,
+    )
+    expect(layout.playY + MENU_PLAY_HEIGHT / 2).toBeLessThan(layout.hintY - MENU_HINT_HEIGHT / 2)
+  })
+
+  it('keeps the CTA near four fifths of the height across portrait sizes', () => {
+    for (const [width, height] of [
+      [720, 1558],
+      [720, 1280],
+      [720, 960],
+      [720, 1895],
+    ] as const) {
+      const layout = computeMenuLayout(viewport(width, height))
+      const ratio = (layout.playY + MENU_PLAY_HEIGHT / 2) / height
+
+      expect(ratio, `${width}x${height}`).toBeGreaterThan(0.78)
+      expect(ratio, `${width}x${height}`).toBeLessThan(0.85)
+      expect(layout.hintY, `${width}x${height}`).toBeGreaterThan(layout.playY)
+    }
   })
 
   it('keeps the demo on a 4:3 tablet and drops it on square screens', () => {
@@ -376,26 +408,51 @@ describe('computeMenuLayout', () => {
     expect(computeMenuLayout(viewport(720, 720)).mode).toBe('single')
   })
 
+  it('keeps the landscape split and its install hint inside the safe area', () => {
+    const insets = { top: 0, right: 0, bottom: 40, left: 0 }
+    const layout = computeMenuLayout(viewport(1558, 720, insets), MENU_LOGO_HEIGHT, true)
+
+    expect(layout.mode).toBe('split')
+    expect(layout.demo.visible).toBe(true)
+    expect(layout.playY + MENU_PLAY_HEIGHT / 2).toBeLessThan(720 * 0.75)
+    expect(layout.hintY).toBeGreaterThan(layout.playY + MENU_PLAY_HEIGHT / 2)
+    expect(layout.installHintY + MENU_INSTALL_HINT_HEIGHT / 2).toBeLessThanOrEqual(
+      720 - insets.bottom,
+    )
+  })
+
   it('keeps every menu element inside the safe area', () => {
     const insets = { top: 40, right: 88, bottom: 40, left: 88 }
-    const sizes: Array<readonly [number, number, Insets]> = [
-      [1280, 720, NO_INSETS],
-      [1558, 720, NO_INSETS],
-      [960, 720, NO_INSETS],
-      [720, 1558, NO_INSETS],
-      [768, 1024, NO_INSETS],
-      [720, 720, NO_INSETS],
-      [1558, 720, insets],
+    const cases: Array<readonly [number, number, Insets, boolean]> = [
+      [1280, 720, NO_INSETS, false],
+      [1558, 720, NO_INSETS, false],
+      [960, 720, NO_INSETS, false],
+      [720, 1558, NO_INSETS, false],
+      [768, 1024, NO_INSETS, false],
+      [720, 720, NO_INSETS, false],
+      [1558, 720, insets, true],
+      [720, 1558, insets, true],
     ]
 
-    for (const [width, height, edge] of sizes) {
-      const layout = computeMenuLayout(viewport(width, height, edge))
+    for (const [width, height, edge, showInstall] of cases) {
+      const layout = computeMenuLayout(viewport(width, height, edge), MENU_LOGO_HEIGHT, showInstall)
       const tag = `${width}x${height}`
       expect(layout.centerX, tag).toBeGreaterThanOrEqual(edge.left)
       expect(layout.centerX, tag).toBeLessThanOrEqual(width - edge.right)
       expect(layout.logoY, tag).toBeGreaterThanOrEqual(edge.top)
       expect(layout.hintY, tag).toBeLessThanOrEqual(height - edge.bottom)
-      expect(layout.installHintY, tag).toBeLessThanOrEqual(height - edge.bottom)
+      if (showInstall) {
+        expect(layout.installHintY - MENU_INSTALL_HINT_HEIGHT / 2, tag).toBeGreaterThanOrEqual(
+          edge.top,
+        )
+        expect(layout.installHintY + MENU_INSTALL_HINT_HEIGHT / 2, tag).toBeLessThanOrEqual(
+          height - edge.bottom,
+        )
+      }
+      expect(layout.playY - MENU_PLAY_HEIGHT / 2, tag).toBeGreaterThanOrEqual(edge.top)
+      expect(layout.playY + MENU_PLAY_HEIGHT / 2, tag).toBeLessThanOrEqual(height - edge.bottom)
+      expect(layout.centerX - layout.playWidth / 2, tag).toBeGreaterThanOrEqual(edge.left)
+      expect(layout.centerX + layout.playWidth / 2, tag).toBeLessThanOrEqual(width - edge.right)
 
       for (const point of [layout.settings.sound, layout.settings.language]) {
         expect(point.x - layout.settings.size / 2, tag).toBeGreaterThanOrEqual(edge.left)
@@ -408,6 +465,10 @@ describe('computeMenuLayout', () => {
         expect(layout.settings.sound.y + layout.settings.size / 2, tag).toBeLessThanOrEqual(
           layout.logoY - MENU_LOGO_HEIGHT / 2,
         )
+      }
+
+      if (layout.mode === 'single' && layout.demo.visible) {
+        expect(layout.demo.y + layout.demo.height / 2, tag).toBeLessThan(layout.installHintY)
       }
 
       if (!layout.demo.visible) continue
