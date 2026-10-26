@@ -264,19 +264,20 @@ export class MenuScene extends Phaser.Scene {
     graphics.clear()
 
     if (this.touch) {
-      graphics.fillStyle(theme.surface, 0.8)
-      graphics.fillCircle(0, 0, 26)
-      graphics.lineStyle(1, theme.borderSoft, 1)
-      graphics.strokeCircle(0, 0, 26)
-      graphics.fillStyle(theme.ink, 0.3)
-      graphics.fillTriangle(0, -23, -4, -17, 4, -17)
-      graphics.fillTriangle(0, 23, -4, 17, 4, 17)
-      graphics.fillTriangle(-23, 0, -17, -4, -17, 4)
-      graphics.fillTriangle(23, 0, 17, -4, 17, 4)
+      // A fingertip with motion lines reads as "swipe" instead of "hold".
+      graphics.lineStyle(3, theme.ink, 0.18)
+      graphics.lineBetween(-26, -8, -13, -8)
+      graphics.lineStyle(3, theme.ink, 0.26)
+      graphics.lineBetween(-24, 1, -13, 1)
+      graphics.lineStyle(3, theme.ink, 0.34)
+      graphics.lineBetween(-26, 10, -13, 10)
+
       graphics.fillStyle(theme.accentInk, 1)
-      graphics.fillCircle(0, -4, 11)
+      graphics.fillRoundedRect(-8, 12, 26, 14, 7)
+      graphics.fillRoundedRect(-3, 2, 10, 20, 5)
+      graphics.fillCircle(2, 0, 11)
       graphics.fillStyle(theme.highlight, 0.5)
-      graphics.fillCircle(-3, -8, 3.5)
+      graphics.fillCircle(-1, -3, 3.5)
       return
     }
 
