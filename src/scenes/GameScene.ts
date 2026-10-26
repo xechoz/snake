@@ -18,6 +18,7 @@ import { snakeSave } from '../save'
 import { resolveSkin, type SnakeSkinId, startingSegmentColors } from '../skins'
 import { drawBackdrop } from '../ui/backdrop'
 import { hasTouchInput } from '../ui/device'
+import { FoodLayer } from '../ui/FoodLayer'
 import {
   flashDanger,
   showEatFeedback,
@@ -30,7 +31,6 @@ import {
   drawBoardFrame,
   drawCountdownBackdrop,
   drawCountdownFruits,
-  drawFoods,
   drawPickups,
   drawSnake,
 } from '../ui/gameArt'
@@ -75,7 +75,7 @@ export class GameScene extends Phaser.Scene {
   private backdropGraphics!: Phaser.GameObjects.Graphics
   private boardGraphics!: Phaser.GameObjects.Graphics
   private snakeGraphics!: Phaser.GameObjects.Graphics
-  private foodGraphics!: Phaser.GameObjects.Graphics
+  private foodLayer!: FoodLayer
   private powerUpGraphics!: Phaser.GameObjects.Graphics
   private superGraphics!: Phaser.GameObjects.Graphics
   private lastFoods: SnakeState['foods'] | null = null
@@ -111,7 +111,7 @@ export class GameScene extends Phaser.Scene {
     this.drawBoard()
 
     this.snakeGraphics = this.add.graphics().setDepth(4)
-    this.foodGraphics = this.add.graphics().setDepth(3)
+    this.foodLayer = new FoodLayer(this, theme)
     this.powerUpGraphics = this.add.graphics().setDepth(5)
     this.superGraphics = this.add.graphics().setDepth(6)
 
@@ -153,6 +153,7 @@ export class GameScene extends Phaser.Scene {
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.removeHiddenListener?.()
+      this.foodLayer.destroy()
     })
   }
 
@@ -315,7 +316,7 @@ export class GameScene extends Phaser.Scene {
 
   private handleLayout(viewport: Viewport): void {
     const next = computeSnakeLayout(viewport)
-    if (layoutsEqual(next, this.layout)) return
+    if (layoutsEqual(next, this.layout) && !this.foodLayer.needsRebake()) return
 
     const rotated = next.orientation !== this.layout.orientation && this.isPlaying()
     this.layout = next
@@ -549,7 +550,7 @@ export class GameScene extends Phaser.Scene {
     )
 
     if (this.state.foods !== this.lastFoods) {
-      drawFoods(this.foodGraphics, this.state, this.layout.board, this.time.now, theme)
+      this.foodLayer.sync(this.state.foods, this.layout.board, theme)
       this.lastFoods = this.state.foods
     }
 

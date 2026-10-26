@@ -32,7 +32,7 @@ const DIRECTION_VECTORS: Record<Direction, Cell> = {
 const FRAME_MAT = 10
 const FRAME_RADIUS = 28
 /** Food radius as a fraction of a cell; large enough to read at phone sizes. */
-const FOOD_RADIUS = 0.4
+export const FOOD_RADIUS = 0.4
 const POWER_UP_RADIUS = 0.32
 const SUPER_FRUIT_RADIUS = 0.34
 /**
@@ -142,28 +142,6 @@ export function drawSnake(
       drawEffectRing(snakeGraphics, head.x, head.y, cell * 0.72, state.effect.kind, ratio, theme)
       drawEffectFlair(snakeGraphics, head, direction, cell, state.effect.kind, time)
     }
-  }
-}
-
-/** Static fruit layer. Call only when `state.foods` or the board changes. */
-export function drawFoods(
-  foodGraphics: Phaser.GameObjects.Graphics,
-  state: SnakeState,
-  board: BoardMetrics,
-  time: number,
-  theme: Theme,
-): void {
-  foodGraphics.clear()
-  for (const food of state.foods) {
-    drawFruit(
-      foodGraphics,
-      cellCenterX(board, food.cell.x),
-      cellCenterY(board, food.cell.y),
-      board.cell * FOOD_RADIUS,
-      food.kind,
-      theme,
-      time,
-    )
   }
 }
 
