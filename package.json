@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node ../../tooling/free-dev-port.ts 5173",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"

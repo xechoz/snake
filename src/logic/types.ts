@@ -5,7 +5,22 @@ export interface Cell {
 
 export type Direction = 'up' | 'down' | 'left' | 'right'
 
-export const FRUIT_KINDS = ['apple', 'orange', 'lemon', 'grape', 'berry', 'melon'] as const
+export const FRUIT_KINDS = [
+  'apple',
+  'orange',
+  'lemon',
+  'grape',
+  'berry',
+  'melon',
+  'banana',
+  'watermelon',
+  'strawberry',
+  'peach',
+  'mango',
+  'kiwi',
+  'pomegranate',
+  'pineapple',
+] as const
 
 export type FruitKind = (typeof FRUIT_KINDS)[number]
 

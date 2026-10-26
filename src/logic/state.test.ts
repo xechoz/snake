@@ -11,7 +11,14 @@ import {
   step,
   tickMs,
 } from './state'
-import type { FruitFeast, SnakeConfig, SnakeState } from './types'
+import {
+  FRUIT_KINDS,
+  type FruitFeast,
+  type FruitKind,
+  type FruitWeights,
+  type SnakeConfig,
+  type SnakeState,
+} from './types'
 
 const config: SnakeConfig = {
   ...snakeConfig,
@@ -49,6 +56,12 @@ function makeState(patch: Partial<SnakeState> = {}): SnakeState {
     deathReason: null,
     ...patch,
   }
+}
+
+function onlyFruitWeight(kind: FruitKind): FruitWeights {
+  return Object.fromEntries(
+    FRUIT_KINDS.map((candidate) => [candidate, candidate === kind ? 1 : 0]),
+  ) as FruitWeights
 }
 
 function feastState(patch: Partial<FruitFeast> = {}): FruitFeast {
@@ -102,7 +115,15 @@ describe('createInitialState', () => {
 
 describe('fruit odds', () => {
   it('exposes the high-value fruits used by reward boosts', () => {
-    expect(highValueFruits).toEqual(['grape', 'berry', 'melon'])
+    expect(highValueFruits).toEqual([
+      'grape',
+      'berry',
+      'melon',
+      'mango',
+      'kiwi',
+      'pomegranate',
+      'pineapple',
+    ])
     for (const kind of highValueFruits) {
       expect(config.fruitScore[kind]).toBeGreaterThanOrEqual(15)
     }
@@ -112,14 +133,11 @@ describe('fruit odds', () => {
     const state = makeState()
     const boosted = boostFruitWeights(state, 2, highValueFruits)
 
-    expect(boosted.fruitWeights).toEqual({
-      apple: 3,
-      orange: 3,
-      lemon: 3,
-      grape: 4,
-      berry: 4,
-      melon: 2,
-    })
+    for (const kind of FRUIT_KINDS) {
+      expect(boosted.fruitWeights[kind]).toBe(
+        config.fruitWeight[kind] * (highValueFruits.includes(kind) ? 2 : 1),
+      )
+    }
     expect(state.fruitWeights).toEqual(config.fruitWeight)
     expect(config.fruitWeight.grape).toBe(2)
   })
@@ -127,11 +145,26 @@ describe('fruit odds', () => {
   it('uses the state weights for the next fruit', () => {
     const state = makeState({
       foods: [{ cell: { x: 3, y: 2 }, kind: 'apple' }],
-      fruitWeights: { apple: 0, orange: 0, lemon: 0, grape: 0, berry: 0, melon: 1 },
+      fruitWeights: onlyFruitWeight('melon'),
     })
 
     const result = step(state, createRng(1))
     expect(result.state.foods[0]?.kind).toBe('melon')
+  })
+
+  it('keeps the average spawn value stable across the fruit table', () => {
+    const totalWeight = FRUIT_KINDS.reduce((sum, kind) => sum + snakeConfig.fruitWeight[kind], 0)
+    const totalValue = FRUIT_KINDS.reduce(
+      (sum, kind) => sum + snakeConfig.fruitWeight[kind] * snakeConfig.fruitScore[kind],
+      0,
+    )
+
+    for (const kind of FRUIT_KINDS) {
+      expect(snakeConfig.fruitWeight[kind]).toBeGreaterThan(0)
+      expect(snakeConfig.fruitScore[kind]).toBeGreaterThan(0)
+    }
+    expect(totalValue / totalWeight).toBeGreaterThan(11.6)
+    expect(totalValue / totalWeight).toBeLessThan(12.6)
   })
 })
 

@@ -33,6 +33,8 @@ const FRAME_MAT = 10
 const FRAME_RADIUS = 28
 /** Food radius as a fraction of a cell; large enough to read at phone sizes. */
 const FOOD_RADIUS = 0.4
+const POWER_UP_RADIUS = 0.32
+const SUPER_FRUIT_RADIUS = 0.34
 /**
  * Where the mat's rounded-corner arc crosses the 45° diagonal, relative to the
  * playfield corner. The corner sprigs grow outward from here, so their tails
@@ -182,7 +184,7 @@ export function drawPickups(
       powerUpGraphics,
       cellCenterX(board, powerUp.cell.x),
       cellCenterY(board, powerUp.cell.y),
-      board.cell * 0.34,
+      board.cell * POWER_UP_RADIUS,
       powerUp.kind,
       time,
     )
@@ -196,7 +198,7 @@ export function drawPickups(
       superGraphics,
       cellCenterX(board, state.superItem.x),
       cellCenterY(board, state.superItem.y),
-      board.cell * 0.34,
+      board.cell * SUPER_FRUIT_RADIUS,
       time,
       theme,
     )

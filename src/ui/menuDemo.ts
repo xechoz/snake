@@ -43,7 +43,16 @@ const FOOD: readonly Cell[] = [
   { x: 2, y: 3 },
 ]
 
-const FOOD_KINDS: readonly FruitKind[] = ['apple', 'melon']
+const FOOD_KINDS: readonly FruitKind[] = [
+  'banana',
+  'watermelon',
+  'mango',
+  'strawberry',
+  'pineapple',
+  'kiwi',
+  'peach',
+  'pomegranate',
+]
 
 const VECTORS: Record<DemoDirection, Cell> = {
   right: { x: 1, y: 0 },
