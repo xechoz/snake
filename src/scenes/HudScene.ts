@@ -29,6 +29,7 @@ import {
   type SnakeLayout,
 } from '../ui/layout'
 import { PauseButton } from '../ui/PauseButton'
+import { type RestartOptions, shouldRestartGameOver } from '../ui/restartGate'
 import { resultMeta, resultTitle } from '../ui/resultCopy'
 import { superOfferActions } from '../ui/superOfferActions'
 import type { GameScene } from './GameScene'
@@ -306,10 +307,11 @@ export class HudScene extends Phaser.Scene {
       heroFontSize: GAME_OVER_HERO_SIZE,
     })
 
-    const restart = (options?: { commercial?: boolean }): void => {
+    const restart = (options?: RestartOptions): void => {
       // The ad callback may resolve after the player already closed the modal
-      // or restarted; only restart while this game-over modal is still open.
-      if (!this.modal?.active) return
+      // or restarted. The reward path still has to start the next run, but an
+      // ordinary restart only applies while its modal is open.
+      if (!shouldRestartGameOver(this.modal?.active ?? false, options)) return
       void game.restartGame(options)
     }
     const actions: ModalAction[] = canOfferSuper

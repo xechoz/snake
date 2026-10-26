@@ -2,6 +2,7 @@ import type { Insets, Viewport } from '@mg/core'
 import { describe, expect, it } from 'vitest'
 import {
   ACTION_LABEL_BAND,
+  CROWN_BADGE_RATIO,
   computeGameOverOverlay,
   computeMenuLayout,
   computeSnakeLayout,
@@ -149,8 +150,8 @@ describe('computeGameOverOverlay', () => {
     expect(overlay.card).toEqual({ x: 320, y: 115, width: 640, height: 490 })
     expect(overlay.close).toEqual({ x: 916, y: 159 })
     expect(overlay.closeSize).toBe(56)
-    expect(overlay.crown).toEqual({ x: 640, y: 99 })
-    expect(overlay.crownSize).toBe(65)
+    expect(overlay.crown).toEqual({ x: 640, y: 75 })
+    expect(overlay.crownSize).toBe(97)
   })
 
   it('moves fireworks above and below the card on portrait screens', () => {
@@ -197,9 +198,10 @@ describe('computeGameOverOverlay', () => {
       expect(overlay.close.x + overlay.closeSize / 2, tag).toBeLessThan(cardRight)
       expect(overlay.close.y + overlay.closeSize / 2, tag).toBeLessThan(cardBottom)
 
+      const badgeRadius = overlay.crownSize * CROWN_BADGE_RATIO
       expect(overlay.crown.x, tag).toBe(overlay.card.x + overlay.card.width / 2)
-      expect(overlay.crown.y - overlay.crownSize / 2, tag).toBeGreaterThanOrEqual(8)
-      expect(overlay.crown.y + overlay.crownSize / 2, tag).toBeLessThanOrEqual(overlay.card.y + 32)
+      expect(overlay.crown.y - badgeRadius, tag).toBeGreaterThanOrEqual(8)
+      expect(overlay.crown.y + badgeRadius, tag).toBeLessThanOrEqual(overlay.card.y + 24)
 
       const sideRoom = Math.min(overlay.card.x, width - cardRight)
       for (const burst of overlay.bursts) {

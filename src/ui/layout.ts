@@ -19,7 +19,8 @@ export const GAME_OVER_MODAL_HEIGHT = 490
 const MODAL_SCREEN_MARGIN = 48
 const CLOSE_INSET = 44
 const CLOSE_SIZE = 56
-const CROWN_GAP = 16
+export const CROWN_BADGE_RATIO = 0.62
+const CROWN_TITLE_GAP = 4
 const BURST_MARGIN = 24
 const BURST_SIDE_ROOM = 96
 
@@ -57,10 +58,13 @@ export function computeGameOverOverlay(
     width,
     height,
   }
-  const crownSize = Math.round(spec.heroFontSize * 0.9)
+  const crownSize = Math.round(spec.heroFontSize * 1.35)
+  const badgeRadius = crownSize * CROWN_BADGE_RATIO
   const crown = {
     x: card.x + card.width / 2,
-    y: Math.max(crownSize / 2 + CROWN_GAP, card.y - CROWN_GAP),
+    // The badge bottom sits just above the title block, which starts at
+    // card.y + 24. Keep the full badge on screen on short viewports.
+    y: Math.max(badgeRadius + 8, Math.round(card.y + 24 - badgeRadius - CROWN_TITLE_GAP)),
   }
   const close = {
     x: card.x + card.width - CLOSE_INSET,

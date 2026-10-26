@@ -1,5 +1,6 @@
 import type { AdService, ModalAction } from '@mg/core'
 import { SUPER_PLACEMENT } from '../ads'
+import type { RestartOptions } from './restartGate'
 
 export interface SuperOfferActionsOptions {
   ads: Pick<AdService, 'showRewarded'>
@@ -7,7 +8,7 @@ export interface SuperOfferActionsOptions {
   rewardedLabel: string
   loadingLabel: string
   grant: () => void
-  restart: (options?: { commercial?: boolean }) => void
+  restart: (options?: RestartOptions) => void
 }
 
 /**
