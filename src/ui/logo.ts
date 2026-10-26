@@ -1,4 +1,4 @@
-import { cssColor, getServices, mixColor } from '@mg/core'
+import { cssColor, getServices, getTextResolution, mixColor } from '@mg/core'
 import type Phaser from 'phaser'
 import { type SnakeLogoColors, skinGradient, snakeColors } from '../colors'
 import type { SkinPalette } from '../skins'
@@ -202,6 +202,7 @@ function createGlyph(
     color: cssColor(color),
     stroke: cssColor(logo.outline),
     strokeThickness,
+    resolution: getTextResolution(),
   })
 
   const face = scene.add.text(0, 0, character, style(logo.face, STROKE)).setOrigin(0.5)

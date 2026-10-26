@@ -99,12 +99,13 @@ export class FloatingJoystick extends Phaser.GameObjects.Container {
 
   private handleDown(pointer: Phaser.Input.Pointer): void {
     if (!this.enabled || this.activePointerId !== null) return
-    if (this.isBlocked(pointer)) return
+    const point = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y)
+    if (this.isBlocked(point)) return
     this.activePointerId = pointer.id
     this.lastDirection = null
     this.baseRevealed = false
     this.knob.setPosition(0, 0)
-    this.setPosition(pointer.x, pointer.y)
+    this.setPosition(point.x, point.y)
     this.scene.tweens.killTweensOf(this)
     this.scene.tweens.killTweensOf(this.base)
     this.base.setAlpha(0)
@@ -113,8 +114,9 @@ export class FloatingJoystick extends Phaser.GameObjects.Container {
 
   private handleMove(pointer: Phaser.Input.Pointer): void {
     if (pointer.id !== this.activePointerId) return
-    const dx = pointer.x - this.x
-    const dy = pointer.y - this.y
+    const point = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y)
+    const dx = point.x - this.x
+    const dy = point.y - this.y
     const length = Math.hypot(dx, dy)
     if (!this.baseRevealed && length >= BASE_REVEAL_DISTANCE) {
       this.baseRevealed = true
@@ -140,14 +142,14 @@ export class FloatingJoystick extends Phaser.GameObjects.Container {
     this.reset()
   }
 
-  private isBlocked(pointer: Phaser.Input.Pointer): boolean {
+  private isBlocked(point: { readonly x: number; readonly y: number }): boolean {
     const rect = this.blockedRect
     if (!rect) return false
     return (
-      pointer.x >= rect.x &&
-      pointer.x <= rect.x + rect.width &&
-      pointer.y >= rect.y &&
-      pointer.y <= rect.y + rect.height
+      point.x >= rect.x &&
+      point.x <= rect.x + rect.width &&
+      point.y >= rect.y &&
+      point.y <= rect.y + rect.height
     )
   }
 }

@@ -1,4 +1,4 @@
-import type { Theme } from '@mg/core'
+import { readViewport, type Theme } from '@mg/core'
 import Phaser from 'phaser'
 import { snakeColors } from '../colors'
 import type { Point } from './layout'
@@ -101,8 +101,7 @@ function richPalette(): readonly number[] {
 }
 
 function playConfetti(scene: Phaser.Scene, count: number, colors: readonly number[]): void {
-  const width = scene.scale.width
-  const height = scene.scale.height
+  const { width, height } = readViewport(scene)
 
   for (let index = 0; index < count; index += 1) {
     const x = Phaser.Math.Between(20, width - 20)
@@ -137,9 +136,10 @@ function playFirework(
   colors: readonly number[],
   delay: number,
 ): void {
-  const x = Phaser.Math.Clamp(origin.x, 24, scene.scale.width - 24)
-  const y = Phaser.Math.Clamp(origin.y, 24, scene.scale.height - 24)
-  const startY = Math.min(scene.scale.height - 16, y + 70)
+  const { width, height } = readViewport(scene)
+  const x = Phaser.Math.Clamp(origin.x, 24, width - 24)
+  const y = Phaser.Math.Clamp(origin.y, 24, height - 24)
+  const startY = Math.min(height - 16, y + 70)
   const rocket = scene.add.circle(x, startY, 4, colors[0] ?? 0xffffff).setDepth(EFFECT_DEPTH)
 
   scene.tweens.add({

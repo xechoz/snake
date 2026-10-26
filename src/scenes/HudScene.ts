@@ -276,11 +276,12 @@ export class HudScene extends Phaser.Scene {
 
   private positionPauseSound(): void {
     if (!this.soundButton) return
-    const width = Math.min(PAUSE_MODAL_WIDTH, this.scale.width - 48)
-    const height = Math.min(PAUSE_MODAL_HEIGHT, this.scale.height - 48)
+    const viewport = readViewport(this)
+    const width = Math.min(PAUSE_MODAL_WIDTH, viewport.width - 48)
+    const height = Math.min(PAUSE_MODAL_HEIGHT, viewport.height - 48)
     this.soundButton.setPosition(
-      this.scale.width / 2 - width / 2 + PAUSE_SOUND_INSET + PAUSE_SOUND_SIZE / 2,
-      this.scale.height / 2 - height / 2 + PAUSE_SOUND_INSET + PAUSE_SOUND_SIZE / 2,
+      viewport.width / 2 - width / 2 + PAUSE_SOUND_INSET + PAUSE_SOUND_SIZE / 2,
+      viewport.height / 2 - height / 2 + PAUSE_SOUND_INSET + PAUSE_SOUND_SIZE / 2,
     )
   }
 
@@ -298,7 +299,7 @@ export class HudScene extends Phaser.Scene {
     const game = this.gameScene()
     const canOfferSuper = canOfferSuperReward(services)
 
-    const overlay = computeGameOverOverlay(this.scale, {
+    const overlay = computeGameOverOverlay(readViewport(this), {
       width: GAME_OVER_MODAL_WIDTH,
       height: GAME_OVER_MODAL_HEIGHT,
       titleFontSize: GAME_OVER_TITLE_SIZE,

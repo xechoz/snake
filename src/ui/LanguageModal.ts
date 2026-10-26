@@ -1,4 +1,12 @@
-import { Button, LANG_LABELS, type Lang, SUPPORTED_LANGS, type Theme, textStyle } from '@mg/core'
+import {
+  Button,
+  LANG_LABELS,
+  type Lang,
+  readViewport,
+  SUPPORTED_LANGS,
+  type Theme,
+  textStyle,
+} from '@mg/core'
 import Phaser from 'phaser'
 
 export interface LanguageModalOptions {
@@ -20,8 +28,9 @@ export class LanguageModal extends Phaser.GameObjects.Container {
     super(scene, 0, 0)
     scene.add.existing(this).setDepth(2000)
 
-    const width = scene.scale.width
-    const height = scene.scale.height
+    const viewport = readViewport(scene)
+    const width = viewport.width
+    const height = viewport.height
     const backdrop = scene.add
       .rectangle(0, 0, width, height, options.theme.overlay, 0.72)
       .setOrigin(0)
@@ -84,7 +93,7 @@ export class LanguageModal extends Phaser.GameObjects.Container {
     const gridHeight = rows * buttonHeight + (rows - 1) * gap
     const buttonWidth = (cardWidth - 40 - (columns - 1) * gap) / columns
     const startY = -cardHeight / 2 + 96 + (availableHeight - gridHeight) / 2
-    const fontSize = Math.max(16, Math.min(22, buttonHeight * 0.36))
+    const fontSize = 26
 
     SUPPORTED_LANGS.forEach((lang, index) => {
       const column = index % columns

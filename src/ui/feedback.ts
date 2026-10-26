@@ -1,4 +1,4 @@
-import { cssColor, type Theme, textStyle } from '@mg/core'
+import { cssColor, readViewport, type Theme, textStyle } from '@mg/core'
 import Phaser from 'phaser'
 import { snakeColors } from '../colors'
 import type { Cell, EffectKind, FruitKind, PowerUpKind } from '../logic/types'
@@ -124,8 +124,7 @@ export function showFeastEndFeedback(
 }
 
 export function flashDanger(scene: Phaser.Scene, theme: Theme): void {
-  const width = scene.scale.width
-  const height = scene.scale.height
+  const { width, height } = readViewport(scene)
   const overlay = scene.add
     .rectangle(width / 2, height / 2, width, height, theme.danger, 0.18)
     .setDepth(20)

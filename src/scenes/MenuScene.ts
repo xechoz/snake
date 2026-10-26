@@ -142,7 +142,7 @@ export class MenuScene extends Phaser.Scene {
     if (this.showInstallHint) {
       this.installHint = this.add
         .text(0, 0, services.i18n.t('menu.fullscreenHint'), {
-          ...textStyle(theme, 22, theme.textMuted),
+          ...textStyle(theme, 24, theme.textMuted),
           align: 'center',
         })
         .setOrigin(0.5)
@@ -160,11 +160,6 @@ export class MenuScene extends Phaser.Scene {
 
     this.input.keyboard?.on('keydown-ENTER', () => this.startGame())
     this.input.keyboard?.on('keydown-SPACE', () => this.startGame())
-
-    // If the Preload request did not land, the first menu tap retries it.
-    if (!this.scale.fullscreen.active) {
-      this.input.once('pointerup', () => maybeEnterFullscreen(this.scale))
-    }
   }
 
   private startGame(): void {
