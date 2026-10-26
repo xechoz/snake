@@ -16,6 +16,7 @@ import {
   MENU_PLAY_HEIGHT,
   MENU_SETTINGS_HIT,
   MENU_SETTINGS_TOUCH_SIZE,
+  menuDemoTouchRect,
   playCharmSpots,
   type Rect,
   SUPER_FRUIT_CROWN,
@@ -386,6 +387,35 @@ describe('computeMenuLayout', () => {
     expect(computeMenuLayout(viewport(768, 1024)).demo.visible).toBe(true)
     expect(computeMenuLayout(viewport(720, 720)).demo.visible).toBe(false)
     expect(computeMenuLayout(viewport(720, 720)).mode).toBe('single')
+  })
+
+  it('gives the visible demo a swipe area that never overlaps the CTA', () => {
+    for (const [width, height] of [
+      [1280, 720],
+      [1558, 720],
+      [720, 1558],
+      [768, 1024],
+      [720, 960],
+    ] as const) {
+      const layout = computeMenuLayout(viewport(width, height), MENU_LOGO_HEIGHT, true)
+      const rect = menuDemoTouchRect(layout.demo)
+      const play = {
+        x: layout.centerX - layout.playWidth / 2,
+        y: layout.playY - MENU_PLAY_HEIGHT / 2,
+        width: layout.playWidth,
+        height: MENU_PLAY_HEIGHT,
+      }
+
+      expect(rect, `${width}x${height}`).not.toBeNull()
+      if (!rect) continue
+      expect(intersects(rect, play), `${width}x${height}`).toBe(false)
+      expect(rect.x, `${width}x${height}`).toBeGreaterThanOrEqual(0)
+      expect(rect.y, `${width}x${height}`).toBeGreaterThanOrEqual(0)
+      expect(rect.x + rect.width, `${width}x${height}`).toBeLessThanOrEqual(width)
+      expect(rect.y + rect.height, `${width}x${height}`).toBeLessThanOrEqual(height)
+    }
+
+    expect(menuDemoTouchRect(computeMenuLayout(viewport(720, 720)).demo)).toBeNull()
   })
 
   it('keeps every menu element inside the safe area', () => {

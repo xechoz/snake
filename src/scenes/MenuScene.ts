@@ -18,6 +18,7 @@ import Phaser from 'phaser'
 import { snakeSave } from '../save'
 import { resolveSkin, startingSegmentColors } from '../skins'
 import { drawBackdrop } from '../ui/backdrop'
+import { DemoCoach } from '../ui/DemoCoach'
 import { hasTouchInput } from '../ui/device'
 import { fruitDecoration } from '../ui/fruitDecoration'
 import { LanguageModal } from '../ui/LanguageModal'
@@ -26,9 +27,11 @@ import {
   MENU_PLAY_HEIGHT,
   MENU_SETTINGS_HIT,
   type MenuLayout,
+  menuDemoTouchRect,
 } from '../ui/layout'
 import { createSnakeLogo, type SnakeLogo } from '../ui/logo'
 import { createMenuDemo, type MenuDemo } from '../ui/menuDemo'
+import { SwipeSteer } from '../ui/SwipeSteer'
 
 const CONTROL_ICON_DESKTOP = 160
 const CONTROL_ICON_TOUCH = 56
@@ -37,6 +40,9 @@ const PLAY_GLOW_PADDING = 16
 const PLAY_FONT_SIZE = 34
 const SETTINGS_ICON_SIZE = 30
 const SETTINGS_LABEL_SIZE = 26
+const COACH_DELAY_MS = 1200
+
+type HintKey = 'menu.controlsTouch' | 'menu.controlsTouchTry' | 'menu.controlsDesktop'
 
 export class MenuScene extends Phaser.Scene {
   private backdrop!: Phaser.GameObjects.Graphics
@@ -56,6 +62,13 @@ export class MenuScene extends Phaser.Scene {
   private touch = false
   private showInstallHint = false
   private controlIconWidth = CONTROL_ICON_TOUCH
+  private layout!: MenuLayout
+  private steer!: SwipeSteer
+  private demoCoach?: DemoCoach
+  private coachEligible = false
+  private coachDismissed = false
+  private coachDelayDone = false
+  private hintKey: HintKey = 'menu.controlsTouch'
 
   constructor() {
     super('Menu')
@@ -74,6 +87,8 @@ export class MenuScene extends Phaser.Scene {
     this.touch = hasTouchInput()
     this.showInstallHint = this.shouldShowInstallHint()
     this.controlIconWidth = this.touch ? CONTROL_ICON_TOUCH : CONTROL_ICON_DESKTOP
+    this.coachDismissed = this.registry.get('menuCoachSeen') === true
+    this.coachEligible = this.touch && save.plays === 0
 
     services.platform.gameplayStop()
 
@@ -130,14 +145,19 @@ export class MenuScene extends Phaser.Scene {
     this.controlsIcon = this.add.graphics()
     this.drawControlHint()
 
+    this.hintKey = this.touch
+      ? this.coachActive(initial)
+        ? 'menu.controlsTouchTry'
+        : 'menu.controlsTouch'
+      : 'menu.controlsDesktop'
     this.hint = this.add
-      .text(
-        0,
-        0,
-        services.i18n.t(this.touch ? 'menu.controlsTouch' : 'menu.controlsDesktop'),
-        textStyle(theme, 28, theme.textMuted),
-      )
+      .text(0, 0, services.i18n.t(this.hintKey), textStyle(theme, 28, theme.textMuted))
       .setOrigin(0.5)
+
+    if (this.coachEligible) {
+      this.demoCoach = new DemoCoach(this, theme, this.demo.container, -138, 0)
+    }
+    this.steer = new SwipeSteer(this, theme, (direction) => this.handleDemoSteer(direction))
 
     if (this.showInstallHint) {
       this.installHint = this.add
@@ -149,6 +169,10 @@ export class MenuScene extends Phaser.Scene {
     }
 
     this.applyLayout(viewport, initial)
+    this.time.delayedCall(COACH_DELAY_MS, () => {
+      this.coachDelayDone = true
+      this.syncDemoCoach(this.layout)
+    })
     onLayoutChange(this, (next) => {
       this.languageModal?.close()
       this.applyLayout(
@@ -164,6 +188,8 @@ export class MenuScene extends Phaser.Scene {
 
   private startGame(): void {
     if (this.languageModal) return
+    this.steer.setEnabled(false)
+    this.demoCoach?.hide()
     const services = getServices()
     maybeEnterFullscreen(this.scale)
     services.audio.unlock()
@@ -175,6 +201,8 @@ export class MenuScene extends Phaser.Scene {
     if (this.languageModal) return
     const services = getServices()
     services.audio.play('click')
+    this.steer.setEnabled(false)
+    this.demoCoach?.hide()
     this.languageModal = new LanguageModal(this, {
       theme: services.theme,
       current: services.i18n.lang,
@@ -185,12 +213,16 @@ export class MenuScene extends Phaser.Scene {
       },
       onClose: () => {
         this.languageModal = undefined
+        this.syncDemoSteer(this.layout)
+        this.syncDemoCoach(this.layout)
+        this.syncHint(this.layout)
       },
     })
   }
 
   private applyLayout(viewport: Viewport, layout: MenuLayout): void {
     const theme = getServices().theme
+    this.layout = layout
     drawBackdrop(this.backdrop, viewport, theme)
 
     const logoScale = Math.min(1, layout.logoMaxWidth / this.logo.width)
@@ -203,12 +235,6 @@ export class MenuScene extends Phaser.Scene {
     this.soundButton.setPosition(layout.settings.sound.x, layout.settings.sound.y)
     this.languageButton.setPosition(layout.settings.language.x, layout.settings.language.y)
 
-    const gap = 14
-    const total = this.controlIconWidth + gap + this.hint.width
-    const left = layout.centerX - total / 2
-    this.controlsIcon.setPosition(left + this.controlIconWidth / 2, layout.hintY)
-    this.hint.setPosition(left + this.controlIconWidth + gap + this.hint.width / 2, layout.hintY)
-
     this.installHint?.setPosition(layout.centerX, layout.installHintY)
     this.installHint?.setWordWrapWidth(
       viewport.width - viewport.insets.left - viewport.insets.right - 48,
@@ -219,6 +245,54 @@ export class MenuScene extends Phaser.Scene {
       .setScale(layout.demo.scale)
       .setAngle(layout.demo.angle)
       .setVisible(layout.demo.visible)
+
+    this.syncDemoSteer(layout)
+    this.syncDemoCoach(layout)
+    this.syncHint(layout)
+  }
+
+  private syncDemoSteer(layout: MenuLayout): void {
+    const enabled = layout.demo.visible && !this.languageModal
+    this.steer.setEnabled(enabled)
+    this.steer.setActiveRect(enabled ? menuDemoTouchRect(layout.demo) : null)
+  }
+
+  private syncDemoCoach(layout: MenuLayout): void {
+    if (!this.demoCoach) return
+    if (this.coachActive(layout) && this.coachDelayDone) this.demoCoach.show()
+    else this.demoCoach.hide()
+  }
+
+  private syncHint(layout: MenuLayout): void {
+    const key: HintKey = this.touch
+      ? this.coachActive(layout)
+        ? 'menu.controlsTouchTry'
+        : 'menu.controlsTouch'
+      : 'menu.controlsDesktop'
+    if (key !== this.hintKey) {
+      this.hintKey = key
+      this.hint.setText(getServices().i18n.t(key))
+    }
+
+    const gap = 14
+    const total = this.controlIconWidth + gap + this.hint.width
+    const left = layout.centerX - total / 2
+    this.controlsIcon.setPosition(left + this.controlIconWidth / 2, layout.hintY)
+    this.hint.setPosition(left + this.controlIconWidth + gap + this.hint.width / 2, layout.hintY)
+  }
+
+  private coachActive(layout: MenuLayout): boolean {
+    return this.coachEligible && !this.coachDismissed && !this.languageModal && layout.demo.visible
+  }
+
+  private handleDemoSteer(direction: Parameters<MenuDemo['steer']>[0]): void {
+    if (this.languageModal) return
+    const accepted = this.demo.steer(direction)
+    if (!accepted || !this.coachEligible || this.coachDismissed) return
+    this.coachDismissed = true
+    this.registry.set('menuCoachSeen', true)
+    this.demoCoach?.hide()
+    this.syncHint(this.layout)
   }
 
   private drawPlayGlow(layout: MenuLayout): void {

@@ -23,6 +23,7 @@ export class SwipeSteer extends Phaser.GameObjects.Container {
   private lastDirection: Direction | null = null
   private enabled = true
   private blockedRect: Rect | null = null
+  private activeRect: Rect | null = null
 
   constructor(
     scene: Phaser.Scene,
@@ -59,6 +60,11 @@ export class SwipeSteer extends Phaser.GameObjects.Container {
     this.blockedRect = rect
   }
 
+  /** Restricts new gestures to a region; null means the whole scene. */
+  setActiveRect(rect: Rect | null): void {
+    this.activeRect = rect
+  }
+
   reset(): void {
     this.activePointerId = null
     this.lastDirection = null
@@ -76,7 +82,7 @@ export class SwipeSteer extends Phaser.GameObjects.Container {
   private handleDown(pointer: Phaser.Input.Pointer): void {
     if (!this.enabled || this.activePointerId !== null) return
     const point = this.pointAt(pointer.x, pointer.y)
-    if (this.isBlocked(point)) return
+    if (this.isBlocked(point) || !this.isActive(point)) return
     this.begin(pointer, point)
   }
 
@@ -89,7 +95,7 @@ export class SwipeSteer extends Phaser.GameObjects.Container {
     }
 
     const down = this.pointAt(pointer.downX, pointer.downY)
-    if (this.isBlocked(down)) return
+    if (this.isBlocked(down) || !this.isActive(down)) return
     // A finger that was already down when the current one took over must not
     // steal the stick back mid-gesture; only a newer press can take over.
     if (this.activePointerId !== null && pointer.downTime <= this.activeDownTime) return
@@ -163,7 +169,15 @@ export class SwipeSteer extends Phaser.GameObjects.Container {
   }
 
   private isBlocked(point: { readonly x: number; readonly y: number }): boolean {
-    const rect = this.blockedRect
+    return this.contains(this.blockedRect, point)
+  }
+
+  private isActive(point: { readonly x: number; readonly y: number }): boolean {
+    if (!this.activeRect) return true
+    return this.contains(this.activeRect, point)
+  }
+
+  private contains(rect: Rect | null, point: { readonly x: number; readonly y: number }): boolean {
     if (!rect) return false
     return (
       point.x >= rect.x &&

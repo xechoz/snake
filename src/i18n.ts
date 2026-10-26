@@ -6,6 +6,7 @@ export const snakeI18n: Record<Lang, Dictionary> = {
     'menu.play': 'Play',
     'menu.best': 'Best score {score}',
     'menu.controlsTouch': 'Swipe to steer · no need to hold',
+    'menu.controlsTouchTry': 'Swipe the board to try it',
     'menu.controlsDesktop': 'Arrow keys / WASD',
     'menu.fullscreenHint':
       'This browser cannot go fullscreen. Share → Add to Home Screen for the full view.',
@@ -36,6 +37,7 @@ export const snakeI18n: Record<Lang, Dictionary> = {
     'menu.play': 'Jouer',
     'menu.best': 'Meilleur score {score}',
     'menu.controlsTouch': 'Glissez pour tourner · sans maintenir',
+    'menu.controlsTouchTry': 'Glissez sur le plateau pour essayer',
     'menu.controlsDesktop': 'Flèches / WASD',
     'menu.fullscreenHint':
       'Ce navigateur ne peut pas passer en plein écran. Partager → Sur l’écran d’accueil.',
@@ -66,6 +68,7 @@ export const snakeI18n: Record<Lang, Dictionary> = {
     'menu.play': 'Gioca',
     'menu.best': 'Record {score}',
     'menu.controlsTouch': 'Scorri per girare · senza tenere',
+    'menu.controlsTouchTry': 'Scorri il tabellone per provare',
     'menu.controlsDesktop': 'Frecce / WASD',
     'menu.fullscreenHint':
       'Questo browser non può andare a schermo intero. Condividi → Aggiungi alla schermata Home.',
@@ -96,6 +99,7 @@ export const snakeI18n: Record<Lang, Dictionary> = {
     'menu.play': 'Spielen',
     'menu.best': 'Bestwert {score}',
     'menu.controlsTouch': 'Wischen zum Lenken · nicht halten',
+    'menu.controlsTouchTry': 'Wische über das Spielfeld',
     'menu.controlsDesktop': 'Pfeiltasten / WASD',
     'menu.fullscreenHint':
       'Dieser Browser kann nicht in den Vollbildmodus wechseln. Teilen → Zum Home-Bildschirm.',
@@ -126,6 +130,7 @@ export const snakeI18n: Record<Lang, Dictionary> = {
     'menu.play': 'Jugar',
     'menu.best': 'Mejor puntuación {score}',
     'menu.controlsTouch': 'Desliza para girar · sin mantener',
+    'menu.controlsTouchTry': 'Desliza en el tablero para probar',
     'menu.controlsDesktop': 'Flechas / WASD',
     'menu.fullscreenHint':
       'Este navegador no puede ir a pantalla completa. Compartir → Añadir a inicio.',
@@ -156,6 +161,7 @@ export const snakeI18n: Record<Lang, Dictionary> = {
     'menu.play': 'Oyna',
     'menu.best': 'En iyi skor {score}',
     'menu.controlsTouch': 'Kaydırarak dön · basılı tutma',
+    'menu.controlsTouchTry': 'Denemek için tahtada kaydır',
     'menu.controlsDesktop': 'Ok tuşları / WASD',
     'menu.fullscreenHint': 'Bu tarayıcı tam ekrana geçemiyor. Paylaş → Ana ekrana ekle.',
     'hud.score': 'Skor',
@@ -185,6 +191,7 @@ export const snakeI18n: Record<Lang, Dictionary> = {
     'menu.play': '开始',
     'menu.best': '最高分 {score}',
     'menu.controlsTouch': '滑动转向 · 不用按住',
+    'menu.controlsTouchTry': '在棋盘上滑动试试',
     'menu.controlsDesktop': '方向键 / WASD',
     'menu.fullscreenHint': '此浏览器无法全屏。分享 → 添加到主屏幕以全屏游玩。',
     'hud.score': '分数',
@@ -214,6 +221,7 @@ export const snakeI18n: Record<Lang, Dictionary> = {
     'menu.play': 'プレイ',
     'menu.best': 'ベストスコア {score}',
     'menu.controlsTouch': 'スワイプで曲がる・長押し不要',
+    'menu.controlsTouchTry': '盤面をスワイプして試す',
     'menu.controlsDesktop': '矢印キー / WASD',
     'menu.fullscreenHint': 'このブラウザは全画面にできません。共有 → ホーム画面に追加。',
     'hud.score': 'スコア',
@@ -243,6 +251,7 @@ export const snakeI18n: Record<Lang, Dictionary> = {
     'menu.play': '시작',
     'menu.best': '최고 점수 {score}',
     'menu.controlsTouch': '스와이프로 방향 전환 · 길게 누르지 않기',
+    'menu.controlsTouchTry': '보드에서 스와이프해 보세요',
     'menu.controlsDesktop': '방향키 / WASD',
     'menu.fullscreenHint': '이 브라우저는 전체 화면을 지원하지 않습니다. 공유 → 홈 화면에 추가.',
     'hud.score': '점수',
@@ -272,6 +281,7 @@ export const snakeI18n: Record<Lang, Dictionary> = {
     'menu.play': 'Jogar',
     'menu.best': 'Melhor pontuação {score}',
     'menu.controlsTouch': 'Deslize para virar · sem segurar',
+    'menu.controlsTouchTry': 'Deslize no tabuleiro para testar',
     'menu.controlsDesktop': 'Setas / WASD',
     'menu.fullscreenHint':
       'Este navegador não entra em tela cheia. Compartilhar → Adicionar à tela inicial.',
@@ -302,6 +312,7 @@ export const snakeI18n: Record<Lang, Dictionary> = {
     'menu.play': 'Играть',
     'menu.best': 'Рекорд {score}',
     'menu.controlsTouch': 'Свайп для поворота · без удержания',
+    'menu.controlsTouchTry': 'Свайпните по полю, чтобы попробовать',
     'menu.controlsDesktop': 'Стрелки / WASD',
     'menu.fullscreenHint':
       'Этот браузер не поддерживает полный экран. Поделиться → На главный экран.',

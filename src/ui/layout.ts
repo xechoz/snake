@@ -1,5 +1,6 @@
 import type { Viewport } from '@mg/core'
 import { snakeConfig } from '../logic/config'
+import { MENU_DEMO_CELL, MENU_DEMO_COLS, MENU_DEMO_ROWS } from '../logic/menuDemo'
 
 export interface Rect {
   x: number
@@ -237,8 +238,10 @@ export function computeSnakeLayout(viewport: Viewport): SnakeLayout {
   }
 }
 
-export const MENU_DEMO_WIDTH = 312
-export const MENU_DEMO_HEIGHT = 220
+/** Mat width around the menu demo's playable cells. */
+export const MENU_DEMO_MAT = 18
+export const MENU_DEMO_WIDTH = MENU_DEMO_COLS * MENU_DEMO_CELL + MENU_DEMO_MAT * 2
+export const MENU_DEMO_HEIGHT = MENU_DEMO_ROWS * MENU_DEMO_CELL + MENU_DEMO_MAT * 2
 export const MENU_DEMO_ASPECT = MENU_DEMO_WIDTH / MENU_DEMO_HEIGHT
 export const MENU_SETTINGS_SIZE = 64
 export const MENU_SETTINGS_TOUCH_SIZE = 84
@@ -321,6 +324,18 @@ export interface MenuDemoLayout {
   visible: boolean
 }
 
+/** Swipe area for the playable menu board; null when the board is hidden. */
+export function menuDemoTouchRect(demo: MenuDemoLayout): Rect | null {
+  if (!demo.visible || demo.width <= 0 || demo.height <= 0) return null
+  const padding = 8
+  return {
+    x: demo.x - demo.width / 2 - padding,
+    y: demo.y - demo.height / 2 - padding,
+    width: demo.width + padding * 2,
+    height: demo.height + padding * 2,
+  }
+}
+
 export interface MenuLayout {
   mode: 'split' | 'single'
   centerX: number
@@ -346,7 +361,7 @@ const SETTINGS_GAP = 12
 const SETTINGS_TOUCH_GAP = 16
 const HEADER_CLEARANCE = 12
 const INSTALL_HINT_GAP = 12
-const DEMO_GAP = 24
+const DEMO_GAP = 12
 const DEMO_MIN_WIDTH = 240
 const DEMO_MIN_HEIGHT = 180
 const DEMO_MAX_WIDTH = 560

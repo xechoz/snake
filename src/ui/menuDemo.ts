@@ -1,83 +1,45 @@
-import { getServices, mixColor } from '@mg/core'
+import { getServices, mixColor, randomSeed } from '@mg/core'
+import { createRng } from '@mg/core/rng'
 import type Phaser from 'phaser'
 import { snakeColors } from '../colors'
-import type { FruitKind } from '../logic/types'
+import {
+  advanceMenuDemo,
+  createMenuDemoState,
+  MENU_DEMO_CELL,
+  MENU_DEMO_COLS,
+  MENU_DEMO_ROWS,
+  steerMenuDemo,
+} from '../logic/menuDemo'
+import type { Cell, Direction, FoodItem, FruitKind } from '../logic/types'
 import { segmentColor } from './gameArt'
-import { MENU_DEMO_HEIGHT, MENU_DEMO_WIDTH } from './layout'
+import { MENU_DEMO_HEIGHT, MENU_DEMO_MAT, MENU_DEMO_WIDTH } from './layout'
 import { drawBlockSnakeBody, drawFruit, drawSnakeHead, type SnakeBlock } from './snakeArt'
 
-const COLS = 6
-const ROWS = 4
-const CELL = 46
-const PADDING = 14
-const STEP_MS = 460
-const MOVE_MS = 320
+const AUTO_STEP_MS = 460
+const MANUAL_STEP_MS = 360
+const AUTO_MOVE_MS = 320
+const MANUAL_MOVE_MS = 300
 const RESET_PAUSE = 620
-
-interface Cell {
-  x: number
-  y: number
-}
-
-type DemoDirection = 'right' | 'up' | 'left' | 'down'
-
-const START: readonly Cell[] = [
-  { x: 2, y: 2 },
-  { x: 1, y: 2 },
-  { x: 0, y: 2 },
-]
-
-const SCRIPT: readonly DemoDirection[] = [
-  'right',
-  'right',
-  'up',
-  'left',
-  'left',
-  'down',
-  'down',
-  'left',
-]
-
-const FOOD: readonly Cell[] = [
-  { x: 4, y: 2 },
-  { x: 2, y: 3 },
-]
-
-const FOOD_KINDS: readonly FruitKind[] = [
-  'banana',
-  'watermelon',
-  'mango',
-  'strawberry',
-  'pineapple',
-  'kiwi',
-  'peach',
-  'pomegranate',
-]
-
-const VECTORS: Record<DemoDirection, Cell> = {
-  right: { x: 1, y: 0 },
-  up: { x: 0, y: -1 },
-  left: { x: -1, y: 0 },
-  down: { x: 0, y: 1 },
-}
 
 export interface MenuDemo {
   container: Phaser.GameObjects.Container
   width: number
   height: number
+  /** Returns true only when the swipe queued a legal turn. */
+  steer(direction: Direction): boolean
 }
 
 /**
- * A tiny self-playing board used as the menu's hero art. It shows turning,
- * eating and growing instead of explaining them in two lines of copy.
+ * A tiny playable board used as the menu's hero art. It runs a safe attract
+ * loop until the player swipes, then follows the same rules as the real game.
  */
 export function createMenuDemo(
   scene: Phaser.Scene,
   startingFruits: readonly FruitKind[] = [],
 ): MenuDemo {
   const theme = getServices().theme
-  const boardWidth = COLS * CELL
-  const boardHeight = ROWS * CELL
+  const boardWidth = MENU_DEMO_COLS * MENU_DEMO_CELL
+  const boardHeight = MENU_DEMO_ROWS * MENU_DEMO_CELL
   const container = scene.add.container(0, 0)
 
   const frame = scene.add.graphics()
@@ -86,17 +48,17 @@ export function createMenuDemo(
   const food = scene.add.graphics()
   container.add([frame, snake, food])
 
-  let cells: Cell[] = cloneCells(START)
-  let previous: Cell[] = cloneCells(START)
-  let segmentColors: (FruitKind | null)[] = cells.map((_, index) => startingFruits[index] ?? null)
-  let fruit: Cell | null = firstFood()
-  let fruitIndex = 0
-  let demoRound = 0
-  let stepIndex = 0
+  const rng = createRng(randomSeed())
+  let state = createMenuDemoState(rng, startingFruits)
+  let previous: Cell[] = cloneCells(state.snake.snake)
   let progress = 1
+  let travelFoods: readonly FoodItem[] | null = null
   let resetting = false
+  let resetPending = false
+  let timer: Phaser.Time.TimerEvent | null = null
 
   const redraw = (): void => {
+    const cells = state.snake.snake
     const points = cells.map((cell, index) => {
       const from = previous[index] ?? cell
       return {
@@ -115,23 +77,23 @@ export function createMenuDemo(
       return {
         x: point.x,
         y: point.y,
-        color: segmentColor(segmentColors[segmentIndex] ?? null, t, theme, false),
+        color: segmentColor(state.snake.segmentColors[segmentIndex] ?? null, t, theme, false),
       }
     })
-    drawBlockSnakeBody(snake, blocks, CELL, theme.ink, 2.2)
+    drawBlockSnakeBody(snake, blocks, MENU_DEMO_CELL, theme.ink, 2.2)
 
     const head = points[0]
     const next = points[1]
     if (head && next) {
       const cycle = scene.time.now % 2500
       const tongue = cycle < 220 ? Math.sin((cycle / 220) * Math.PI) : 0
-      const headKind = segmentColors[0] ?? null
+      const headKind = state.snake.segmentColors[0] ?? null
       drawSnakeHead(
         snake,
         head.x,
         head.y,
         { x: head.x - next.x, y: head.y - next.y },
-        CELL * 0.48,
+        MENU_DEMO_CELL * 0.48,
         theme.ink,
         headKind ? snakeColors.art.fruits[headKind].light : snakeColors.art.snakeHead,
         3.2,
@@ -140,13 +102,14 @@ export function createMenuDemo(
     }
 
     food.clear()
-    if (fruit) {
+    const foods = travelFoods ?? state.snake.foods
+    for (const item of foods) {
       drawFruit(
         food,
-        cellX(fruit.x),
-        cellY(fruit.y),
-        CELL * 0.27,
-        fruitKindAt(fruitIndex + demoRound),
+        cellX(item.cell.x),
+        cellY(item.cell.y),
+        MENU_DEMO_CELL * 0.27,
+        item.kind,
         theme,
         scene.time.now,
       )
@@ -180,20 +143,20 @@ export function createMenuDemo(
     }
   }
 
+  let traveling = false
+  let steerPending = false
+
   const reset = (): void => {
     scene.tweens.add({
       targets: [snake, food],
       alpha: 0,
       duration: 160,
       onComplete: () => {
-        cells = cloneCells(START)
-        previous = cloneCells(START)
-        segmentColors = cells.map((_, index) => startingFruits[index] ?? null)
-        fruit = firstFood()
-        fruitIndex = 0
-        demoRound += 1
-        stepIndex = 0
+        state = createMenuDemoState(rng, startingFruits, state.round + 1)
+        previous = cloneCells(state.snake.snake)
         progress = 1
+        travelFoods = null
+        resetPending = false
         redraw()
         scene.tweens.add({
           targets: [snake, food],
@@ -201,84 +164,108 @@ export function createMenuDemo(
           duration: 220,
           onComplete: () => {
             resetting = false
+            schedule(AUTO_STEP_MS)
           },
         })
       },
     })
   }
 
+  const queueReset = (): void => {
+    if (resetPending) return
+    resetPending = true
+    resetting = true
+    steerPending = false
+    timer?.remove()
+    timer = null
+    scene.time.delayedCall(RESET_PAUSE, reset)
+  }
+
+  const schedule = (delay: number): void => {
+    timer?.remove()
+    timer = scene.time.addEvent({ delay, callback: step })
+  }
+
   const step = (): void => {
+    timer = null
     if (resetting) return
-    const direction = SCRIPT[stepIndex]
-    if (!direction) {
-      resetting = true
-      scene.time.delayedCall(RESET_PAUSE, reset)
-      return
-    }
 
-    const head = cells[0]
-    if (!head) return
-    const vector = VECTORS[direction]
-    const next = { x: head.x + vector.x, y: head.y + vector.y }
-    const targetFruit = fruit
-    const eating = targetFruit !== null && targetFruit.x === next.x && targetFruit.y === next.y
-
-    previous = cloneCells(cells)
-    cells = eating ? [next, ...cells] : [next, ...cells.slice(0, -1)]
-    segmentColors = eating ? [fruitKindAt(fruitIndex + demoRound), ...segmentColors] : segmentColors
-    stepIndex += 1
+    const manual = state.mode === 'manual'
+    previous = cloneCells(state.snake.snake)
+    const foodsBefore = state.snake.foods
+    const advanced = advanceMenuDemo(state, rng)
+    state = advanced.state
     progress = 0
+    travelFoods = foodsBefore
+    traveling = true
+    steerPending = false
 
     const travel = { t: 0 }
     scene.tweens.add({
       targets: travel,
       t: 1,
-      duration: MOVE_MS,
+      duration: manual ? MANUAL_MOVE_MS : AUTO_MOVE_MS,
       ease: 'Sine.inOut',
       onUpdate: () => {
         progress = travel.t
       },
       onComplete: () => {
         progress = 1
-        if (!eating) return
-        if (targetFruit) burst(targetFruit, fruitKindAt(fruitIndex + demoRound))
-        fruitIndex += 1
-        const nextFood = FOOD[fruitIndex]
-        fruit = nextFood ? { ...nextFood } : null
+        travelFoods = null
+        traveling = false
+        for (const event of advanced.events) {
+          if (event.type === 'eat') burst(event.at, event.kind)
+        }
+        if (state.snake.status !== 'alive' || (state.mode === 'auto' && advanced.scriptDone)) {
+          queueReset()
+          return
+        }
+        // A swipe during the travel tween already chose the next direction;
+        // step as soon as the current move lands instead of waiting a full beat.
+        if (steerPending) {
+          steerPending = false
+          schedule(0)
+          return
+        }
+        schedule(state.mode === 'manual' ? MANUAL_STEP_MS : AUTO_STEP_MS)
       },
     })
   }
 
+  const steer = (direction: Direction): boolean => {
+    if (resetting) return false
+    const next = steerMenuDemo(state, direction)
+    if (!next.accepted) return false
+    state = next.state
+    if (traveling) {
+      steerPending = true
+    } else {
+      schedule(MANUAL_STEP_MS)
+    }
+    return true
+  }
+
   redraw()
-  const timer = scene.time.addEvent({ delay: STEP_MS, loop: true, callback: step })
+  schedule(AUTO_STEP_MS)
   scene.events.on('update', redraw)
   scene.events.once('shutdown', () => {
-    timer.remove()
+    timer?.remove()
     scene.events.off('update', redraw)
   })
 
-  return { container, width: MENU_DEMO_WIDTH, height: MENU_DEMO_HEIGHT }
+  return { container, width: MENU_DEMO_WIDTH, height: MENU_DEMO_HEIGHT, steer }
 }
 
 function cellX(column: number): number {
-  return -((COLS - 1) * CELL) / 2 + column * CELL
+  return -((MENU_DEMO_COLS - 1) * MENU_DEMO_CELL) / 2 + column * MENU_DEMO_CELL
 }
 
 function cellY(row: number): number {
-  return -((ROWS - 1) * CELL) / 2 + row * CELL
+  return -((MENU_DEMO_ROWS - 1) * MENU_DEMO_CELL) / 2 + row * MENU_DEMO_CELL
 }
 
 function cloneCells(cells: readonly Cell[]): Cell[] {
   return cells.map((cell) => ({ x: cell.x, y: cell.y }))
-}
-
-function firstFood(): Cell | null {
-  const food = FOOD[0]
-  return food ? { ...food } : null
-}
-
-function fruitKindAt(index: number): FruitKind {
-  return FOOD_KINDS[index % FOOD_KINDS.length] ?? 'apple'
 }
 
 function drawFrame(
@@ -287,7 +274,7 @@ function drawFrame(
   boardHeight: number,
 ): void {
   const theme = getServices().theme
-  const mat = PADDING + 4
+  const mat = MENU_DEMO_MAT
   const outerWidth = boardWidth + mat * 2
   const outerHeight = boardHeight + mat * 2
   const left = -outerWidth / 2
@@ -299,15 +286,15 @@ function drawFrame(
   graphics.fillStyle(theme.board, 1)
   graphics.fillRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight)
 
-  for (let row = 0; row < ROWS; row += 1) {
-    for (let column = 0; column < COLS; column += 1) {
+  for (let row = 0; row < MENU_DEMO_ROWS; row += 1) {
+    for (let column = 0; column < MENU_DEMO_COLS; column += 1) {
       if ((column + row) % 2 !== 0) continue
       graphics.fillStyle(theme.boardAlt, 0.72)
       graphics.fillRect(
-        -boardWidth / 2 + column * CELL,
-        -boardHeight / 2 + row * CELL,
-        CELL + 0.5,
-        CELL + 0.5,
+        -boardWidth / 2 + column * MENU_DEMO_CELL,
+        -boardHeight / 2 + row * MENU_DEMO_CELL,
+        MENU_DEMO_CELL + 0.5,
+        MENU_DEMO_CELL + 0.5,
       )
     }
   }

@@ -17,7 +17,6 @@ import type { Cell, Direction, SnakeState } from '../logic/types'
 import { snakeSave } from '../save'
 import { resolveSkin, type SnakeSkinId, startingSegmentColors } from '../skins'
 import { drawBackdrop } from '../ui/backdrop'
-import { hasTouchInput } from '../ui/device'
 import { FoodLayer } from '../ui/FoodLayer'
 import {
   flashDanger,
@@ -35,7 +34,6 @@ import {
   drawSnake,
 } from '../ui/gameArt'
 import { computeSnakeLayout, type SnakeLayout } from '../ui/layout'
-import { SwipeHint } from '../ui/SwipeHint'
 import { SwipeSteer } from '../ui/SwipeSteer'
 import type { GameOverInfo, HudScene } from './HudScene'
 
@@ -88,9 +86,6 @@ export class GameScene extends Phaser.Scene {
   private debugOverlay?: DebugOverlay
   private removeHiddenListener?: () => void
   private steer!: SwipeSteer
-  private swipeHint?: SwipeHint
-  private swipeHintEligible = false
-  private swipeHintSeen = false
 
   constructor() {
     super('Game')
@@ -130,13 +125,6 @@ export class GameScene extends Phaser.Scene {
       .setAlpha(0)
     this.positionCountdown()
 
-    const save = snakeSave(services).read()
-    this.swipeHintEligible = hasTouchInput() && save.plays === 0
-    if (this.swipeHintEligible) {
-      this.swipeHint = new SwipeHint(this, theme, services.i18n.t('menu.controlsTouch'))
-      this.positionSwipeHint()
-    }
-
     this.steer = new SwipeSteer(this, theme, (direction) => this.inputDirection(direction))
     this.steer.setBlockedRect(this.layout.hud)
     this.resetGame()
@@ -174,7 +162,6 @@ export class GameScene extends Phaser.Scene {
       this.countdownMs -= frame
       if (this.countdownMs <= 0) {
         this.countdownActive = false
-        this.dismissSwipeHint(true)
         this.tweens.killTweensOf(this.countdownRing)
         // The two-character "开始" needs a smaller face than a single digit.
         this.countdownText.setFontSize(56)
@@ -236,7 +223,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   inputDirection(direction: Direction): void {
-    this.dismissSwipeHint(true)
     if (this.adsActive() || this.paused || this.finished || this.state.status !== 'alive') return
     const next = enqueueDirection(this.state, direction)
     if (next === this.state) return
@@ -252,7 +238,6 @@ export class GameScene extends Phaser.Scene {
     this.tweens.killTweensOf([this.countdownText, this.countdownArt, this.countdownRing])
     this.countdownText.setAlpha(0)
     this.countdownArt.setAlpha(0)
-    this.dismissSwipeHint(false)
     this.steer.setEnabled(false)
     services.platform.gameplayStop()
     services.audio.play('pause')
@@ -325,7 +310,6 @@ export class GameScene extends Phaser.Scene {
     this.drawBackdrop()
     this.drawBoard()
     this.positionCountdown()
-    this.positionSwipeHint()
     this.steer.setBlockedRect(next.hud)
 
     if (rotated) this.pauseGame()
@@ -370,7 +354,6 @@ export class GameScene extends Phaser.Scene {
     this.popCountdown()
     this.playCountdownTick(1)
     this.stepCountdownRing(1)
-    this.showSwipeHint()
   }
 
   /** One short beep per countdown beat, rising above the menu's confirmation click. */
@@ -501,7 +484,6 @@ export class GameScene extends Phaser.Scene {
   private finish(): void {
     const services = getServices()
     this.finished = true
-    this.dismissSwipeHint(true)
     this.steer.setEnabled(false)
     services.platform.gameplayStop()
 
@@ -605,21 +587,6 @@ export class GameScene extends Phaser.Scene {
     const centerY = y + width / 2
     this.countdownText.setPosition(centerX, centerY)
     this.countdownArt.setPosition(centerX, centerY)
-  }
-
-  private positionSwipeHint(): void {
-    const { x, y, width, height } = this.layout.board
-    this.swipeHint?.setPosition(x + width / 2, y + height - 64)
-  }
-
-  private showSwipeHint(): void {
-    if (!this.swipeHintEligible || this.swipeHintSeen) return
-    this.swipeHint?.show()
-  }
-
-  private dismissSwipeHint(markSeen: boolean): void {
-    if (markSeen) this.swipeHintSeen = true
-    this.swipeHint?.hide()
   }
 
   private hud(): HudScene | undefined {
