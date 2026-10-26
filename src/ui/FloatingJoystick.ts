@@ -39,7 +39,7 @@ export class FloatingJoystick extends Phaser.GameObjects.Container {
     this.base.fillTriangle(0, -BASE_RADIUS + 14, -8, -BASE_RADIUS + 30, 8, -BASE_RADIUS + 30)
     this.base.fillTriangle(0, BASE_RADIUS - 14, -8, BASE_RADIUS - 30, 8, BASE_RADIUS - 30)
     this.base.fillTriangle(-BASE_RADIUS + 14, 0, -BASE_RADIUS + 30, -8, -BASE_RADIUS + 30, 8)
-    this.base.fillTriangle(BASE_RADIUS - 14, 0, -BASE_RADIUS + 30, -8, -BASE_RADIUS + 30, 8)
+    this.base.fillTriangle(BASE_RADIUS - 14, 0, BASE_RADIUS - 30, -8, BASE_RADIUS - 30, 8)
     this.base.setAlpha(0)
 
     this.knob = new Phaser.GameObjects.Graphics(scene)

@@ -4,7 +4,7 @@ export const snakeConfig: SnakeConfig = {
   width: 20,
   height: 20,
   initialLength: 3,
-  baseTickMs: 145,
+  baseTickMs: 160,
   minTickMs: 70,
   speedUpEvery: 30,
   speedUpStep: 7,

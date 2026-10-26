@@ -305,6 +305,11 @@ export function drawEffectRing(
   }
 }
 
+/** Ink outline width that scales with the art, so small fruits keep a thin rim. */
+function inkWidth(radius: number): number {
+  return Math.max(1.2, radius * 0.12)
+}
+
 function drawRoundFruit(
   graphics: Phaser.GameObjects.Graphics,
   x: number,
@@ -313,8 +318,9 @@ function drawRoundFruit(
   palette: { light: number; body: number; dark: number },
   theme: Theme,
 ): void {
+  const ink = inkWidth(size)
   graphics.fillStyle(theme.ink, 1)
-  graphics.fillCircle(x, y, size + 3)
+  graphics.fillCircle(x, y, size + ink)
   graphics.fillStyle(palette.body, 1)
   graphics.fillCircle(x, y, size)
   graphics.fillStyle(palette.light, 0.45)
@@ -331,10 +337,11 @@ function drawLeaf(
   palette: { leaf: number },
   theme: Theme,
 ): void {
+  const ink = inkWidth(size)
   graphics.lineStyle(Math.max(2, size * 0.16), theme.ink, 1)
   graphics.lineBetween(x, y - size - 1, x, y - size - size * 0.34)
   graphics.fillStyle(theme.ink, 1)
-  graphics.fillEllipse(x + size * 0.42, y - size - 4, size * 0.62 + 3, size * 0.32 + 3)
+  graphics.fillEllipse(x + size * 0.42, y - size - 4, size * 0.62 + ink, size * 0.32 + ink)
   graphics.fillStyle(palette.leaf, 1)
   graphics.fillEllipse(x + size * 0.42, y - size - 4, size * 0.62, size * 0.32)
 }
@@ -349,8 +356,9 @@ function drawLemon(
 ): void {
   const width = size * 2.3
   const height = size * 1.65
+  const ink = inkWidth(size)
   graphics.fillStyle(theme.ink, 1)
-  graphics.fillEllipse(x, y, width + 6, height + 6)
+  graphics.fillEllipse(x, y, width + ink * 2, height + ink * 2)
   graphics.fillStyle(palette.body, 1)
   graphics.fillEllipse(x, y, width, height)
   graphics.fillStyle(palette.light, 0.5)
@@ -379,10 +387,11 @@ function drawGrapes(
     { x: size * 0.25, y: size * 0.55 },
   ]
   const berryRadius = size * 0.42
+  const ink = Math.max(1, berryRadius * 0.2)
 
   for (const berry of berries) {
     graphics.fillStyle(theme.ink, 1)
-    graphics.fillCircle(x + berry.x, y + berry.y, berryRadius + 2.5)
+    graphics.fillCircle(x + berry.x, y + berry.y, berryRadius + ink)
     graphics.fillStyle(palette.body, 1)
     graphics.fillCircle(x + berry.x, y + berry.y, berryRadius)
     graphics.fillStyle(palette.light, 0.5)
@@ -414,7 +423,7 @@ function drawBerries(
 
   for (const berry of berries) {
     graphics.fillStyle(theme.ink, 1)
-    graphics.fillCircle(x + berry.x, y + berry.y, berry.r + 2.5)
+    graphics.fillCircle(x + berry.x, y + berry.y, berry.r + Math.max(1, berry.r * 0.18))
     graphics.fillStyle(palette.body, 1)
     graphics.fillCircle(x + berry.x, y + berry.y, berry.r)
     graphics.fillStyle(palette.light, 0.55)
@@ -440,8 +449,9 @@ function drawMelon(
   palette: { light: number; body: number; dark: number; leaf: number },
   theme: Theme,
 ): void {
+  const ink = inkWidth(size)
   graphics.fillStyle(theme.ink, 1)
-  graphics.fillCircle(x, y, size + 3)
+  graphics.fillCircle(x, y, size + ink)
   graphics.fillStyle(palette.body, 1)
   graphics.fillCircle(x, y, size)
 
@@ -454,7 +464,7 @@ function drawMelon(
   graphics.lineStyle(Math.max(2, size * 0.14), theme.ink, 1)
   graphics.lineBetween(x, y - size - 1, x, y - size - size * 0.34)
   graphics.fillStyle(theme.ink, 1)
-  graphics.fillEllipse(x + size * 0.42, y - size - 4, size * 0.62 + 3, size * 0.32 + 3)
+  graphics.fillEllipse(x + size * 0.42, y - size - 4, size * 0.62 + ink, size * 0.32 + ink)
   graphics.fillStyle(palette.leaf, 1)
   graphics.fillEllipse(x + size * 0.42, y - size - 4, size * 0.62, size * 0.32)
 }

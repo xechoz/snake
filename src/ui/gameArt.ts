@@ -31,6 +31,8 @@ const DIRECTION_VECTORS: Record<Direction, Cell> = {
 /** White mat around the playfield. It also catches the head and effect rings. */
 const FRAME_MAT = 10
 const FRAME_RADIUS = 28
+/** Food radius as a fraction of a cell; large enough to read at phone sizes. */
+const FOOD_RADIUS = 0.4
 /**
  * Where the mat's rounded-corner arc crosses the 45° diagonal, relative to the
  * playfield corner. The corner sprigs grow outward from here, so their tails
@@ -155,7 +157,7 @@ export function drawFoods(
       foodGraphics,
       cellCenterX(board, food.cell.x),
       cellCenterY(board, food.cell.y),
-      board.cell * 0.3,
+      board.cell * FOOD_RADIUS,
       food.kind,
       theme,
       time,

@@ -208,7 +208,7 @@ describe('super fruit and feast', () => {
     expect(result.state.score).toBe(15)
     expect(result.state.foods).toHaveLength(1)
     expect(result.state.feast).toEqual(
-      feastState({ remainingMs: config.feastDurationMs - 145, eaten: 1 }),
+      feastState({ remainingMs: config.feastDurationMs - 160, eaten: 1 }),
     )
     expect(result.events[0]).toMatchObject({ type: 'eat', kind: 'grape', points: 15 })
   })
@@ -288,7 +288,7 @@ describe('super fruit and feast', () => {
     expect(result.state.score).toBe(310)
     expect(result.state.speedScore).toBe(300)
     expect(result.state.feast).toBeNull()
-    expect(tickMs(result.state)).toBe(75)
+    expect(tickMs(result.state)).toBe(90)
   })
 
   it('still advances the speed curve on normal fruit', () => {
@@ -695,13 +695,13 @@ describe('power-ups', () => {
 
 describe('tickMs', () => {
   it('speeds up with score and clamps at the minimum', () => {
-    expect(tickMs(makeState({ score: 0 }))).toBe(145)
-    expect(tickMs(makeState({ score: 30 }))).toBe(138)
+    expect(tickMs(makeState({ score: 0 }))).toBe(160)
+    expect(tickMs(makeState({ score: 30 }))).toBe(153)
     expect(tickMs(makeState({ score: 9999 }))).toBe(70)
   })
 
   it('slows down and speeds up while preserving the clamps', () => {
-    expect(tickMs(makeState({ effect: { kind: 'slow', remaining: 5 } }))).toBe(218)
+    expect(tickMs(makeState({ effect: { kind: 'slow', remaining: 5 } }))).toBe(240)
     expect(
       tickMs(
         makeState({
@@ -710,7 +710,7 @@ describe('tickMs', () => {
         }),
       ),
     ).toBe(240)
-    expect(tickMs(makeState({ effect: { kind: 'fast', remaining: 5 } }))).toBe(87)
+    expect(tickMs(makeState({ effect: { kind: 'fast', remaining: 5 } }))).toBe(96)
     expect(tickMs(makeState({ score: 9999, effect: { kind: 'fast', remaining: 5 } }))).toBe(58)
   })
 })
