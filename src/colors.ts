@@ -10,7 +10,11 @@ const cream = 0xfff9ec
 
 const accent = 0xffb020
 const accentHover = 0xf09300
-const accentInk = 0x0369a1
+// Text and control-icon tone. Same hue as `foliage.mid`, kept light while still
+// clearing 3:1 on the white cards it sits on (WCAG AA for large display text and
+// non-text UI). The pale leaf greens (#9fd8bb, the page-bottom mint band) are
+// 1.6:1 there and unusable for glyphs.
+const accentInk = 0x349064
 
 function cssColor(color: number): string {
   return `#${color.toString(16).padStart(6, '0')}`

@@ -16,7 +16,12 @@ import { snakeSave } from '../save'
 import { drawBackdrop } from '../ui/backdrop'
 import { hasTouchInput } from '../ui/device'
 import { fruitDecoration } from '../ui/fruitDecoration'
-import { computeMenuLayout, MENU_PLAY_HEIGHT, type MenuLayout } from '../ui/layout'
+import {
+  computeMenuLayout,
+  MENU_PLAY_HEIGHT,
+  MENU_SETTINGS_HIT,
+  type MenuLayout,
+} from '../ui/layout'
 import { createSnakeLogo, type SnakeLogo } from '../ui/logo'
 import { createMenuDemo, type MenuDemo } from '../ui/menuDemo'
 
@@ -64,7 +69,7 @@ export class MenuScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(theme.bg)
     this.backdrop = this.add.graphics()
     this.logo = createSnakeLogo(this)
-    const initial = computeMenuLayout(viewport, this.logo.height, this.showInstallHint)
+    const initial = computeMenuLayout(viewport, this.logo.height, this.touch, this.showInstallHint)
 
     this.bestStar = this.add.graphics()
     this.bestLabel = this.add
@@ -91,6 +96,7 @@ export class MenuScene extends Phaser.Scene {
       width: initial.settings.size,
       height: initial.settings.size,
       variant: 'soft',
+      minHitSize: this.touch ? MENU_SETTINGS_HIT : undefined,
       fontSize: SETTINGS_ICON_SIZE,
       icon: services.settings.value.sound ? 'soundOn' : 'soundOff',
       onClick: () => {
@@ -104,6 +110,7 @@ export class MenuScene extends Phaser.Scene {
       width: initial.settings.size,
       height: initial.settings.size,
       variant: 'soft',
+      minHitSize: this.touch ? MENU_SETTINGS_HIT : undefined,
       fontSize: SETTINGS_LABEL_SIZE,
       onClick: () => {
         services.audio.play('click')
@@ -121,7 +128,7 @@ export class MenuScene extends Phaser.Scene {
         0,
         0,
         services.i18n.t(this.touch ? 'menu.controlsTouch' : 'menu.controlsDesktop'),
-        textStyle(theme, 26, theme.textMuted),
+        textStyle(theme, 28, theme.textMuted),
       )
       .setOrigin(0.5)
 
@@ -136,7 +143,10 @@ export class MenuScene extends Phaser.Scene {
 
     this.applyLayout(viewport, initial)
     onLayoutChange(this, (next) =>
-      this.applyLayout(next, computeMenuLayout(next, this.logo.height, this.showInstallHint)),
+      this.applyLayout(
+        next,
+        computeMenuLayout(next, this.logo.height, this.touch, this.showInstallHint),
+      ),
     )
     this.playEntrance()
 

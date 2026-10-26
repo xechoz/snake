@@ -2,12 +2,10 @@ import type { Insets, Viewport } from '@mg/core'
 import { describe, expect, it } from 'vitest'
 import {
   ACTION_LABEL_BAND,
-  computeBestCrown,
   computeGameOverOverlay,
   computeMenuLayout,
   computeSnakeLayout,
   GAME_OVER_MODAL_HEIGHT,
-  GAME_OVER_MODAL_HEIGHT_ADS,
   GAME_OVER_MODAL_WIDTH,
   inlineScorePositions,
   MENU_HINT_HEIGHT,
@@ -15,6 +13,8 @@ import {
   MENU_LOGO_HEIGHT,
   MENU_PLAY_CHARM_CLEARANCE,
   MENU_PLAY_HEIGHT,
+  MENU_SETTINGS_HIT,
+  MENU_SETTINGS_TOUCH_SIZE,
   playCharmSpots,
   type Rect,
   SUPER_FRUIT_CROWN,
@@ -146,28 +146,11 @@ describe('computeGameOverOverlay', () => {
       },
     )
 
-    expect(overlay.card).toEqual({ x: 320, y: 125, width: 640, height: 470 })
-    expect(overlay.close).toEqual({ x: 916, y: 169 })
+    expect(overlay.card).toEqual({ x: 320, y: 115, width: 640, height: 490 })
+    expect(overlay.close).toEqual({ x: 916, y: 159 })
     expect(overlay.closeSize).toBe(56)
-    expect(overlay.crown).toEqual({ x: 640, y: 109 })
+    expect(overlay.crown).toEqual({ x: 640, y: 99 })
     expect(overlay.crownSize).toBe(65)
-  })
-
-  it('keeps the taller ad card and its crown on a 720-high screen', () => {
-    const overlay = computeGameOverOverlay(
-      { width: 1280, height: 720 },
-      {
-        width: GAME_OVER_MODAL_WIDTH,
-        height: GAME_OVER_MODAL_HEIGHT_ADS,
-        titleFontSize: 32,
-        heroFontSize: 64,
-      },
-    )
-
-    expect(overlay.card).toEqual({ x: 320, y: 60, width: 640, height: 600 })
-    expect(overlay.crown).toEqual({ x: 640, y: 45 })
-    expect(overlay.crownSize).toBe(58)
-    expect(overlay.crown.y - overlay.crownSize / 2).toBeGreaterThanOrEqual(8)
   })
 
   it('moves fireworks above and below the card on portrait screens', () => {
@@ -181,7 +164,7 @@ describe('computeGameOverOverlay', () => {
       },
     )
 
-    expect(overlay.card).toEqual({ x: 40, y: 544, width: 640, height: 470 })
+    expect(overlay.card).toEqual({ x: 40, y: 534, width: 640, height: 490 })
     for (const burst of overlay.bursts) {
       expect(burst.y < overlay.card.y || burst.y > overlay.card.y + overlay.card.height).toBe(true)
     }
@@ -189,79 +172,48 @@ describe('computeGameOverOverlay', () => {
 
   it('keeps decorations inside the screen and clear of the title on every layout', () => {
     for (const [width, height] of sizes) {
-      for (const ads of [false, true]) {
-        const overlay = computeGameOverOverlay(
-          { width, height },
-          {
-            width: GAME_OVER_MODAL_WIDTH,
-            height: ads ? GAME_OVER_MODAL_HEIGHT_ADS : GAME_OVER_MODAL_HEIGHT,
-            titleFontSize: ads ? 32 : 36,
-            heroFontSize: ads ? 64 : 72,
-          },
-        )
-        const tag = `${width}x${height} ads=${ads}`
-        const cardRight = overlay.card.x + overlay.card.width
-        const cardBottom = overlay.card.y + overlay.card.height
+      const overlay = computeGameOverOverlay(
+        { width, height },
+        {
+          width: GAME_OVER_MODAL_WIDTH,
+          height: GAME_OVER_MODAL_HEIGHT,
+          titleFontSize: 36,
+          heroFontSize: 72,
+        },
+      )
+      const tag = `${width}x${height}`
+      const cardRight = overlay.card.x + overlay.card.width
+      const cardBottom = overlay.card.y + overlay.card.height
 
-        expect(overlay.card.x, tag).toBeGreaterThanOrEqual(0)
-        expect(overlay.card.y, tag).toBeGreaterThanOrEqual(0)
-        expect(cardRight, tag).toBeLessThanOrEqual(width)
-        expect(cardBottom, tag).toBeLessThanOrEqual(height)
+      expect(overlay.card.x, tag).toBeGreaterThanOrEqual(0)
+      expect(overlay.card.y, tag).toBeGreaterThanOrEqual(0)
+      expect(cardRight, tag).toBeLessThanOrEqual(width)
+      expect(cardBottom, tag).toBeLessThanOrEqual(height)
 
-        expect(overlay.close.x - overlay.closeSize / 2, tag).toBeGreaterThan(
-          overlay.card.x + overlay.card.width / 2 + 150,
-        )
-        expect(overlay.close.y - overlay.closeSize / 2, tag).toBeGreaterThan(overlay.card.y)
-        expect(overlay.close.x + overlay.closeSize / 2, tag).toBeLessThan(cardRight)
-        expect(overlay.close.y + overlay.closeSize / 2, tag).toBeLessThan(cardBottom)
+      expect(overlay.close.x - overlay.closeSize / 2, tag).toBeGreaterThan(
+        overlay.card.x + overlay.card.width / 2 + 150,
+      )
+      expect(overlay.close.y - overlay.closeSize / 2, tag).toBeGreaterThan(overlay.card.y)
+      expect(overlay.close.x + overlay.closeSize / 2, tag).toBeLessThan(cardRight)
+      expect(overlay.close.y + overlay.closeSize / 2, tag).toBeLessThan(cardBottom)
 
-        expect(overlay.crown.x, tag).toBe(overlay.card.x + overlay.card.width / 2)
-        expect(overlay.crown.y - overlay.crownSize / 2, tag).toBeGreaterThanOrEqual(8)
-        expect(overlay.crown.y + overlay.crownSize / 2, tag).toBeLessThanOrEqual(
-          overlay.card.y + 32,
-        )
+      expect(overlay.crown.x, tag).toBe(overlay.card.x + overlay.card.width / 2)
+      expect(overlay.crown.y - overlay.crownSize / 2, tag).toBeGreaterThanOrEqual(8)
+      expect(overlay.crown.y + overlay.crownSize / 2, tag).toBeLessThanOrEqual(overlay.card.y + 32)
 
-        const sideRoom = Math.min(overlay.card.x, width - cardRight)
-        for (const burst of overlay.bursts) {
-          expect(burst.x, tag).toBeGreaterThanOrEqual(0)
-          expect(burst.x, tag).toBeLessThanOrEqual(width)
-          expect(burst.y, tag).toBeGreaterThanOrEqual(0)
-          expect(burst.y, tag).toBeLessThanOrEqual(height)
-          if (sideRoom >= 96) {
-            expect(burst.x < overlay.card.x || burst.x > cardRight, tag).toBe(true)
-          } else {
-            expect(burst.y < overlay.card.y || burst.y > cardBottom, tag).toBe(true)
-          }
+      const sideRoom = Math.min(overlay.card.x, width - cardRight)
+      for (const burst of overlay.bursts) {
+        expect(burst.x, tag).toBeGreaterThanOrEqual(0)
+        expect(burst.x, tag).toBeLessThanOrEqual(width)
+        expect(burst.y, tag).toBeGreaterThanOrEqual(0)
+        expect(burst.y, tag).toBeLessThanOrEqual(height)
+        if (sideRoom >= 96) {
+          expect(burst.x < overlay.card.x || burst.x > cardRight, tag).toBe(true)
+        } else {
+          expect(burst.y < overlay.card.y || burst.y > cardBottom, tag).toBe(true)
         }
       }
     }
-  })
-})
-
-describe('computeBestCrown', () => {
-  it('hangs a small crown on the number at the end of the best line', () => {
-    const screen = { width: 1280, height: 720 }
-    const bodyTop = -18
-    const lineWidth = 148
-    const crown = computeBestCrown(screen, bodyTop, lineWidth, 28)
-    const art = crown.size * 0.58
-    const lineRight = screen.width / 2 + lineWidth / 2
-    const lineTop = screen.height / 2 + bodyTop
-
-    expect(crown.size).toBe(32)
-    expect(crown.x - art / 2).toBeCloseTo(lineRight)
-    expect(crown.y).toBeGreaterThan(lineTop)
-    expect(crown.y - art / 2).toBeLessThan(lineTop)
-  })
-
-  it('shrinks with the ad-card body font and keeps the same corner', () => {
-    const screen = { width: 720, height: 1558 }
-    const normal = computeBestCrown(screen, -10, 120, 28)
-    const ads = computeBestCrown(screen, -10, 120, 24)
-
-    expect(ads.size).toBeLessThan(normal.size)
-    expect(ads.x - normal.x).toBeLessThan(2)
-    expect(ads.y - normal.y).toBeLessThan(1)
   })
 })
 
@@ -312,7 +264,7 @@ describe('playCharmSpots', () => {
 
 describe('superFruitSpot', () => {
   it('sits on the right end of the rewarded action, clear of the label band', () => {
-    for (const height of [76, 92, 64]) {
+    for (const height of [76, 84, 92, 64]) {
       const spot = superFruitSpot(480, height)
 
       expect(spot.radius, `height ${height}`).toBeGreaterThanOrEqual(12)
@@ -375,7 +327,7 @@ describe('computeMenuLayout', () => {
 
   it('reserves two lines for the install hint without crowding the CTA footer', () => {
     const insets = { top: 0, right: 0, bottom: 40, left: 0 }
-    const layout = computeMenuLayout(viewport(720, 1558, insets), MENU_LOGO_HEIGHT, true)
+    const layout = computeMenuLayout(viewport(720, 1558, insets), MENU_LOGO_HEIGHT, true, true)
     const hintBottom = layout.hintY + MENU_HINT_HEIGHT / 2
     const installTop = layout.installHintY - MENU_INSTALL_HINT_HEIGHT / 2
 
@@ -402,15 +354,9 @@ describe('computeMenuLayout', () => {
     }
   })
 
-  it('keeps the demo on a 4:3 tablet and drops it on square screens', () => {
-    expect(computeMenuLayout(viewport(768, 1024)).demo.visible).toBe(true)
-    expect(computeMenuLayout(viewport(720, 720)).demo.visible).toBe(false)
-    expect(computeMenuLayout(viewport(720, 720)).mode).toBe('single')
-  })
-
-  it('keeps the landscape split and its install hint inside the safe area', () => {
+  it('keeps the touch landscape split and its install hint inside the safe area', () => {
     const insets = { top: 0, right: 0, bottom: 40, left: 0 }
-    const layout = computeMenuLayout(viewport(1558, 720, insets), MENU_LOGO_HEIGHT, true)
+    const layout = computeMenuLayout(viewport(1558, 720, insets), MENU_LOGO_HEIGHT, true, true)
 
     expect(layout.mode).toBe('split')
     expect(layout.demo.visible).toBe(true)
@@ -419,6 +365,25 @@ describe('computeMenuLayout', () => {
     expect(layout.installHintY + MENU_INSTALL_HINT_HEIGHT / 2).toBeLessThanOrEqual(
       720 - insets.bottom,
     )
+  })
+
+  it('enlarges the settings targets on touch and clears the logo', () => {
+    const layout = computeMenuLayout(viewport(720, 1558), MENU_LOGO_HEIGHT, true)
+
+    expect(layout.settings.size).toBe(MENU_SETTINGS_TOUCH_SIZE)
+    expect(layout.settings.language.x + layout.settings.size / 2).toBe(720 - 24)
+    expect(layout.settings.language.x - layout.settings.sound.x).toBeGreaterThanOrEqual(
+      MENU_SETTINGS_HIT,
+    )
+    expect(layout.settings.sound.y + layout.settings.size / 2).toBeLessThanOrEqual(
+      layout.logoY - MENU_LOGO_HEIGHT / 2,
+    )
+  })
+
+  it('keeps the demo on a 4:3 tablet and drops it on square screens', () => {
+    expect(computeMenuLayout(viewport(768, 1024)).demo.visible).toBe(true)
+    expect(computeMenuLayout(viewport(720, 720)).demo.visible).toBe(false)
+    expect(computeMenuLayout(viewport(720, 720)).mode).toBe('single')
   })
 
   it('keeps every menu element inside the safe area', () => {
@@ -435,7 +400,12 @@ describe('computeMenuLayout', () => {
     ]
 
     for (const [width, height, edge, showInstall] of cases) {
-      const layout = computeMenuLayout(viewport(width, height, edge), MENU_LOGO_HEIGHT, showInstall)
+      const layout = computeMenuLayout(
+        viewport(width, height, edge),
+        MENU_LOGO_HEIGHT,
+        showInstall,
+        showInstall,
+      )
       const tag = `${width}x${height}`
       expect(layout.centerX, tag).toBeGreaterThanOrEqual(edge.left)
       expect(layout.centerX, tag).toBeLessThanOrEqual(width - edge.right)

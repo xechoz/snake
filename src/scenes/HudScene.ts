@@ -1,4 +1,5 @@
 import {
+  Button,
   cssColor,
   displayTextStyle,
   getServices,
@@ -10,17 +11,15 @@ import {
   type Viewport,
 } from '@mg/core'
 import Phaser from 'phaser'
-import { canOfferSuperReward, grantSuperReward, hasPendingSuperReward } from '../ads'
+import { canOfferSuperReward, grantSuperReward } from '../ads'
 import { snakeColors } from '../colors'
 import { CloseButton } from '../ui/CloseButton'
-import { playGameOverEffects, spawnBestCrown, spawnCrown } from '../ui/celebration'
+import { playGameOverEffects, spawnCrown } from '../ui/celebration'
 import { fruitDecoration, superFruitDecoration } from '../ui/fruitDecoration'
 import {
-  computeBestCrown,
   computeGameOverOverlay,
   computeSnakeLayout,
   GAME_OVER_MODAL_HEIGHT,
-  GAME_OVER_MODAL_HEIGHT_ADS,
   GAME_OVER_MODAL_WIDTH,
   type GameOverOverlay,
   inlineScorePositions,
@@ -30,6 +29,7 @@ import {
   type SnakeLayout,
 } from '../ui/layout'
 import { PauseButton } from '../ui/PauseButton'
+import { resultMeta, resultTitle } from '../ui/resultCopy'
 import { superOfferActions } from '../ui/superOfferActions'
 import type { GameScene } from './GameScene'
 
@@ -53,9 +53,9 @@ export class HudScene extends Phaser.Scene {
   private pauseButton!: PauseButton
   private modal?: Modal
   private modalRequest?: ModalRequest
+  private soundButton?: Button
   private closeButton?: CloseButton
   private crown?: Phaser.GameObjects.Container
-  private bestCrown?: Phaser.GameObjects.Container
   private lastScore = -1
 
   constructor() {
@@ -232,8 +232,8 @@ export class HudScene extends Phaser.Scene {
       title: services.i18n.t('pause.title'),
       titleRibbon: false,
       body: services.i18n.t('pause.body'),
-      width: 640,
-      height: 500,
+      width: PAUSE_MODAL_WIDTH,
+      height: PAUSE_MODAL_HEIGHT,
       titleFontSize: 36,
       bodyFontSize: 30,
       actionsLayout: 'column',
@@ -261,30 +261,49 @@ export class HudScene extends Phaser.Scene {
         },
       ],
     })
+
+    this.soundButton = new Button(this, 0, 0, '', services.theme, {
+      width: PAUSE_SOUND_SIZE,
+      height: PAUSE_SOUND_SIZE,
+      variant: 'soft',
+      minHitSize: PAUSE_SOUND_HIT,
+      fontSize: 30,
+      icon: services.settings.value.sound ? 'soundOn' : 'soundOff',
+      onClick: () => this.togglePauseSound(),
+    }).setDepth(1100)
+    this.positionPauseSound()
+  }
+
+  private positionPauseSound(): void {
+    if (!this.soundButton) return
+    const width = Math.min(PAUSE_MODAL_WIDTH, this.scale.width - 48)
+    const height = Math.min(PAUSE_MODAL_HEIGHT, this.scale.height - 48)
+    this.soundButton.setPosition(
+      this.scale.width / 2 - width / 2 + PAUSE_SOUND_INSET + PAUSE_SOUND_SIZE / 2,
+      this.scale.height / 2 - height / 2 + PAUSE_SOUND_INSET + PAUSE_SOUND_SIZE / 2,
+    )
+  }
+
+  private togglePauseSound(): void {
+    const services = getServices()
+    const next = !services.settings.value.sound
+    if (next) services.audio.unlock()
+    else services.audio.play('click')
+    services.setSound(next)
+    this.soundButton?.setIcon(next ? 'soundOn' : 'soundOff')
   }
 
   private buildGameOverModal(info: GameOverInfo): GameOverOverlay {
     const services = getServices()
     const game = this.gameScene()
     const canOfferSuper = canOfferSuperReward(services)
-    const pendingSuper = hasPendingSuperReward(services)
 
     const overlay = computeGameOverOverlay(this.scale, {
       width: GAME_OVER_MODAL_WIDTH,
-      height: canOfferSuper ? GAME_OVER_MODAL_HEIGHT_ADS : GAME_OVER_MODAL_HEIGHT,
-      titleFontSize: canOfferSuper ? 32 : 36,
-      heroFontSize: canOfferSuper ? 64 : 72,
+      height: GAME_OVER_MODAL_HEIGHT,
+      titleFontSize: GAME_OVER_TITLE_SIZE,
+      heroFontSize: GAME_OVER_HERO_SIZE,
     })
-
-    const reasonKey =
-      info.reason === 'win' ? 'over.win' : info.reason === 'self' ? 'over.self' : 'over.wall'
-    const body = [
-      services.i18n.t('over.body', { best: info.best }),
-      services.i18n.t(reasonKey),
-      ...(info.newBest ? [services.i18n.t('over.newBest')] : []),
-      ...(canOfferSuper ? [services.i18n.t('ads.superHint')] : []),
-      ...(pendingSuper ? [services.i18n.t('ads.superReady')] : []),
-    ].join('\n')
 
     const restart = (): void => {
       // The ad callback may resolve after the player already closed the modal
@@ -314,26 +333,26 @@ export class HudScene extends Phaser.Scene {
           },
         ]
 
-    const bodyFontSize = canOfferSuper ? 24 : 28
-
     this.modal = new Modal(this, services.theme, {
-      title: services.i18n.t(info.won ? 'over.winTitle' : 'over.title'),
+      title: resultTitle(services.i18n, info),
       titleRibbon: false,
       hero: String(info.score),
-      body,
+      body: resultMeta(services.i18n, info),
       width: GAME_OVER_MODAL_WIDTH,
-      height: canOfferSuper ? GAME_OVER_MODAL_HEIGHT_ADS : GAME_OVER_MODAL_HEIGHT,
-      titleFontSize: canOfferSuper ? 32 : 36,
-      heroFontSize: canOfferSuper ? 64 : 72,
-      bodyFontSize,
+      height: GAME_OVER_MODAL_HEIGHT,
+      titleFontSize: GAME_OVER_TITLE_SIZE,
+      heroFontSize: GAME_OVER_HERO_SIZE,
+      bodyFontSize: GAME_OVER_META_SIZE,
       actionsLayout: 'column',
+      actionGap: 30,
       actionWidth: 480,
       actionHeight: 92,
       actionFontSize: 28,
       actions,
     })
-
-    if (info.best > 0) this.showBestCrown(this.modal, bodyFontSize)
+    // The meta line is a caption for the score, not body copy: keep it quiet so
+    // the hero number stays the single focal point of the card.
+    this.modal.bodyText?.setColor(services.theme.textMuted)
 
     this.closeButton = new CloseButton(this, overlay.close.x, overlay.close.y, services.theme, {
       size: overlay.closeSize,
@@ -341,20 +360,6 @@ export class HudScene extends Phaser.Scene {
     }).setDepth(1100)
 
     return overlay
-  }
-
-  private showBestCrown(modal: Modal, bodyFontSize: number): void {
-    const body = modal.bodyText
-    if (!body) return
-    const firstLine = body.getWrappedText(body.text)[0] ?? ''
-    const probe = this.make.text({ text: firstLine, style: body.style }, false)
-    const lineWidth = probe.width
-    probe.destroy()
-
-    this.bestCrown = spawnBestCrown(
-      this,
-      computeBestCrown(this.scale, body.y, lineWidth, bodyFontSize),
-    )
   }
 
   private showCrown(overlay: GameOverOverlay): void {
@@ -367,6 +372,11 @@ export class HudScene extends Phaser.Scene {
   }
 
   private destroyOverlay(): void {
+    if (this.soundButton) {
+      this.tweens.killTweensOf(this.soundButton)
+      this.soundButton.destroy()
+      this.soundButton = undefined
+    }
     if (this.closeButton) {
       this.tweens.killTweensOf(this.closeButton)
       this.closeButton.destroy()
@@ -377,17 +387,21 @@ export class HudScene extends Phaser.Scene {
       this.crown.destroy()
       this.crown = undefined
     }
-    if (this.bestCrown) {
-      this.tweens.killTweensOf(this.bestCrown)
-      this.bestCrown.destroy()
-      this.bestCrown = undefined
-    }
   }
 
   private gameScene(): GameScene {
     return this.scene.get('Game') as GameScene
   }
 }
+
+const PAUSE_MODAL_WIDTH = 640
+const PAUSE_MODAL_HEIGHT = 500
+const PAUSE_SOUND_SIZE = 56
+const PAUSE_SOUND_HIT = 96
+const PAUSE_SOUND_INSET = 24
+const GAME_OVER_TITLE_SIZE = 36
+const GAME_OVER_HERO_SIZE = 72
+const GAME_OVER_META_SIZE = 30
 
 function fillCloudShape(
   graphics: Phaser.GameObjects.Graphics,

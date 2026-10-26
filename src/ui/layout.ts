@@ -14,8 +14,7 @@ export interface Point {
 }
 
 export const GAME_OVER_MODAL_WIDTH = 640
-export const GAME_OVER_MODAL_HEIGHT = 470
-export const GAME_OVER_MODAL_HEIGHT_ADS = 600
+export const GAME_OVER_MODAL_HEIGHT = 490
 
 const MODAL_SCREEN_MARGIN = 48
 const CLOSE_INSET = 44
@@ -75,40 +74,6 @@ export function computeGameOverOverlay(
     crown,
     crownSize,
     bursts: computeBurstPoints(screen, card),
-  }
-}
-
-const BEST_CROWN_SCALE = 1.15
-const BEST_CROWN_ART_RATIO = 0.58
-const BEST_CROWN_RIGHT_OVERHANG = 0.5
-const BEST_CROWN_TOP_OVERHANG = 0.12
-
-export interface BestCrown {
-  /** Container center in screen space. */
-  readonly x: number
-  readonly y: number
-  /** Scale passed to `drawCrownArt`; the visible art is about 58% of it. */
-  readonly size: number
-}
-
-/**
- * Superscript crown on the "best" body line of the result card.
- * `bodyTop` and `firstLineWidth` are card-local values from the modal body
- * text (origin 0.5/0, centered in the card). The crown overlaps the number's
- * top-right corner instead of floating above the whole line.
- */
-export function computeBestCrown(
-  screen: { readonly width: number; readonly height: number },
-  bodyTop: number,
-  firstLineWidth: number,
-  bodyFontSize: number,
-): BestCrown {
-  const size = Math.round(bodyFontSize * BEST_CROWN_SCALE)
-  const art = size * BEST_CROWN_ART_RATIO
-  return {
-    x: screen.width / 2 + firstLineWidth / 2 + art * BEST_CROWN_RIGHT_OVERHANG,
-    y: screen.height / 2 + bodyTop + art * BEST_CROWN_TOP_OVERHANG,
-    size,
   }
 }
 
@@ -272,6 +237,8 @@ export const MENU_DEMO_WIDTH = 312
 export const MENU_DEMO_HEIGHT = 220
 export const MENU_DEMO_ASPECT = MENU_DEMO_WIDTH / MENU_DEMO_HEIGHT
 export const MENU_SETTINGS_SIZE = 64
+export const MENU_SETTINGS_TOUCH_SIZE = 84
+export const MENU_SETTINGS_HIT = 96
 export const MENU_PLAY_HEIGHT = 108
 export const MENU_LOGO_HEIGHT = 178
 export const MENU_HINT_HEIGHT = 34
@@ -372,6 +339,7 @@ const PLAY_HINT_GAP = 28
 const SETTINGS_EDGE = 24
 const SETTINGS_TOP = 20
 const SETTINGS_GAP = 12
+const SETTINGS_TOUCH_GAP = 16
 const HEADER_CLEARANCE = 12
 const INSTALL_HINT_GAP = 12
 const DEMO_GAP = 24
@@ -394,13 +362,21 @@ const BOTTOM_BAND_FLOOR = 24
 export function computeMenuLayout(
   viewport: Viewport,
   logoHeight = MENU_LOGO_HEIGHT,
+  touch = false,
   showInstallHint = false,
 ): MenuLayout {
   const { insets, width, height } = viewport
   const availableWidth = Math.max(1, width - insets.left - insets.right)
   const availableHeight = Math.max(1, height - insets.top - insets.bottom)
   const split = availableWidth >= SPLIT_MIN_WIDTH && width >= height
-  const settings = computeSettingsLayout(width, insets)
+  const settingsSize = touch ? MENU_SETTINGS_TOUCH_SIZE : MENU_SETTINGS_SIZE
+  const settings = computeSettingsLayout(
+    width,
+    insets,
+    settingsSize,
+    touch ? SETTINGS_TOUCH_GAP : SETTINGS_GAP,
+  )
+  const settingsClearance = SETTINGS_TOP + settingsSize + HEADER_CLEARANCE
 
   const contentHeight =
     logoHeight +
@@ -418,11 +394,7 @@ export function computeMenuLayout(
     const demoHeight = MENU_DEMO_HEIGHT * demoScale
     const top =
       insets.top +
-      Math.max(
-        56,
-        Math.round((availableHeight - contentHeight) * 0.42),
-        SETTINGS_TOP + MENU_SETTINGS_SIZE + HEADER_CLEARANCE,
-      )
+      Math.max(56, Math.round((availableHeight - contentHeight) * 0.42), settingsClearance)
     const logoY = top + logoHeight / 2
     const bestY = top + logoHeight + LOGO_BEST_GAP + BEST_HEIGHT / 2
     const playY = bestY + BEST_HEIGHT / 2 + BEST_PLAY_GAP + MENU_PLAY_HEIGHT / 2
@@ -453,11 +425,7 @@ export function computeMenuLayout(
 
   const centerX = insets.left + Math.round(availableWidth / 2)
   const top =
-    insets.top +
-    Math.max(
-      clamp(Math.round(availableHeight * 0.08), 56, 160),
-      SETTINGS_TOP + MENU_SETTINGS_SIZE + HEADER_CLEARANCE,
-    )
+    insets.top + Math.max(clamp(Math.round(availableHeight * 0.08), 56, 160), settingsClearance)
   const logoY = top + logoHeight / 2
   const bestY = top + logoHeight + LOGO_BEST_GAP + BEST_HEIGHT / 2
 
@@ -511,14 +479,19 @@ export function computeMenuLayout(
   }
 }
 
-function computeSettingsLayout(width: number, insets: Viewport['insets']): MenuSettingsLayout {
-  const languageX = width - insets.right - SETTINGS_EDGE - MENU_SETTINGS_SIZE / 2
-  const soundX = languageX - MENU_SETTINGS_SIZE - SETTINGS_GAP
-  const y = insets.top + SETTINGS_TOP + MENU_SETTINGS_SIZE / 2
+function computeSettingsLayout(
+  width: number,
+  insets: Viewport['insets'],
+  size: number,
+  gap: number,
+): MenuSettingsLayout {
+  const languageX = width - insets.right - SETTINGS_EDGE - size / 2
+  const soundX = languageX - size - gap
+  const y = insets.top + SETTINGS_TOP + size / 2
   return {
     sound: { x: soundX, y },
     language: { x: languageX, y },
-    size: MENU_SETTINGS_SIZE,
+    size,
   }
 }
 

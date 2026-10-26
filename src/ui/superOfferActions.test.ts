@@ -26,7 +26,7 @@ describe('superOfferActions', () => {
     expect(actions[1]).toMatchObject({
       variant: 'soft',
       icon: 'video',
-      height: 76,
+      height: 92,
       closeOnClick: false,
       loadingLabel: 'Loading',
     })

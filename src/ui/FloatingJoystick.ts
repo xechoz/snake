@@ -4,16 +4,19 @@ import type { Direction } from '../logic/types'
 import { resolveJoystickDirection } from './joystick'
 import type { Rect } from './layout'
 
-const BASE_RADIUS = 92
-const KNOB_RADIUS = 34
-const MAX_TRAVEL = 58
-const DEAD_ZONE = 24
+const BASE_RADIUS = 84
+const KNOB_RADIUS = 30
+const MAX_TRAVEL = 52
+const DEAD_ZONE = 30
+const BASE_REVEAL_DISTANCE = 14
 const DEPTH = 8
 
 export class FloatingJoystick extends Phaser.GameObjects.Container {
+  private readonly base: Phaser.GameObjects.Graphics
   private readonly knob: Phaser.GameObjects.Graphics
   private activePointerId: number | null = null
   private lastDirection: Direction | null = null
+  private baseRevealed = false
   private enabled = true
   private blockedRect: Rect | null = null
 
@@ -24,18 +27,20 @@ export class FloatingJoystick extends Phaser.GameObjects.Container {
   ) {
     super(scene, 0, 0)
 
-    const base = new Phaser.GameObjects.Graphics(scene)
-    base.fillStyle(theme.surface, 0.5)
-    base.fillCircle(0, 0, BASE_RADIUS)
-    base.lineStyle(1.5, theme.ink, 0.35)
-    base.strokeCircle(0, 0, BASE_RADIUS)
-    base.lineStyle(2, theme.accentInk, 0.35)
-    base.strokeCircle(0, 0, MAX_TRAVEL)
-    base.fillStyle(theme.ink, 0.3)
-    base.fillTriangle(0, -BASE_RADIUS + 14, -8, -BASE_RADIUS + 30, 8, -BASE_RADIUS + 30)
-    base.fillTriangle(0, BASE_RADIUS - 14, -8, BASE_RADIUS - 30, 8, BASE_RADIUS - 30)
-    base.fillTriangle(-BASE_RADIUS + 14, 0, -BASE_RADIUS + 30, -8, -BASE_RADIUS + 30, 8)
-    base.fillTriangle(BASE_RADIUS - 14, 0, BASE_RADIUS - 30, -8, BASE_RADIUS - 30, 8)
+    this.base = new Phaser.GameObjects.Graphics(scene)
+    // A hollow, low-contrast base keeps the board readable under the thumb.
+    this.base.fillStyle(theme.surface, 0.14)
+    this.base.fillCircle(0, 0, BASE_RADIUS)
+    this.base.lineStyle(2, theme.ink, 0.3)
+    this.base.strokeCircle(0, 0, BASE_RADIUS)
+    this.base.lineStyle(2, theme.accentInk, 0.28)
+    this.base.strokeCircle(0, 0, MAX_TRAVEL)
+    this.base.fillStyle(theme.ink, 0.24)
+    this.base.fillTriangle(0, -BASE_RADIUS + 14, -8, -BASE_RADIUS + 30, 8, -BASE_RADIUS + 30)
+    this.base.fillTriangle(0, BASE_RADIUS - 14, -8, BASE_RADIUS - 30, 8, BASE_RADIUS - 30)
+    this.base.fillTriangle(-BASE_RADIUS + 14, 0, -BASE_RADIUS + 30, -8, -BASE_RADIUS + 30, 8)
+    this.base.fillTriangle(BASE_RADIUS - 14, 0, -BASE_RADIUS + 30, -8, -BASE_RADIUS + 30, 8)
+    this.base.setAlpha(0)
 
     this.knob = new Phaser.GameObjects.Graphics(scene)
     this.knob.fillStyle(theme.shadow, 0.15)
@@ -47,7 +52,7 @@ export class FloatingJoystick extends Phaser.GameObjects.Container {
     this.knob.fillStyle(theme.highlight, 0.4)
     this.knob.fillCircle(-11, -13, 10)
 
-    this.add([base, this.knob])
+    this.add([this.base, this.knob])
     this.setDepth(DEPTH).setVisible(false).setAlpha(0)
 
     scene.input.on('pointerdown', this.handleDown, this)
@@ -71,7 +76,9 @@ export class FloatingJoystick extends Phaser.GameObjects.Container {
   reset(): void {
     this.activePointerId = null
     this.lastDirection = null
+    this.baseRevealed = false
     this.scene.tweens.killTweensOf(this)
+    this.scene.tweens.killTweensOf(this.base)
     if (!this.visible) return
     this.scene.tweens.add({
       targets: this,
@@ -86,6 +93,7 @@ export class FloatingJoystick extends Phaser.GameObjects.Container {
     this.scene.input.off('pointermove', this.handleMove, this)
     this.scene.input.off('pointerup', this.handleUp, this)
     this.scene.input.off('gameout', this.handleGameOut, this)
+    this.scene.tweens.killTweensOf(this.base)
     super.destroy(fromScene)
   }
 
@@ -94,11 +102,13 @@ export class FloatingJoystick extends Phaser.GameObjects.Container {
     if (this.isBlocked(pointer)) return
     this.activePointerId = pointer.id
     this.lastDirection = null
+    this.baseRevealed = false
     this.knob.setPosition(0, 0)
     this.setPosition(pointer.x, pointer.y)
     this.scene.tweens.killTweensOf(this)
-    this.setVisible(true).setAlpha(0.55)
-    this.scene.tweens.add({ targets: this, alpha: 1, duration: 100 })
+    this.scene.tweens.killTweensOf(this.base)
+    this.base.setAlpha(0)
+    this.setVisible(true).setAlpha(1)
   }
 
   private handleMove(pointer: Phaser.Input.Pointer): void {
@@ -106,6 +116,11 @@ export class FloatingJoystick extends Phaser.GameObjects.Container {
     const dx = pointer.x - this.x
     const dy = pointer.y - this.y
     const length = Math.hypot(dx, dy)
+    if (!this.baseRevealed && length >= BASE_REVEAL_DISTANCE) {
+      this.baseRevealed = true
+      this.scene.tweens.killTweensOf(this.base)
+      this.scene.tweens.add({ targets: this.base, alpha: 1, duration: 100 })
+    }
     const scale = length > MAX_TRAVEL ? MAX_TRAVEL / length : 1
     this.knob.setPosition(dx * scale, dy * scale)
 

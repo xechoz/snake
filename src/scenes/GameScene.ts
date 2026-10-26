@@ -245,6 +245,9 @@ export class GameScene extends Phaser.Scene {
     this.paused = false
     this.joystick.setEnabled(true)
     this.hud()?.closeModal()
+    // The resume tap is a fresh user gesture; Safari may have interrupted the
+    // audio context while the page was in the background.
+    services.audio.unlock()
     this.startCountdown()
     services.platform.gameplayStart()
   }
@@ -451,6 +454,10 @@ export class GameScene extends Phaser.Scene {
     const best = Math.max(current.best, this.state.score)
     save.write({ ...current, best, plays: current.plays + 1 })
     this.best = best
+
+    // One short pulse per run end; eating stays silent so the phone does not
+    // buzz constantly during a good run.
+    services.platform.haptic(isNewBest || won ? 40 : 24)
 
     if (isNewBest || won) services.platform.happyTime()
 

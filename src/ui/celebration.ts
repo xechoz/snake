@@ -95,53 +95,6 @@ export function spawnCrown(
   return container
 }
 
-export interface BestCrownOptions {
-  readonly x: number
-  readonly y: number
-  readonly size: number
-}
-
-/**
- * Small, always-on crown for the best score in the result card. It reuses the
- * record crown art without the badge or sparkles so the big crown still owns
- * the new-record moment.
- */
-export function spawnBestCrown(
-  scene: Phaser.Scene,
-  { x, y, size }: BestCrownOptions,
-): Phaser.GameObjects.Container {
-  const container = scene.add.container(x, y).setDepth(CROWN_DEPTH)
-  const art = scene.add.graphics()
-
-  drawCrownArt(art, size)
-  container.add(art)
-  container.setAlpha(0).setScale(0.5)
-
-  scene.tweens.add({
-    targets: container,
-    alpha: 1,
-    scale: 1,
-    duration: 260,
-    delay: 120,
-    ease: 'Back.out',
-  })
-  scene.tweens.add({
-    targets: art,
-    angle: { from: -5, to: 5 },
-    duration: 2400,
-    delay: 380,
-    yoyo: true,
-    repeat: -1,
-    ease: 'Sine.inOut',
-  })
-
-  container.once(Phaser.GameObjects.Events.DESTROY, () => {
-    scene.tweens.killTweensOf([container, art])
-  })
-
-  return container
-}
-
 function richPalette(): readonly number[] {
   const gold = snakeColors.art.superFruit
   return [gold.body, gold.light, gold.glow, ...snakeColors.art.confetti]

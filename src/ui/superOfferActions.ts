@@ -13,10 +13,14 @@ export interface SuperOfferActionsOptions {
 /**
  * Game-over actions for the super-fruit rewarded ad.
  *
- * Keeps the compliance shape of `rewardOfferActions` (standard action first and
- * larger, rewarded action soft with a video icon) but ends the ad flow by
+ * Keeps the compliance shape of `rewardOfferActions` (standard action first,
+ * the rewarded action soft with a video icon) but ends the ad flow by
  * restarting the run for every outcome: a completed ad grants the fruit first,
  * while a skip or failure still moves on without it.
+ *
+ * Both actions share the same height: the standard action keeps the primary
+ * position and styling, while the taller rewarded action is easier to read and
+ * tap instead of hiding at the bottom of the card.
  */
 export function superOfferActions(options: SuperOfferActionsOptions): ModalAction[] {
   return [
@@ -30,7 +34,7 @@ export function superOfferActions(options: SuperOfferActionsOptions): ModalActio
       label: options.rewardedLabel,
       variant: 'soft',
       icon: 'video',
-      height: 76,
+      height: 92,
       closeOnClick: false,
       loadingLabel: options.loadingLabel,
       onClick: async () => {
