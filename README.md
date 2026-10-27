@@ -37,6 +37,16 @@ The platform is pinned at `v4.0.0` in `platform/`.
 Build the matching zip first with `npm run package:crazy:basic` or
 `npm run package:crazy:full`.
 
+## Local Poki preview
+
+```bash
+./run-poki.sh   # http://localhost:8082
+```
+
+Build the zip first with `npm run package:poki`. Real Poki ads and SDK event
+checks require the [Poki Inspector](https://inspector.poki.dev); the local
+preview is for layout, loading and input checks.
+
 ## Platform updates
 
 ```bash

@@ -17,6 +17,7 @@ import {
   MENU_SETTINGS_HIT,
   MENU_SETTINGS_TOUCH_SIZE,
   menuDemoTouchRect,
+  POKI_HUD_SAFE_TOP,
   playCharmSpots,
   type Rect,
   SUPER_FRUIT_CROWN,
@@ -54,6 +55,26 @@ describe('computeSnakeLayout', () => {
     expect(layout.board.width).toBe(672)
     expect(layout.board.x).toBe(443)
     expect(layout.hud.x).toBe(112)
+  })
+
+  it('reserves room above the side HUD for the Poki pill', () => {
+    const base = computeSnakeLayout(viewport(1558, 720))
+    const shifted = computeSnakeLayout(viewport(1558, 720), { safeTop: POKI_HUD_SAFE_TOP })
+
+    expect(shifted.board).toEqual(base.board)
+    expect(shifted.hud.x).toBe(base.hud.x)
+    expect(shifted.hud.y).toBe(base.hud.y + POKI_HUD_SAFE_TOP)
+    expect(shifted.pause.y).toBe(base.pause.y + POKI_HUD_SAFE_TOP)
+    expect(shifted.scoreCard.y).toBe(base.scoreCard.y + POKI_HUD_SAFE_TOP)
+    expect(shifted.hud.y + shifted.hud.height).toBeLessThanOrEqual(720)
+    expect(shifted.scoreCard.y + shifted.scoreCard.height).toBeLessThanOrEqual(720)
+  })
+
+  it('keeps the top HUD unchanged by the side-only safe top', () => {
+    const base = computeSnakeLayout(viewport(720, 1558))
+    const shifted = computeSnakeLayout(viewport(720, 1558), { safeTop: POKI_HUD_SAFE_TOP })
+
+    expect(shifted).toEqual(base)
   })
 
   it('moves the HUD to the top in portrait and keeps the board at 672', () => {

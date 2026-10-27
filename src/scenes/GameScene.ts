@@ -17,6 +17,7 @@ import type { Cell, Direction, SnakeState } from '../logic/types'
 import { snakeSave } from '../save'
 import { resolveSkin, type SnakeSkinId, startingSegmentColors } from '../skins'
 import { drawBackdrop } from '../ui/backdrop'
+import { hostHudSafeTop } from '../ui/device'
 import { FoodLayer } from '../ui/FoodLayer'
 import {
   flashDanger,
@@ -97,7 +98,7 @@ export class GameScene extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor(theme.bg)
     this.viewport = readViewport(this)
-    this.layout = computeSnakeLayout(this.viewport)
+    this.layout = computeSnakeLayout(this.viewport, { safeTop: hostHudSafeTop() })
 
     this.backdropGraphics = this.add.graphics().setDepth(-2)
     this.drawBackdrop()
@@ -300,7 +301,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleLayout(viewport: Viewport): void {
-    const next = computeSnakeLayout(viewport)
+    const next = computeSnakeLayout(viewport, { safeTop: hostHudSafeTop() })
     if (layoutsEqual(next, this.layout) && !this.foodLayer.needsRebake()) return
 
     const rotated = next.orientation !== this.layout.orientation && this.isPlaying()

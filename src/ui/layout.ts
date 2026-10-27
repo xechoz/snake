@@ -126,6 +126,8 @@ const COLUMN_HUD = { width: SIDE_CARD_WIDTH, height: PAUSE_HIT + HUD_GAP + SIDE_
 const ROW_HUD = { width: TOP_CARD_WIDTH + HUD_GAP + PAUSE_HIT, height: SCORE_BLOCK_HEIGHT }
 const HUD_CLEARANCE = 16
 const MIN_BOARD = 200
+/** Room the Poki mobile pill needs above the side HUD. */
+export const POKI_HUD_SAFE_TOP = 140
 
 export interface SnakeLayout {
   orientation: 'landscape' | 'portrait'
@@ -153,14 +155,26 @@ export function inlineScorePositions(
   }
 }
 
+export interface SnakeLayoutOptions {
+  /**
+   * Extra space reserved above the side HUD for host overlays such as the
+   * mobile Poki pill. The top HUD already sits below it and ignores this.
+   */
+  readonly safeTop?: number
+}
+
 /**
  * The board always takes the largest square that still leaves room for the HUD
  * outside of it, so score and pause never cover playable cells. Whichever
  * placement yields the bigger board wins: side on wide screens, top on tall
  * ones.
  */
-export function computeSnakeLayout(viewport: Viewport): SnakeLayout {
+export function computeSnakeLayout(
+  viewport: Viewport,
+  options: SnakeLayoutOptions = {},
+): SnakeLayout {
   const { insets } = viewport
+  const safeTop = Math.max(0, options.safeTop ?? 0)
   const availableWidth = Math.max(1, viewport.width - insets.left - insets.right)
   const availableHeight = Math.max(1, viewport.height - insets.top - insets.bottom)
 
@@ -189,7 +203,7 @@ export function computeSnakeLayout(viewport: Viewport): SnakeLayout {
   if (placement === 'side') {
     const hudX =
       insets.left + Math.max(EDGE, Math.round((boardX - insets.left - COLUMN_HUD.width) / 2))
-    const hudY = insets.top + EDGE
+    const hudY = insets.top + EDGE + safeTop
     const scoreCard = {
       x: hudX,
       y: hudY + PAUSE_HIT + HUD_GAP,

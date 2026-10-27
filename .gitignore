@@ -8,3 +8,7 @@ release/
 .env.*.local
 coverage/
 .vite/
+# Generated Poki press assets; upload them to Poki, keep them out of git.
+press/*.png
+press/*.mp4
+press/screenshots/

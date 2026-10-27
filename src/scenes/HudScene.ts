@@ -15,6 +15,7 @@ import { canOfferSuperReward, grantSuperReward } from '../ads'
 import { snakeColors } from '../colors'
 import { CloseButton } from '../ui/CloseButton'
 import { playGameOverEffects, spawnCrown } from '../ui/celebration'
+import { hostHudSafeTop } from '../ui/device'
 import { fruitDecoration } from '../ui/fruitDecoration'
 import {
   computeGameOverOverlay,
@@ -67,7 +68,7 @@ export class HudScene extends Phaser.Scene {
     const services = getServices()
     const theme = services.theme
     const stats = this.gameScene().currentStats()
-    this.layout = computeSnakeLayout(readViewport(this))
+    this.layout = computeSnakeLayout(readViewport(this), { safeTop: hostHudSafeTop() })
 
     this.scoreCloud = this.add.graphics()
     this.scoreLabel = this.add
@@ -135,7 +136,7 @@ export class HudScene extends Phaser.Scene {
   }
 
   private handleLayout(viewport: Viewport): void {
-    const next = computeSnakeLayout(viewport)
+    const next = computeSnakeLayout(viewport, { safeTop: hostHudSafeTop() })
     if (layoutsEqual(next, this.layout)) return
     this.layout = next
     this.applyLayout()
