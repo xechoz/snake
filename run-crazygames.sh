@@ -29,7 +29,7 @@ case "$MODE" in
 esac
 
 PORT="${2:-$DEFAULT_PORT}"
-ZIP="$SCRIPT_DIR/../../release/snake-crazygames-$MODE.zip"
+ZIP="$SCRIPT_DIR/release/snake-crazygames-$MODE.zip"
 TMP_DIR="${TMPDIR:-/tmp}/cg-snake-$MODE"
 
 for command in unzip python3; do
@@ -42,7 +42,7 @@ done
 if [[ ! -f "$ZIP" ]]; then
   echo "Missing package: $ZIP" >&2
   echo "Build it first from the repo root:" >&2
-  echo "  npm run package:snake:crazy:$MODE" >&2
+  echo "  npm run package:crazy:$MODE" >&2
   exit 1
 fi
 
