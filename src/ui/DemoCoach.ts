@@ -1,13 +1,19 @@
 import type { Theme } from '@mg/core'
 import Phaser from 'phaser'
 
+const GLOVE_SWEEP = 86
+const GLOVE_SWIPE_MS = 1100
+const GLOVE_SIZE = 96
+
 /**
- * A looping vertical swipe ghost on the menu demo. It lives inside the demo
- * container so the board's scale and tilt carry the gesture with it.
+ * A looping white-glove swipe guide on the menu demo. The glove drifts left
+ * and right along a dashed path with arrowheads so the gesture reads as a
+ * horizontal swipe. It lives inside the demo container so the board's scale
+ * and tilt carry the gesture with it, and it stays visible for as long as the
+ * demo is on screen.
  */
 export class DemoCoach extends Phaser.GameObjects.Container {
-  private readonly hand: Phaser.GameObjects.Graphics
-  private shown = false
+  private readonly hand: Phaser.GameObjects.Container
 
   constructor(
     scene: Phaser.Scene,
@@ -18,63 +24,30 @@ export class DemoCoach extends Phaser.GameObjects.Container {
   ) {
     super(scene, x, y)
 
-    const track = scene.add.graphics()
-    track.lineStyle(4, theme.accentInk, 0.28)
-    track.lineBetween(0, -34, 0, 34)
-    drawArrow(track, theme.accentInk, 0.55, -42, -1)
-    drawArrow(track, theme.accentInk, 0.55, 42, 1)
+    const path = scene.add.graphics()
+    drawPath(path, theme)
 
-    this.hand = scene.add.graphics()
-    this.hand.fillStyle(theme.accentInk, 0.92)
-    this.hand.fillRoundedRect(-6, -18, 12, 26, 6)
-    this.hand.fillCircle(0, 8, 7)
-    this.hand.fillStyle(theme.highlight, 0.5)
-    this.hand.fillCircle(-2, -12, 2.5)
+    this.hand = scene.add.container(-GLOVE_SWEEP, 0)
+    this.hand.add(scene.add.image(0, 0, 'hand-pointer').setDisplaySize(GLOVE_SIZE, GLOVE_SIZE))
 
-    this.add([track, this.hand])
-    this.setAlpha(0).setVisible(false)
+    this.add([path, this.hand])
+    this.setAlpha(0)
     parent.add(this)
-  }
 
-  show(): void {
-    if (this.shown) return
-    this.shown = true
-    this.scene.tweens.killTweensOf(this)
-    this.scene.tweens.killTweensOf(this.hand)
-    this.hand.setY(-18)
-    this.setVisible(true)
-    this.scene.tweens.add({
+    scene.tweens.add({
       targets: this,
       alpha: 1,
-      duration: 220,
+      duration: 260,
       ease: 'Sine.out',
     })
-    this.scene.tweens.add({
+    scene.tweens.add({
       targets: this.hand,
-      y: 18,
-      duration: 700,
+      x: GLOVE_SWEEP,
+      duration: GLOVE_SWIPE_MS,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.inOut',
     })
-  }
-
-  hide(): void {
-    if (!this.shown) return
-    this.shown = false
-    this.scene.tweens.killTweensOf(this)
-    this.scene.tweens.killTweensOf(this.hand)
-    this.scene.tweens.add({
-      targets: this,
-      alpha: 0,
-      duration: 180,
-      ease: 'Sine.in',
-      onComplete: () => this.setVisible(false),
-    })
-  }
-
-  isShown(): boolean {
-    return this.shown
   }
 
   override destroy(fromScene?: boolean): void {
@@ -84,15 +57,19 @@ export class DemoCoach extends Phaser.GameObjects.Container {
   }
 }
 
-function drawArrow(
-  graphics: Phaser.GameObjects.Graphics,
-  color: number,
-  alpha: number,
-  y: number,
-  direction: -1 | 1,
-): void {
-  graphics.fillStyle(color, alpha)
-  const tip = y + direction * 6
-  const base = y - direction * 4
-  graphics.fillTriangle(0, tip, -6, base, 6, base)
+/** A dashed horizontal path with an arrowhead at each end. */
+function drawPath(graphics: Phaser.GameObjects.Graphics, theme: Theme): void {
+  const start = -112
+  const end = 112
+  const dash = 16
+  const gap = 12
+
+  graphics.fillStyle(theme.accentInk, 0.2)
+  for (let x = start; x < end; x += dash + gap) {
+    const width = Math.min(dash, end - x)
+    graphics.fillRoundedRect(x, -1.5, width, 3, 1.5)
+  }
+
+  graphics.fillTriangle(140, 0, 126, -7, 126, 7)
+  graphics.fillTriangle(-140, 0, -126, -7, -126, 7)
 }

@@ -40,7 +40,6 @@ const PLAY_GLOW_PADDING = 16
 const PLAY_FONT_SIZE = 34
 const SETTINGS_ICON_SIZE = 30
 const SETTINGS_LABEL_SIZE = 26
-const COACH_DELAY_MS = 1200
 
 type HintKey = 'menu.controlsTouch' | 'menu.controlsTouchTry' | 'menu.controlsDesktop'
 
@@ -64,10 +63,6 @@ export class MenuScene extends Phaser.Scene {
   private controlIconWidth = CONTROL_ICON_TOUCH
   private layout!: MenuLayout
   private steer!: SwipeSteer
-  private demoCoach?: DemoCoach
-  private coachEligible = false
-  private coachDismissed = false
-  private coachDelayDone = false
   private hintKey: HintKey = 'menu.controlsTouch'
 
   constructor() {
@@ -87,8 +82,6 @@ export class MenuScene extends Phaser.Scene {
     this.touch = hasTouchInput()
     this.showInstallHint = this.shouldShowInstallHint()
     this.controlIconWidth = this.touch ? CONTROL_ICON_TOUCH : CONTROL_ICON_DESKTOP
-    this.coachDismissed = this.registry.get('menuCoachSeen') === true
-    this.coachEligible = this.touch && save.plays === 0
 
     services.platform.gameplayStop()
 
@@ -146,7 +139,7 @@ export class MenuScene extends Phaser.Scene {
     this.drawControlHint()
 
     this.hintKey = this.touch
-      ? this.coachActive(initial)
+      ? initial.demo.visible
         ? 'menu.controlsTouchTry'
         : 'menu.controlsTouch'
       : 'menu.controlsDesktop'
@@ -154,9 +147,7 @@ export class MenuScene extends Phaser.Scene {
       .text(0, 0, services.i18n.t(this.hintKey), textStyle(theme, 28, theme.textMuted))
       .setOrigin(0.5)
 
-    if (this.coachEligible) {
-      this.demoCoach = new DemoCoach(this, theme, this.demo.container, -138, 0)
-    }
+    if (this.touch) new DemoCoach(this, theme, this.demo.container, 0, 0)
     this.steer = new SwipeSteer(this, theme, (direction) => this.handleDemoSteer(direction))
 
     if (this.showInstallHint) {
@@ -169,10 +160,6 @@ export class MenuScene extends Phaser.Scene {
     }
 
     this.applyLayout(viewport, initial)
-    this.time.delayedCall(COACH_DELAY_MS, () => {
-      this.coachDelayDone = true
-      this.syncDemoCoach(this.layout)
-    })
     onLayoutChange(this, (next) => {
       this.languageModal?.close()
       this.applyLayout(
@@ -189,7 +176,6 @@ export class MenuScene extends Phaser.Scene {
   private startGame(): void {
     if (this.languageModal) return
     this.steer.setEnabled(false)
-    this.demoCoach?.hide()
     const services = getServices()
     maybeEnterFullscreen(this.scale)
     services.audio.unlock()
@@ -202,7 +188,6 @@ export class MenuScene extends Phaser.Scene {
     const services = getServices()
     services.audio.play('click')
     this.steer.setEnabled(false)
-    this.demoCoach?.hide()
     this.languageModal = new LanguageModal(this, {
       theme: services.theme,
       current: services.i18n.lang,
@@ -214,7 +199,6 @@ export class MenuScene extends Phaser.Scene {
       onClose: () => {
         this.languageModal = undefined
         this.syncDemoSteer(this.layout)
-        this.syncDemoCoach(this.layout)
         this.syncHint(this.layout)
       },
     })
@@ -247,7 +231,6 @@ export class MenuScene extends Phaser.Scene {
       .setVisible(layout.demo.visible)
 
     this.syncDemoSteer(layout)
-    this.syncDemoCoach(layout)
     this.syncHint(layout)
   }
 
@@ -257,15 +240,9 @@ export class MenuScene extends Phaser.Scene {
     this.steer.setActiveRect(enabled ? menuDemoTouchRect(layout.demo) : null)
   }
 
-  private syncDemoCoach(layout: MenuLayout): void {
-    if (!this.demoCoach) return
-    if (this.coachActive(layout) && this.coachDelayDone) this.demoCoach.show()
-    else this.demoCoach.hide()
-  }
-
   private syncHint(layout: MenuLayout): void {
     const key: HintKey = this.touch
-      ? this.coachActive(layout)
+      ? layout.demo.visible
         ? 'menu.controlsTouchTry'
         : 'menu.controlsTouch'
       : 'menu.controlsDesktop'
@@ -281,18 +258,9 @@ export class MenuScene extends Phaser.Scene {
     this.hint.setPosition(left + this.controlIconWidth + gap + this.hint.width / 2, layout.hintY)
   }
 
-  private coachActive(layout: MenuLayout): boolean {
-    return this.coachEligible && !this.coachDismissed && !this.languageModal && layout.demo.visible
-  }
-
   private handleDemoSteer(direction: Parameters<MenuDemo['steer']>[0]): void {
     if (this.languageModal) return
-    const accepted = this.demo.steer(direction)
-    if (!accepted || !this.coachEligible || this.coachDismissed) return
-    this.coachDismissed = true
-    this.registry.set('menuCoachSeen', true)
-    this.demoCoach?.hide()
-    this.syncHint(this.layout)
+    this.demo.steer(direction)
   }
 
   private drawPlayGlow(layout: MenuLayout): void {

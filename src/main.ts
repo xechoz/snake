@@ -11,6 +11,7 @@ const eatSamples = [
   new URL('./assets/audio/eat-1.wav', import.meta.url).href,
   new URL('./assets/audio/eat-2.wav', import.meta.url).href,
 ]
+const handPointer = new URL('./assets/hand-pointer.svg', import.meta.url).href
 
 createGame({
   id: 'snake',
@@ -21,6 +22,7 @@ createGame({
   menuScene: 'Menu',
   backdrop: drawBackdrop,
   titleLogo: (scene) => createSnakeLogo(scene),
+  assets: { images: [{ key: 'hand-pointer', url: handPointer }] },
   audioSamples: { eat: eatSamples },
   scenes: [MenuScene, GameScene, HudScene],
 })
