@@ -82,6 +82,7 @@ echo "  Files:   $TMP_DIR"
 echo
 echo "The page loads the CrazyGames SDK from sdk.crazygames.com."
 echo "Real ads, muteAudio and event checks require the CrazyGames portal preview."
+echo "The SDK disables itself on Network URLs; use Local or the portal for SDK events."
 echo "Press Ctrl+C to stop."
 echo
 
