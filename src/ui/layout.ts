@@ -309,6 +309,7 @@ export function superFruitSpot(width: number, height: number): SuperFruitSpot {
 }
 
 export interface MenuSettingsLayout {
+  readonly collection: Point
   readonly sound: Point
   readonly language: Point
   readonly size: number
@@ -372,10 +373,10 @@ const BOTTOM_BAND_FLOOR = 24
 
 /**
  * The menu keeps one clear column of actions and pushes the secondary controls
- * (sound, language) into the top-right corner. Wide screens add a self-playing
- * demo board on the right. Portrait screens reserve the lower fifth of the
- * screen for the CTA and its hints instead of pinning the button to the bottom
- * edge, and float the demo between the best line and the CTA. The demo is
+ * (collection, sound, language) into the top-right corner. Wide screens add a
+ * self-playing demo board on the right. Portrait screens reserve the lower fifth
+ * of the screen for the CTA and its hints instead of pinning the button to the
+ * bottom edge, and float the demo between the best line and the CTA. The demo is
  * dropped when it would crowd a small viewport.
  */
 export function computeMenuLayout(
@@ -506,8 +507,10 @@ function computeSettingsLayout(
 ): MenuSettingsLayout {
   const languageX = width - insets.right - SETTINGS_EDGE - size / 2
   const soundX = languageX - size - gap
+  const collectionX = soundX - size - gap
   const y = insets.top + SETTINGS_TOP + size / 2
   return {
+    collection: { x: collectionX, y },
     sound: { x: soundX, y },
     language: { x: languageX, y },
     size,

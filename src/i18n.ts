@@ -4,6 +4,9 @@ export const snakeI18n: Record<Lang, Dictionary> = {
   en: {
     'game.title': 'Snake',
     'menu.play': 'Play',
+    'collection.title': 'Collection',
+    'collection.fruits': 'Fruits',
+    'collection.items': 'Items',
     'menu.best': 'Best score {score}',
     'menu.controlsTouch': 'Swipe to steer · no need to hold',
     'menu.controlsTouchTry': 'Swipe up, down, left, right to steer',
@@ -35,6 +38,9 @@ export const snakeI18n: Record<Lang, Dictionary> = {
   fr: {
     'game.title': 'Serpent',
     'menu.play': 'Jouer',
+    'collection.title': 'Collection',
+    'collection.fruits': 'Fruits',
+    'collection.items': 'Objets',
     'menu.best': 'Meilleur score {score}',
     'menu.controlsTouch': 'Glissez pour tourner · sans maintenir',
     'menu.controlsTouchTry': 'Glissez haut, bas, gauche ou droite',
@@ -66,6 +72,9 @@ export const snakeI18n: Record<Lang, Dictionary> = {
   it: {
     'game.title': 'Serpente',
     'menu.play': 'Gioca',
+    'collection.title': 'Collezione',
+    'collection.fruits': 'Frutti',
+    'collection.items': 'Oggetti',
     'menu.best': 'Record {score}',
     'menu.controlsTouch': 'Scorri per girare · senza tenere',
     'menu.controlsTouchTry': 'Scorri su, giù, sinistra o destra',
@@ -97,6 +106,9 @@ export const snakeI18n: Record<Lang, Dictionary> = {
   de: {
     'game.title': 'Schlange',
     'menu.play': 'Spielen',
+    'collection.title': 'Sammlung',
+    'collection.fruits': 'Früchte',
+    'collection.items': 'Gegenstände',
     'menu.best': 'Bestwert {score}',
     'menu.controlsTouch': 'Wischen zum Lenken · nicht halten',
     'menu.controlsTouchTry': 'Wische oben, unten, links oder rechts',
@@ -128,6 +140,9 @@ export const snakeI18n: Record<Lang, Dictionary> = {
   es: {
     'game.title': 'Serpiente',
     'menu.play': 'Jugar',
+    'collection.title': 'Colección',
+    'collection.fruits': 'Frutas',
+    'collection.items': 'Objetos',
     'menu.best': 'Mejor puntuación {score}',
     'menu.controlsTouch': 'Desliza para girar · sin mantener',
     'menu.controlsTouchTry': 'Desliza arriba, abajo, izquierda o derecha',
@@ -159,6 +174,9 @@ export const snakeI18n: Record<Lang, Dictionary> = {
   tr: {
     'game.title': 'Yılan',
     'menu.play': 'Oyna',
+    'collection.title': 'Koleksiyon',
+    'collection.fruits': 'Meyveler',
+    'collection.items': 'Eşyalar',
     'menu.best': 'En iyi skor {score}',
     'menu.controlsTouch': 'Kaydırarak dön · basılı tutma',
     'menu.controlsTouchTry': 'Yukarı, aşağı, sola veya sağa kaydır',
@@ -189,6 +207,9 @@ export const snakeI18n: Record<Lang, Dictionary> = {
   zh: {
     'game.title': '贪吃蛇',
     'menu.play': '开始',
+    'collection.title': '图鉴',
+    'collection.fruits': '水果',
+    'collection.items': '道具',
     'menu.best': '最高分 {score}',
     'menu.controlsTouch': '滑动转向 · 不用按住',
     'menu.controlsTouchTry': '上下左右滑动控制方向',
@@ -219,6 +240,9 @@ export const snakeI18n: Record<Lang, Dictionary> = {
   ja: {
     'game.title': 'スネーク',
     'menu.play': 'プレイ',
+    'collection.title': '図鑑',
+    'collection.fruits': 'フルーツ',
+    'collection.items': 'アイテム',
     'menu.best': 'ベストスコア {score}',
     'menu.controlsTouch': 'スワイプで曲がる・長押し不要',
     'menu.controlsTouchTry': '上下左右にスワイプして方向転換',
@@ -249,6 +273,9 @@ export const snakeI18n: Record<Lang, Dictionary> = {
   ko: {
     'game.title': '뱀',
     'menu.play': '시작',
+    'collection.title': '도감',
+    'collection.fruits': '과일',
+    'collection.items': '아이템',
     'menu.best': '최고 점수 {score}',
     'menu.controlsTouch': '스와이프로 방향 전환 · 길게 누르지 않기',
     'menu.controlsTouchTry': '위, 아래, 왼쪽, 오른쪽으로 스와이프',
@@ -279,6 +306,9 @@ export const snakeI18n: Record<Lang, Dictionary> = {
   pt: {
     'game.title': 'Cobra',
     'menu.play': 'Jogar',
+    'collection.title': 'Coleção',
+    'collection.fruits': 'Frutas',
+    'collection.items': 'Itens',
     'menu.best': 'Melhor pontuação {score}',
     'menu.controlsTouch': 'Deslize para virar · sem segurar',
     'menu.controlsTouchTry': 'Deslize cima, baixo, esquerda, direita',
@@ -310,6 +340,9 @@ export const snakeI18n: Record<Lang, Dictionary> = {
   ru: {
     'game.title': 'Змейка',
     'menu.play': 'Играть',
+    'collection.title': 'Коллекция',
+    'collection.fruits': 'Фрукты',
+    'collection.items': 'Предметы',
     'menu.best': 'Рекорд {score}',
     'menu.controlsTouch': 'Свайп для поворота · без удержания',
     'menu.controlsTouchTry': 'Свайпайте вверх, вниз, влево, вправо',

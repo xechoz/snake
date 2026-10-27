@@ -15,10 +15,12 @@ import {
 } from '@mg/core'
 import { createRng } from '@mg/core/rng'
 import Phaser from 'phaser'
+import { snakeColors } from '../colors'
 import type { Direction } from '../logic/types'
 import { snakeSave } from '../save'
 import { resolveSkin, startingSegmentColors } from '../skins'
 import { drawBackdrop } from '../ui/backdrop'
+import { CollectionModal } from '../ui/CollectionModal'
 import { DemoCoach } from '../ui/DemoCoach'
 import { hasTouchInput } from '../ui/device'
 import { fruitDecoration } from '../ui/fruitDecoration'
@@ -52,8 +54,10 @@ export class MenuScene extends Phaser.Scene {
   private playGlow!: Phaser.GameObjects.Graphics
   private playButton!: Button
   private playWidth = 0
+  private collectionButton!: Button
   private soundButton!: Button
   private languageButton!: Button
+  private collectionModal?: CollectionModal
   private languageModal?: LanguageModal
   private demo!: MenuDemo
   private hint!: Phaser.GameObjects.Text
@@ -113,6 +117,17 @@ export class MenuScene extends Phaser.Scene {
       onClick: () => this.startGame(),
     })
 
+    this.collectionButton = new Button(this, 0, 0, '', theme, {
+      width: initial.settings.size,
+      height: initial.settings.size,
+      variant: 'soft',
+      minHitSize: this.touch ? MENU_SETTINGS_HIT : undefined,
+      fontSize: SETTINGS_ICON_SIZE,
+      icon: 'bag',
+      decoration: collectionButtonDecoration,
+      onClick: () => this.openCollection(),
+    })
+
     this.soundButton = new Button(this, 0, 0, '', theme, {
       width: initial.settings.size,
       height: initial.settings.size,
@@ -164,6 +179,7 @@ export class MenuScene extends Phaser.Scene {
     this.applyLayout(viewport, initial)
     onLayoutChange(this, (next) => {
       this.languageModal?.close()
+      this.collectionModal?.close()
       this.applyLayout(
         next,
         computeMenuLayout(next, this.logo.height, this.touch, this.showInstallHint),
@@ -192,7 +208,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private startGame(): void {
-    if (this.languageModal) return
+    if (this.languageModal || this.collectionModal) return
     this.coach.cancel()
     this.steer.setEnabled(false)
     const services = getServices()
@@ -203,7 +219,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private openLanguage(): void {
-    if (this.languageModal) return
+    if (this.languageModal || this.collectionModal) return
     const services = getServices()
     services.audio.play('click')
     this.steer.setEnabled(false)
@@ -225,6 +241,26 @@ export class MenuScene extends Phaser.Scene {
     })
   }
 
+  private openCollection(): void {
+    if (this.languageModal || this.collectionModal) return
+    const services = getServices()
+    services.audio.play('click')
+    this.steer.setEnabled(false)
+    this.coach.pause()
+    this.collectionModal = new CollectionModal(this, {
+      theme: services.theme,
+      title: services.i18n.t('collection.title'),
+      fruitsLabel: services.i18n.t('collection.fruits'),
+      itemsLabel: services.i18n.t('collection.items'),
+      onClose: () => {
+        this.collectionModal = undefined
+        this.coach.resume()
+        this.syncDemoSteer(this.layout)
+        this.syncHint(this.layout)
+      },
+    })
+  }
+
   private applyLayout(viewport: Viewport, layout: MenuLayout): void {
     const theme = getServices().theme
     this.layout = layout
@@ -237,6 +273,7 @@ export class MenuScene extends Phaser.Scene {
 
     this.playButton.setPosition(layout.centerX, layout.playY)
     this.drawPlayGlow(layout)
+    this.collectionButton.setPosition(layout.settings.collection.x, layout.settings.collection.y)
     this.soundButton.setPosition(layout.settings.sound.x, layout.settings.sound.y)
     this.languageButton.setPosition(layout.settings.language.x, layout.settings.language.y)
 
@@ -261,7 +298,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private syncDemoSteer(layout: MenuLayout): void {
-    const enabled = layout.demo.visible && !this.languageModal
+    const enabled = layout.demo.visible && !this.languageModal && !this.collectionModal
     this.steer.setEnabled(enabled)
     this.steer.setActiveRect(enabled ? menuDemoTouchRect(layout.demo) : null)
   }
@@ -285,7 +322,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private handleDemoSteer(direction: Direction): void {
-    if (this.languageModal || !this.layout.demo.visible) return
+    if (this.languageModal || this.collectionModal || !this.layout.demo.visible) return
     if (this.demo.steer(direction)) {
       this.coach.cancel()
     }
@@ -376,6 +413,7 @@ export class MenuScene extends Phaser.Scene {
     this.bestLabel.setAlpha(0)
     this.playGlow.setAlpha(0).setScale(1)
     this.playButton.setAlpha(0).setScale(0.9)
+    this.collectionButton.setAlpha(0)
     this.soundButton.setAlpha(0)
     this.languageButton.setAlpha(0)
     this.controlsIcon.setAlpha(0)
@@ -390,7 +428,7 @@ export class MenuScene extends Phaser.Scene {
       delay: 220,
     })
     this.tweens.add({
-      targets: [this.soundButton, this.languageButton],
+      targets: [this.collectionButton, this.soundButton, this.languageButton],
       alpha: 1,
       duration: 260,
       delay: 60,
@@ -448,4 +486,28 @@ export class MenuScene extends Phaser.Scene {
     if (isStandalone()) return false
     return this.touch
   }
+}
+
+/**
+ * The bag icon only has the UI ink colour. A handful of fruit-coloured dots
+ * sits inside it so the menu control reads as a fruit collection rather than a
+ * plain bag. Coordinates target the 30px settings icon.
+ */
+function collectionButtonDecoration(scene: Phaser.Scene): Phaser.GameObjects.GameObject {
+  const graphics = scene.add.graphics()
+  const fruits = snakeColors.art.fruits
+  const dots = [
+    { color: fruits.apple.body, x: -5.4, y: 4.3, radius: 3.4 },
+    { color: fruits.orange.body, x: 0.3, y: 6.7, radius: 3.2 },
+    { color: fruits.grape.body, x: 5.4, y: 4.1, radius: 3.4 },
+    { color: fruits.lemon.body, x: -0.1, y: 2, radius: 2.2 },
+  ]
+
+  for (const dot of dots) {
+    graphics.fillStyle(dot.color, 1)
+    graphics.fillCircle(dot.x, dot.y, dot.radius)
+    graphics.fillStyle(0xffffff, 0.35)
+    graphics.fillCircle(dot.x - dot.radius * 0.32, dot.y - dot.radius * 0.32, dot.radius * 0.3)
+  }
+  return graphics
 }
