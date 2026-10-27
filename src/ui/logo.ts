@@ -35,7 +35,7 @@ export function createSnakeLogo(scene: Phaser.Scene, skin: SkinPalette | null = 
   const services = getServices()
   const font = services.theme.font
   const logo = skin ? logoForSkin(skin) : snakeColors.logo
-  const title = displayTitle(services.i18n.t('game.title'))
+  const title = displayTitle(services.i18n.t('game.wordmark'))
   const glyphs = title.map((character) => createGlyph(scene, character, font, logo))
   const totalWidth =
     glyphs.reduce((sum, glyph) => sum + glyph.width, 0) + CHAR_GAP * (glyphs.length - 1)

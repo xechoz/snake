@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "Snake · Mini Games",
-  "short_name": "Snake",
-  "description": "Classic Snake: eat fruit, grow longer, and avoid the walls and yourself.",
+  "name": "Fruit Snake: Color Trail",
+  "short_name": "Fruit Snake",
+  "description": "Paint your snake with fourteen fruits, dodge the walls, and beat your best score.",
   "lang": "en",
   "start_url": "./",
   "scope": "./",

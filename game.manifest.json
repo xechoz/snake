@@ -2,12 +2,12 @@
   "id": "snake",
   "order": 1,
   "title": {
-    "zh": "贪吃蛇",
-    "en": "Snake"
+    "zh": "贪吃蛇：水果火车",
+    "en": "Fruit Snake: Color Trail"
   },
   "description": {
-    "zh": "贪吃蛇升级版：六种水果给蛇染色，冰淇淋减速、辣椒加速翻倍得分，别撞墙也别咬到自己。",
-    "en": "Snake with colour-changing fruit, ice cream slowdowns and chili score boosts. Eat, grow, and avoid the walls and yourself."
+    "zh": "14 种水果给蛇染色，冰淇淋减速、辣椒加速翻倍得分，别撞墙也别咬到自己。",
+    "en": "Fourteen fruits paint your snake, ice cream slows it down and chili doubles your score. Eat, grow, and avoid the walls and yourself."
   },
   "themeColor": "#ffb020",
   "tags": ["arcade", "classic"]
