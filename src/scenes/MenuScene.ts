@@ -15,6 +15,7 @@ import {
 } from '@mg/core'
 import { createRng } from '@mg/core/rng'
 import Phaser from 'phaser'
+import type { Direction } from '../logic/types'
 import { snakeSave } from '../save'
 import { resolveSkin, startingSegmentColors } from '../skins'
 import { drawBackdrop } from '../ui/backdrop'
@@ -63,6 +64,7 @@ export class MenuScene extends Phaser.Scene {
   private controlIconWidth = CONTROL_ICON_TOUCH
   private layout!: MenuLayout
   private steer!: SwipeSteer
+  private coach!: DemoCoach
   private hintKey: HintKey = 'menu.controlsTouch'
 
   constructor() {
@@ -147,7 +149,7 @@ export class MenuScene extends Phaser.Scene {
       .text(0, 0, services.i18n.t(this.hintKey), textStyle(theme, 28, theme.textMuted))
       .setOrigin(0.5)
 
-    if (this.touch) new DemoCoach(this, theme, this.demo.container, 0, 0)
+    this.coach = new DemoCoach(this, theme, this.demo, this.touch ? 'touch' : 'keys')
     this.steer = new SwipeSteer(this, theme, (direction) => this.handleDemoSteer(direction))
 
     if (this.showInstallHint) {
@@ -171,10 +173,27 @@ export class MenuScene extends Phaser.Scene {
 
     this.input.keyboard?.on('keydown-ENTER', () => this.startGame())
     this.input.keyboard?.on('keydown-SPACE', () => this.startGame())
+    const takeoverKeys: readonly (readonly [string, Direction])[] = [
+      ['UP', 'up'],
+      ['W', 'up'],
+      ['DOWN', 'down'],
+      ['S', 'down'],
+      ['LEFT', 'left'],
+      ['A', 'left'],
+      ['RIGHT', 'right'],
+      ['D', 'right'],
+    ]
+    for (const [key, direction] of takeoverKeys) {
+      this.input.keyboard?.on(`keydown-${key}`, (event: KeyboardEvent) => {
+        event.preventDefault()
+        this.handleDemoSteer(direction)
+      })
+    }
   }
 
   private startGame(): void {
     if (this.languageModal) return
+    this.coach.cancel()
     this.steer.setEnabled(false)
     const services = getServices()
     maybeEnterFullscreen(this.scale)
@@ -188,6 +207,7 @@ export class MenuScene extends Phaser.Scene {
     const services = getServices()
     services.audio.play('click')
     this.steer.setEnabled(false)
+    this.coach.pause()
     this.languageModal = new LanguageModal(this, {
       theme: services.theme,
       current: services.i18n.lang,
@@ -198,6 +218,7 @@ export class MenuScene extends Phaser.Scene {
       },
       onClose: () => {
         this.languageModal = undefined
+        this.coach.resume()
         this.syncDemoSteer(this.layout)
         this.syncHint(this.layout)
       },
@@ -230,6 +251,11 @@ export class MenuScene extends Phaser.Scene {
       .setAngle(layout.demo.angle)
       .setVisible(layout.demo.visible)
 
+    if (layout.demo.visible) {
+      this.coach.resume()
+    } else {
+      this.coach.pause()
+    }
     this.syncDemoSteer(layout)
     this.syncHint(layout)
   }
@@ -258,9 +284,11 @@ export class MenuScene extends Phaser.Scene {
     this.hint.setPosition(left + this.controlIconWidth + gap + this.hint.width / 2, layout.hintY)
   }
 
-  private handleDemoSteer(direction: Parameters<MenuDemo['steer']>[0]): void {
-    if (this.languageModal) return
-    this.demo.steer(direction)
+  private handleDemoSteer(direction: Direction): void {
+    if (this.languageModal || !this.layout.demo.visible) return
+    if (this.demo.steer(direction)) {
+      this.coach.cancel()
+    }
   }
 
   private drawPlayGlow(layout: MenuLayout): void {
@@ -389,7 +417,13 @@ export class MenuScene extends Phaser.Scene {
       duration: 340,
       delay: 320,
     })
-    this.tweens.add({ targets: this.demo.container, alpha: 1, duration: 420, delay: 380 })
+    this.tweens.add({
+      targets: this.demo.container,
+      alpha: 1,
+      duration: 420,
+      delay: 380,
+      onComplete: () => this.coach.start(),
+    })
     if (this.installHint) {
       this.tweens.add({ targets: this.installHint, alpha: 1, duration: 340, delay: 460 })
     }

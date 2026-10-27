@@ -3,30 +3,45 @@ import { createRng } from '@mg/core/rng'
 import type Phaser from 'phaser'
 import { snakeColors } from '../colors'
 import {
-  advanceMenuDemo,
   createMenuDemoState,
+  guideMenuDemo,
   MENU_DEMO_CELL,
   MENU_DEMO_COLS,
   MENU_DEMO_ROWS,
   steerMenuDemo,
+  stepMenuDemo,
 } from '../logic/menuDemo'
 import type { Cell, Direction, FoodItem, FruitKind } from '../logic/types'
 import { segmentColor } from './gameArt'
 import { MENU_DEMO_HEIGHT, MENU_DEMO_MAT, MENU_DEMO_WIDTH } from './layout'
 import { drawBlockSnakeBody, drawFruit, drawSnakeHead, type SnakeBlock } from './snakeArt'
 
-const AUTO_STEP_MS = 460
+const GUIDED_MOVE_MS = 320
 const MANUAL_STEP_MS = 360
-const AUTO_MOVE_MS = 320
 const MANUAL_MOVE_MS = 300
 const RESET_PAUSE = 620
 
+export interface MenuDemoHead {
+  readonly cell: Cell
+  readonly direction: Direction
+}
+
 export interface MenuDemo {
-  container: Phaser.GameObjects.Container
-  width: number
-  height: number
-  /** Returns true only when the swipe queued a legal turn. */
+  readonly container: Phaser.GameObjects.Container
+  readonly width: number
+  readonly height: number
+  /** Takes over for manual play. Returns true only when the swipe queued a legal turn. */
   steer(direction: Direction): boolean
+  /** Current head cell and facing, used by the coach to place its next gesture. */
+  head(): MenuDemoHead | null
+  /** Runs one guide-driven turn of exactly `steps` cells, then calls onComplete. */
+  startGuidedTurn(direction: Direction, steps: number, onComplete: () => void): boolean
+  /** Ends the guided tour with the normal pause and fade reset. */
+  finishGuidedLoop(): void
+  pause(): void
+  resume(): void
+  /** Called after any reset, including a manual death. */
+  onReset?: () => void
 }
 
 /**
@@ -56,6 +71,15 @@ export function createMenuDemo(
   let resetting = false
   let resetPending = false
   let timer: Phaser.Time.TimerEvent | null = null
+  let resetTimer: Phaser.Time.TimerEvent | null = null
+  let activeTween: Phaser.Tweens.Tween | null = null
+  let traveling = false
+  let steerPending = false
+  let guiding = false
+  let guidedStepsLeft = 0
+  let guidedOnComplete: (() => void) | null = null
+  let paused = false
+  let onReset: (() => void) | undefined
 
   const redraw = (): void => {
     const cells = state.snake.snake
@@ -143,57 +167,69 @@ export function createMenuDemo(
     }
   }
 
-  let traveling = false
-  let steerPending = false
+  const schedule = (delay: number): void => {
+    timer?.remove()
+    timer = scene.time.addEvent({ delay, callback: step })
+    if (paused) timer.paused = true
+  }
 
   const reset = (): void => {
-    scene.tweens.add({
+    const fadeOut = scene.tweens.add({
       targets: [snake, food],
       alpha: 0,
       duration: 160,
       onComplete: () => {
+        activeTween = null
         state = createMenuDemoState(rng, startingFruits, state.round + 1)
         previous = cloneCells(state.snake.snake)
         progress = 1
         travelFoods = null
         resetPending = false
         redraw()
-        scene.tweens.add({
+        const fadeIn = scene.tweens.add({
           targets: [snake, food],
           alpha: 1,
           duration: 220,
           onComplete: () => {
+            activeTween = null
             resetting = false
-            schedule(AUTO_STEP_MS)
+            onReset?.()
           },
         })
+        activeTween = fadeIn
+        if (paused) fadeIn.pause()
       },
     })
+    activeTween = fadeOut
+    if (paused) fadeOut.pause()
   }
 
   const queueReset = (): void => {
     if (resetPending) return
     resetPending = true
     resetting = true
+    guiding = false
+    guidedStepsLeft = 0
+    guidedOnComplete = null
     steerPending = false
+    traveling = false
     timer?.remove()
     timer = null
-    scene.time.delayedCall(RESET_PAUSE, reset)
-  }
-
-  const schedule = (delay: number): void => {
-    timer?.remove()
-    timer = scene.time.addEvent({ delay, callback: step })
+    resetTimer?.remove()
+    resetTimer = scene.time.delayedCall(RESET_PAUSE, () => {
+      resetTimer = null
+      reset()
+    })
+    if (paused) resetTimer.paused = true
   }
 
   const step = (): void => {
     timer = null
-    if (resetting) return
+    if (resetting || guiding || traveling) return
 
-    const manual = state.mode === 'manual'
     previous = cloneCells(state.snake.snake)
     const foodsBefore = state.snake.foods
-    const advanced = advanceMenuDemo(state, rng)
+    const advanced = stepMenuDemo(state, rng)
     state = advanced.state
     progress = 0
     travelFoods = foodsBefore
@@ -201,10 +237,10 @@ export function createMenuDemo(
     steerPending = false
 
     const travel = { t: 0 }
-    scene.tweens.add({
+    const tween = scene.tweens.add({
       targets: travel,
       t: 1,
-      duration: manual ? MANUAL_MOVE_MS : AUTO_MOVE_MS,
+      duration: MANUAL_MOVE_MS,
       ease: 'Sine.inOut',
       onUpdate: () => {
         progress = travel.t
@@ -213,10 +249,11 @@ export function createMenuDemo(
         progress = 1
         travelFoods = null
         traveling = false
+        activeTween = null
         for (const event of advanced.events) {
           if (event.type === 'eat') burst(event.at, event.kind)
         }
-        if (state.snake.status !== 'alive' || (state.mode === 'auto' && advanced.scriptDone)) {
+        if (state.snake.status !== 'alive') {
           queueReset()
           return
         }
@@ -227,9 +264,87 @@ export function createMenuDemo(
           schedule(0)
           return
         }
-        schedule(state.mode === 'manual' ? MANUAL_STEP_MS : AUTO_STEP_MS)
+        schedule(MANUAL_STEP_MS)
       },
     })
+    activeTween = tween
+    if (paused) tween.pause()
+  }
+
+  const guidedStep = (): void => {
+    if (!guiding || resetting || paused) return
+
+    previous = cloneCells(state.snake.snake)
+    const foodsBefore = state.snake.foods
+    const advanced = stepMenuDemo(state, rng)
+    state = advanced.state
+    progress = 0
+    travelFoods = foodsBefore
+    traveling = true
+    steerPending = false
+
+    const travel = { t: 0 }
+    const tween = scene.tweens.add({
+      targets: travel,
+      t: 1,
+      duration: GUIDED_MOVE_MS,
+      ease: 'Sine.inOut',
+      onUpdate: () => {
+        progress = travel.t
+      },
+      onComplete: () => {
+        progress = 1
+        travelFoods = null
+        traveling = false
+        activeTween = null
+        for (const event of advanced.events) {
+          if (event.type === 'eat') burst(event.at, event.kind)
+        }
+        if (state.snake.status !== 'alive') {
+          guiding = false
+          guidedOnComplete = null
+          queueReset()
+          return
+        }
+        // The player may have taken over during the guided travel. Finish this
+        // move, then let the manual queue drive the next step.
+        if (!guiding) {
+          if (steerPending) {
+            steerPending = false
+            schedule(0)
+          }
+          return
+        }
+        guidedStepsLeft -= 1
+        if (guidedStepsLeft > 0) {
+          guidedStep()
+          return
+        }
+        guiding = false
+        const done = guidedOnComplete
+        guidedOnComplete = null
+        done?.()
+      },
+    })
+    activeTween = tween
+    if (paused) tween.pause()
+  }
+
+  const startGuidedTurn = (
+    direction: Direction,
+    steps: number,
+    onComplete: () => void,
+  ): boolean => {
+    if (resetting || paused || guiding || traveling || steps <= 0) return false
+    const next = guideMenuDemo(state, direction)
+    if (!next.accepted) return false
+    state = next.state
+    guiding = true
+    guidedStepsLeft = steps
+    guidedOnComplete = onComplete
+    steerPending = false
+    guidedStep()
+    return true
   }
 
   const steer = (direction: Direction): boolean => {
@@ -237,23 +352,75 @@ export function createMenuDemo(
     const next = steerMenuDemo(state, direction)
     if (!next.accepted) return false
     state = next.state
+    guiding = false
+    guidedStepsLeft = 0
+    guidedOnComplete = null
     if (traveling) {
       steerPending = true
     } else {
+      steerPending = false
       schedule(MANUAL_STEP_MS)
     }
     return true
   }
 
+  const finishGuidedLoop = (): void => {
+    if (resetting) return
+    queueReset()
+  }
+
+  const head = (): MenuDemoHead | null => {
+    if (resetting || state.snake.status !== 'alive') return null
+    const [cell] = state.snake.snake
+    if (!cell) return null
+    return { cell: { ...cell }, direction: state.snake.direction }
+  }
+
+  const pause = (): void => {
+    if (paused) return
+    paused = true
+    if (timer) timer.paused = true
+    if (resetTimer) resetTimer.paused = true
+    activeTween?.pause()
+  }
+
+  const resume = (): void => {
+    if (!paused) return
+    paused = false
+    if (timer) timer.paused = false
+    if (resetTimer) resetTimer.paused = false
+    activeTween?.resume()
+  }
+
   redraw()
-  schedule(AUTO_STEP_MS)
   scene.events.on('update', redraw)
   scene.events.once('shutdown', () => {
     timer?.remove()
+    resetTimer?.remove()
+    activeTween?.stop()
     scene.events.off('update', redraw)
+    onReset = undefined
   })
 
-  return { container, width: MENU_DEMO_WIDTH, height: MENU_DEMO_HEIGHT, steer }
+  const demo: MenuDemo = {
+    container,
+    width: MENU_DEMO_WIDTH,
+    height: MENU_DEMO_HEIGHT,
+    steer,
+    head,
+    startGuidedTurn,
+    finishGuidedLoop,
+    pause,
+    resume,
+    get onReset() {
+      return onReset
+    },
+    set onReset(value) {
+      onReset = value
+    },
+  }
+
+  return demo
 }
 
 function cellX(column: number): number {
@@ -262,6 +429,11 @@ function cellX(column: number): number {
 
 function cellY(row: number): number {
   return -((MENU_DEMO_ROWS - 1) * MENU_DEMO_CELL) / 2 + row * MENU_DEMO_CELL
+}
+
+/** Board-local center of a cell, shared with the guide overlay. */
+export function menuDemoCellCenter(cell: Cell): { x: number; y: number } {
+  return { x: cellX(cell.x), y: cellY(cell.y) }
 }
 
 function cloneCells(cells: readonly Cell[]): Cell[] {

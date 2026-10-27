@@ -1,6 +1,6 @@
 import type { Rng } from '@mg/core/rng'
 import { snakeConfig } from './config'
-import { createInitialState, enqueueDirection, step } from './state'
+import { createInitialState, enqueueDirection, sameCell, step } from './state'
 import type { Direction, FruitKind, SnakeConfig, SnakeEvent, SnakeState } from './types'
 
 export const MENU_DEMO_COLS = 7
@@ -22,24 +22,24 @@ export const MENU_DEMO_CONFIG: SnakeConfig = {
   powerUpTtl: 1,
 }
 
-/** The attract loop: a safe 12-step tour that eats twice and grows to 5. */
-export const MENU_DEMO_SCRIPT: readonly Direction[] = [
-  'right',
-  'right',
-  'up',
-  'up',
-  'left',
-  'left',
-  'left',
-  'down',
-  'down',
-  'down',
-  'right',
-  'right',
+export interface MenuDemoBeat {
+  readonly direction: Direction
+  readonly steps: number
+}
+
+/**
+ * The guided tour is a closed rectangle: each beat turns the snake and walks
+ * two cells, so every turn is legal and the last beat returns to the start.
+ */
+export const MENU_DEMO_BEATS: readonly MenuDemoBeat[] = [
+  { direction: 'up', steps: 2 },
+  { direction: 'left', steps: 2 },
+  { direction: 'down', steps: 2 },
+  { direction: 'right', steps: 2 },
 ]
 
-const FIRST_FOOD = { x: 4, y: 2 } as const
-const SECOND_FOOD = { x: 2, y: 3 } as const
+const FIRST_FOOD = { x: 3, y: 1 } as const
+const SECOND_FOOD = { x: 1, y: 1 } as const
 
 const FOOD_KINDS: readonly FruitKind[] = [
   'banana',
@@ -54,15 +54,13 @@ const FOOD_KINDS: readonly FruitKind[] = [
 
 export interface MenuDemoState {
   readonly snake: SnakeState
-  readonly mode: 'auto' | 'manual'
-  readonly scriptIndex: number
+  readonly mode: 'guided' | 'manual'
   readonly round: number
 }
 
 export interface MenuDemoAdvance {
   readonly state: MenuDemoState
   readonly events: readonly SnakeEvent[]
-  readonly scriptDone: boolean
 }
 
 export function createMenuDemoState(
@@ -76,41 +74,25 @@ export function createMenuDemoState(
       ...snake,
       foods: [{ cell: { ...FIRST_FOOD }, kind: fruitKindAt(round) }],
     },
-    mode: 'auto',
-    scriptIndex: 0,
+    mode: 'guided',
     round,
   }
 }
 
 /**
- * Advances one fixed step. The auto tour follows a curated script; once the
- * player steers, the same rules as the real game take over without a script.
+ * Advances one fixed step without choosing a direction. The guide owns every
+ * turn; the demo only follows the queued direction and keeps the two fruit
+ * placements that make the tour readable.
  */
-export function advanceMenuDemo(state: MenuDemoState, rng: Rng): MenuDemoAdvance {
+export function stepMenuDemo(state: MenuDemoState, rng: Rng): MenuDemoAdvance {
   if (state.snake.status !== 'alive') {
-    return { state, events: [], scriptDone: state.mode === 'auto' }
+    return { state, events: [] }
   }
 
-  let snake = state.snake
-  let scriptIndex = state.scriptIndex
+  const result = step(state.snake, rng)
+  let next: MenuDemoState = { ...state, snake: result.state }
 
-  if (state.mode === 'auto') {
-    const direction = MENU_DEMO_SCRIPT[scriptIndex]
-    if (!direction) return { state, events: [], scriptDone: true }
-    snake = enqueueDirection(snake, direction)
-    scriptIndex += 1
-  }
-
-  const result = step(snake, rng)
-  let next: MenuDemoState = { ...state, snake: result.state, scriptIndex }
-
-  // The attract loop needs a second visible meal. Only the scripted run gets
-  // the curated cell; a manual run keeps the normal random respawn.
-  if (
-    state.mode === 'auto' &&
-    scriptIndex === 1 &&
-    result.events.some((event) => event.type === 'eat')
-  ) {
+  if (result.events.some((event) => event.type === 'eat' && sameCell(event.at, FIRST_FOOD))) {
     next = {
       ...next,
       snake: {
@@ -118,16 +100,28 @@ export function advanceMenuDemo(state: MenuDemoState, rng: Rng): MenuDemoAdvance
         foods: [{ cell: { ...SECOND_FOOD }, kind: fruitKindAt(state.round + 1) }],
       },
     }
+  } else if (
+    result.events.some((event) => event.type === 'eat' && sameCell(event.at, SECOND_FOOD))
+  ) {
+    // The right beat closes the loop on an empty board. Without this the normal
+    // respawn could put a random fruit under the returning snake.
+    next = { ...next, snake: { ...result.state, foods: [] } }
   }
 
-  return {
-    state: next,
-    events: result.events,
-    scriptDone: state.mode === 'auto' && scriptIndex >= MENU_DEMO_SCRIPT.length,
-  }
+  return { state: next, events: result.events }
 }
 
-/** Returns accepted=false for a duplicate or illegal reversal. */
+/** Queues a guide-driven turn. Returns accepted=false for a duplicate or illegal reversal. */
+export function guideMenuDemo(
+  state: MenuDemoState,
+  direction: Direction,
+): { readonly state: MenuDemoState; readonly accepted: boolean } {
+  const snake = enqueueDirection(state.snake, direction)
+  if (snake === state.snake) return { state, accepted: false }
+  return { state: { ...state, snake, mode: 'guided' }, accepted: true }
+}
+
+/** Queues a player-driven turn and hands the demo over to manual play. */
 export function steerMenuDemo(
   state: MenuDemoState,
   direction: Direction,
