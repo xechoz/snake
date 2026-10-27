@@ -4,8 +4,6 @@ import { snakeI18n } from './i18n'
 import { GameScene } from './scenes/GameScene'
 import { HudScene } from './scenes/HudScene'
 import { MenuScene } from './scenes/MenuScene'
-import { drawBackdrop } from './ui/backdrop'
-import { createSnakeLogo } from './ui/logo'
 
 const eatSamples = [
   new URL('./assets/audio/eat-1.wav', import.meta.url).href,
@@ -20,8 +18,6 @@ createGame({
   defaultLang: 'en',
   i18n: snakeI18n,
   menuScene: 'Menu',
-  backdrop: drawBackdrop,
-  titleLogo: (scene) => createSnakeLogo(scene),
   assets: { images: [{ key: 'hand-pointer', url: handPointer }] },
   audioSamples: { eat: eatSamples },
   scenes: [MenuScene, GameScene, HudScene],

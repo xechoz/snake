@@ -99,21 +99,17 @@
     <script>
       ;(() => {
         const splash = document.getElementById('mg-splash')
-        const game = document.getElementById('game')
-        if (!splash || !game) return
+        if (!splash) return
         let hidden = false
-        const observer = new MutationObserver(() => {
-          if (game.querySelector('canvas')) hide()
-        })
         const hide = () => {
           if (hidden) return
           hidden = true
-          observer.disconnect()
           splash.dataset.hidden = ''
           window.setTimeout(() => splash.remove(), 260)
         }
-        observer.observe(game, { childList: true, subtree: true })
-        if (game.querySelector('canvas')) hide()
+        // Core boot emits this once the menu scene is starting; until then the
+        // splash covers both Phaser's download and the game's asset preload.
+        window.addEventListener('mg:game-ready', hide, { once: true })
         window.setTimeout(hide, 15000)
       })()
     </script>
