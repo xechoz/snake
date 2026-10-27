@@ -119,7 +119,7 @@ const snakeArt: SnakeArtColors = {
     mango: { light: 0xffd08a, body: 0xff7043, dark: 0xc25a00, leaf: 0x4caf50 },
     kiwi: { light: 0xc7a89a, body: 0x8d6e63, dark: 0x4e342e, leaf: 0x8bc34a },
     pomegranate: { light: 0xf48fb1, body: 0xc2185b, dark: 0x7b0d3a, leaf: accentAlt },
-    pineapple: { light: 0xffd95c, body: 0xc97b00, dark: 0x7a4a00, leaf: 0x2e7d32 },
+    pineapple: { light: 0xffe38f, body: 0xf3b021, dark: 0xbb7a05, leaf: 0x3fae5a },
   },
   powerUps: {
     ice: { light: 0xe8fbff, body: 0x9be8d8, dark: 0x3aa6b8, accent: 0xffa8c0 },
