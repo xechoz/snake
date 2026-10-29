@@ -161,6 +161,9 @@ export interface SnakeLayoutOptions {
    * mobile Poki pill. The top HUD already sits below it and ignores this.
    */
   readonly safeTop?: number
+  /** Level boards can be smaller or larger than the endless 20 × 20 grid. */
+  readonly gridWidth?: number
+  readonly gridHeight?: number
 }
 
 /**
@@ -189,6 +192,7 @@ export function computeSnakeLayout(
 
   const placement: SnakeLayout['placement'] = sideBoard >= topBoard ? 'side' : 'top'
   const size = Math.max(MIN_BOARD, Math.round(placement === 'side' ? sideBoard : topBoard))
+  const columns = Math.max(1, options.gridWidth ?? snakeConfig.width)
 
   const boardX = insets.left + Math.round((availableWidth - size) / 2)
   const boardY = insets.top + Math.round((availableHeight - size) / 2)
@@ -197,7 +201,7 @@ export function computeSnakeLayout(
     y: boardY,
     width: size,
     height: size,
-    cell: size / snakeConfig.width,
+    cell: size / columns,
   }
 
   if (placement === 'side') {

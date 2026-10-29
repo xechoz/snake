@@ -455,6 +455,14 @@ function drawFrame(
 
   graphics.fillStyle(theme.surface, 1)
   graphics.fillRoundedRect(left, top, outerWidth, outerHeight, radius)
+  graphics.fillStyle(snakeColors.art.garden.hedge, 1)
+  graphics.fillRoundedRect(
+    -boardWidth / 2 - 5,
+    -boardHeight / 2 - 5,
+    boardWidth + 10,
+    boardHeight + 10,
+    radius - 6,
+  )
   graphics.fillStyle(theme.board, 1)
   graphics.fillRect(-boardWidth / 2, -boardHeight / 2, boardWidth, boardHeight)
 

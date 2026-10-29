@@ -1,15 +1,15 @@
 {
   "id": "./",
-  "name": "Fruit Snake: Color Trail",
-  "short_name": "Fruit Snake",
-  "description": "Paint your snake with fourteen fruits, dodge the walls, and beat your best score.",
+  "name": "Bloomtail: Color Trail",
+  "short_name": "Bloomtail",
+  "description": "Paint a path through the garden, bloom every bud, and wake the colors of the old orchard.",
   "lang": "en",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#e3f2fa",
-  "theme_color": "#e3f2fa",
+  "background_color": "#dff0e4",
+  "theme_color": "#dff0e4",
   "icons": [
     {
       "src": "./icons/icon-192.png",

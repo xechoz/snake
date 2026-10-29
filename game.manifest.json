@@ -2,13 +2,13 @@
   "id": "snake",
   "order": 1,
   "title": {
-    "zh": "贪吃蛇：水果火车",
-    "en": "Fruit Snake: Color Trail"
+    "zh": "花尾蛇：色彩小径",
+    "en": "Bloomtail: Color Trail"
   },
   "description": {
-    "zh": "14 种水果给蛇染色，冰淇淋减速、辣椒加速翻倍得分，别撞墙也别咬到自己。",
-    "en": "Fourteen fruits paint your snake, ice cream slows it down and chili doubles your score. Eat, grow, and avoid the walls and yourself."
+    "zh": "蛇走过的地方会留下颜色。吃水果换色，点亮花园里的花苞，收集金种子，沿着小径让整座花园重新开花。",
+    "en": "Every step leaves a trail of color. Eat fruit to change your hue, bloom the garden's buds, collect golden seeds and bring the old orchard back to life."
   },
   "themeColor": "#ffb020",
-  "tags": ["arcade", "classic"]
+  "tags": ["arcade", "puzzle", "casual"]
 }

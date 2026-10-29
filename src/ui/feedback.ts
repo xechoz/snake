@@ -33,6 +33,66 @@ export function showEatFeedback(
   burst(scene, x, y, [color, theme.accent, theme.surface], 8, 22, 48, 420)
 }
 
+export function showBloomFeedback(
+  scene: Phaser.Scene,
+  board: BoardMetrics,
+  at: Cell,
+  color: number,
+  theme: Theme,
+): void {
+  const x = cellCenterX(board, at.x)
+  const y = cellCenterY(board, at.y)
+  floatingBadge({
+    scene,
+    x,
+    y,
+    width: 70,
+    border: color,
+    borderAlpha: 0.95,
+    label: '+25',
+    labelSize: 24,
+    labelColor: theme.text,
+    rise: 48,
+    duration: 560,
+    theme,
+  })
+  burst(scene, x, y, [color, theme.accentWarm, snakeColors.art.garden.petal], 12, 18, 52, 520)
+}
+
+export function showGoldenFeedback(
+  scene: Phaser.Scene,
+  board: BoardMetrics,
+  at: Cell,
+  theme: Theme,
+): void {
+  const x = cellCenterX(board, at.x)
+  const y = cellCenterY(board, at.y)
+  floatingBadge({
+    scene,
+    x,
+    y,
+    width: 104,
+    border: snakeColors.art.garden.gold,
+    borderAlpha: 1,
+    label: '+100',
+    labelSize: 26,
+    labelColor: cssColor(snakeColors.art.garden.frameDark),
+    rise: 66,
+    duration: 720,
+    theme,
+  })
+  burst(
+    scene,
+    x,
+    y,
+    [snakeColors.art.garden.gold, theme.accentWarm, theme.highlight],
+    18,
+    26,
+    70,
+    640,
+  )
+}
+
 export function showPowerUpFeedback(
   scene: Phaser.Scene,
   board: BoardMetrics,

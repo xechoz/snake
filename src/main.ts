@@ -9,6 +9,10 @@ const eatSamples = [
   new URL('./assets/audio/eat-1.wav', import.meta.url).href,
   new URL('./assets/audio/eat-2.wav', import.meta.url).href,
 ]
+const music = [
+  new URL('./assets/audio/garden-loop.ogg', import.meta.url).href,
+  new URL('./assets/audio/garden-loop.mp3', import.meta.url).href,
+]
 const handPointer = new URL('./assets/hand-pointer.svg', import.meta.url).href
 
 createGame({
@@ -18,7 +22,10 @@ createGame({
   defaultLang: 'en',
   i18n: snakeI18n,
   menuScene: 'Menu',
-  assets: { images: [{ key: 'hand-pointer', url: handPointer }] },
+  assets: {
+    images: [{ key: 'hand-pointer', url: handPointer }],
+    audio: [{ key: 'music', urls: music }],
+  },
   audioSamples: { eat: eatSamples },
   scenes: [MenuScene, GameScene, HudScene],
 })

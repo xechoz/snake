@@ -63,11 +63,22 @@ export function createInitialState(
     snake.push({ x: headX - i, y: headY })
   }
 
+  return createStateFrom(config, rng, snake, 'right', startingFruits)
+}
+
+/** Builds a run from an explicit snake, used by handcrafted levels. */
+export function createStateFrom(
+  config: SnakeConfig,
+  rng: Rng,
+  snake: readonly Cell[],
+  direction: Direction,
+  startingColors: readonly (FruitKind | null)[] = [],
+): SnakeState {
   const base: SnakeState = {
     config,
     snake,
-    segmentColors: snake.map((_, index) => startingFruits[index] ?? null),
-    direction: 'right',
+    segmentColors: snake.map((_, index) => startingColors[index] ?? null),
+    direction,
     queue: [],
     fruitWeights: { ...config.fruitWeight },
     foods: [],
@@ -172,7 +183,8 @@ export function step(state: SnakeState, rng: Rng): StepResult {
     nextHead.x < 0 ||
     nextHead.y < 0 ||
     nextHead.x >= state.config.width ||
-    nextHead.y >= state.config.height
+    nextHead.y >= state.config.height ||
+    isBlocked(nextHead, state.config)
   ) {
     return {
       state: {
@@ -411,6 +423,12 @@ function freeCells(state: SnakeState): Cell[] {
   for (const food of state.foods) {
     occupied.add(cellKey(food.cell, state.config.width))
   }
+  for (const cell of state.config.blocked ?? []) {
+    occupied.add(cellKey(cell, state.config.width))
+  }
+  for (const cell of state.config.reserved ?? []) {
+    occupied.add(cellKey(cell, state.config.width))
+  }
   if (state.powerUp) {
     occupied.add(cellKey(state.powerUp.cell, state.config.width))
   }
@@ -425,4 +443,8 @@ function freeCells(state: SnakeState): Cell[] {
     }
   }
   return free
+}
+
+function isBlocked(cell: Cell, config: SnakeConfig): boolean {
+  return (config.blocked ?? []).some((blocked) => sameCell(cell, blocked))
 }

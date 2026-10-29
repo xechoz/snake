@@ -1,5 +1,24 @@
 # Changelog
 
+## 4.0.0
+
+- Rebrand to **Bloomtail: Color Trail** / **花尾蛇：色彩小径**.
+- Add a handcrafted campaign: two worlds, twelve levels, bloom buds,
+  colour-matched seeds, golden seeds, par steps and three-star ratings.
+- Add the level map, continue flow, world star gates and per-level save
+  progress. Save version 4 migrates endless-only saves in place.
+- Replace the checkered board with a garden bed, a painted colour trail,
+  buds/blooms, a level HUD and a dedicated level result screen.
+- Keep the original endless mode as a bonus mode. Level retries no longer show
+  interstitials.
+- Add an original 32-second garden music loop (CC0), synced to the sound toggle,
+  pause flow and host ad muting.
+- Add CrazyGames cover art in 1920×1080, 800×1200 and 800×800, plus a compact
+  result layout that fits 800×450 without overlapping text.
+- Nudge fruit placements in levels 1-4 and 2-4 so an early wrong-colour pickup
+  cannot strand a colour seed.
+- Add the `?debug&level=<id>` deep link for level checks.
+
 ## 3.1.0
 
 - Move the game to the standalone `xechoz/snake` repository.

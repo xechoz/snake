@@ -6,14 +6,27 @@ import {
   onLayoutChange,
   randomSeed,
   readViewport,
+  type Theme,
   type Viewport,
 } from '@mg/core'
 import { createRng, type Rng } from '@mg/core/rng'
 import Phaser from 'phaser'
 import { takeSuperReward } from '../ads'
+import { startMusic, syncMusic } from '../audio/music'
+import { snakeColors } from '../colors'
 import { snakeConfig } from '../logic/config'
-import { createInitialState, enqueueDirection, grantSuperItem, step, tickMs } from '../logic/state'
-import type { Cell, Direction, SnakeState } from '../logic/types'
+import { bloomCount, createLevelState, type LevelState, stepLevel } from '../logic/levelRun'
+import { levelById, type WorldId } from '../logic/levels'
+import { applyLevelResult, nextUnlockedLevel } from '../logic/progress'
+import {
+  cellKey,
+  createInitialState,
+  enqueueDirection,
+  grantSuperItem,
+  step,
+  tickMs,
+} from '../logic/state'
+import type { Cell, Direction, FruitKind, SnakeState } from '../logic/types'
 import { snakeSave } from '../save'
 import { resolveSkin, type SnakeSkinId, startingSegmentColors } from '../skins'
 import { drawBackdrop } from '../ui/backdrop'
@@ -21,22 +34,24 @@ import { hostHudSafeTop } from '../ui/device'
 import { FoodLayer } from '../ui/FoodLayer'
 import {
   flashDanger,
+  showBloomFeedback,
   showEatFeedback,
   showFeastEndFeedback,
   showFeastFeedback,
+  showGoldenFeedback,
   showPowerUpFeedback,
 } from '../ui/feedback'
 import {
   COUNTDOWN_STEP_ANGLE,
-  drawBoardFrame,
   drawCountdownBackdrop,
   drawCountdownFruits,
   drawPickups,
   drawSnake,
 } from '../ui/gameArt'
+import { drawGardenBoard, drawLevelSeeds, drawPaintTrail } from '../ui/gardenArt'
 import { computeSnakeLayout, type SnakeLayout } from '../ui/layout'
 import { SwipeSteer } from '../ui/SwipeSteer'
-import type { GameOverInfo, HudScene } from './HudScene'
+import type { GameOverInfo, HudScene, LevelResultInfo } from './HudScene'
 
 const COUNTDOWN_STEP_MS = 1000
 const COUNTDOWN_STEPS = 3
@@ -51,12 +66,47 @@ const FEAST_EAT_MIN_MS = 240
 /** Cap the feast pitch ladder at +7 semitones so long feasts never turn shrill. */
 const FEAST_EAT_MAX_STEP = 4
 
+interface RunData {
+  readonly mode?: 'endless' | 'level'
+  readonly levelId?: string
+}
+
+type RunMode = { readonly kind: 'endless' } | { readonly kind: 'level'; readonly levelId: string }
+
+export interface LevelHudStats {
+  readonly id: string
+  readonly world: WorldId
+  readonly bloomed: number
+  readonly total: number
+  readonly steps: number
+  readonly par: number
+  readonly limit: number
+  readonly golden: boolean
+  readonly hasGolden: boolean
+  readonly stars: number
+  readonly seedColors: readonly (FruitKind | 'any')[]
+  readonly bloomedFlags: readonly boolean[]
+  readonly bloomColors: readonly (FruitKind | null)[]
+}
+
+export interface RunStats {
+  readonly mode: 'endless' | 'level'
+  readonly score: number
+  readonly feast: { remainingMs: number; totalMs: number } | null
+  readonly grid: { readonly cols: number; readonly rows: number }
+  readonly level: LevelHudStats | null
+}
+
 export class GameScene extends Phaser.Scene {
+  private mode: RunMode = { kind: 'endless' }
   private state!: SnakeState
+  private level: LevelState | null = null
   private rng!: Rng
   private viewport!: Viewport
   private layout!: SnakeLayout
   private prevCells: Cell[] = []
+  private painted = new Map<number, FruitKind | null>()
+  private paintDirty = true
   private elapsed = 0
   private paused = false
   private finished = false
@@ -73,6 +123,8 @@ export class GameScene extends Phaser.Scene {
   private lastFeastEatAt = Number.NEGATIVE_INFINITY
   private backdropGraphics!: Phaser.GameObjects.Graphics
   private boardGraphics!: Phaser.GameObjects.Graphics
+  private paintGraphics!: Phaser.GameObjects.Graphics
+  private seedGraphics!: Phaser.GameObjects.Graphics
   private snakeGraphics!: Phaser.GameObjects.Graphics
   private foodLayer!: FoodLayer
   private powerUpGraphics!: Phaser.GameObjects.Graphics
@@ -95,15 +147,33 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     const services = getServices()
     const theme = services.theme
+    const data = (this.scene.settings.data ?? {}) as RunData
+    this.mode =
+      data.mode === 'level' && data.levelId
+        ? { kind: 'level', levelId: data.levelId }
+        : { kind: 'endless' }
 
+    if (this.mode.kind === 'level' && !levelById(this.mode.levelId)) {
+      this.scene.start('Menu')
+      return
+    }
+
+    startMusic(this)
     this.cameras.main.setBackgroundColor(theme.bg)
     this.viewport = readViewport(this)
-    this.layout = computeSnakeLayout(this.viewport, { safeTop: hostHudSafeTop() })
+    const grid = this.grid()
+    this.layout = computeSnakeLayout(this.viewport, {
+      safeTop: hostHudSafeTop(),
+      gridWidth: grid.cols,
+      gridHeight: grid.rows,
+    })
 
     this.backdropGraphics = this.add.graphics().setDepth(-2)
     this.drawBackdrop()
 
     this.boardGraphics = this.add.graphics().setDepth(0)
+    this.paintGraphics = this.add.graphics().setDepth(1)
+    this.seedGraphics = this.add.graphics().setDepth(2)
     this.drawBoard()
 
     this.snakeGraphics = this.add.graphics().setDepth(4)
@@ -147,10 +217,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    syncMusic()
     const frame = Math.min(delta, 250)
     this.debugOverlay?.update(
       frame,
-      `score=${this.state.score} len=${this.state.snake.length} status=${this.state.status}`,
+      `score=${this.state.score} len=${this.state.snake.length} status=${this.level?.status ?? this.state.status}`,
     )
 
     if (this.paused) {
@@ -191,28 +262,64 @@ export class GameScene extends Phaser.Scene {
       return
     }
 
-    if (this.state.status !== 'alive') {
+    if (this.level && this.level.status !== 'playing') {
+      this.render(1)
+      if (!this.finished) this.finish()
+      return
+    }
+
+    if (!this.level && this.state.status !== 'alive') {
       this.render(1)
       return
     }
 
     this.elapsed += frame
     let guard = 0
-    while (this.elapsed >= tickMs(this.state) && this.state.status === 'alive' && guard < 10) {
+    while (
+      this.elapsed >= tickMs(this.state) &&
+      this.state.status === 'alive' &&
+      (!this.level || this.level.status === 'playing') &&
+      guard < 10
+    ) {
       this.elapsed -= tickMs(this.state)
       this.advance()
       guard += 1
     }
 
     if (this.state.status !== 'alive' && !this.finished) this.finish()
+    if (this.level && this.level.status !== 'playing' && !this.finished) this.finish()
     this.render(this.progress())
   }
 
-  currentStats(): {
-    score: number
-    feast: { remainingMs: number; totalMs: number } | null
-  } {
+  currentStats(): RunStats {
+    const grid = this.grid()
+    if (this.level) {
+      const run = this.level
+      return {
+        mode: 'level',
+        score: run.score,
+        feast: null,
+        grid,
+        level: {
+          id: run.def.id,
+          world: run.def.world,
+          bloomed: bloomCount(run),
+          total: run.def.seeds.length,
+          steps: run.steps,
+          par: run.def.par,
+          limit: run.def.limit,
+          golden: run.golden,
+          hasGolden: run.def.golden !== null,
+          stars: run.stars,
+          seedColors: run.def.seeds.map((seed) => seed.color),
+          bloomedFlags: run.bloomed,
+          bloomColors: run.bloomColors,
+        },
+      }
+    }
+
     return {
+      mode: 'endless',
       score: this.state.score,
       feast: this.state.feast
         ? {
@@ -220,19 +327,24 @@ export class GameScene extends Phaser.Scene {
             totalMs: this.state.config.feastDurationMs,
           }
         : null,
+      grid,
+      level: null,
     }
   }
 
   inputDirection(direction: Direction): void {
     if (this.adsActive() || this.paused || this.finished || this.state.status !== 'alive') return
+    if (this.level && this.level.status !== 'playing') return
     const next = enqueueDirection(this.state, direction)
     if (next === this.state) return
     this.state = next
+    if (this.level) this.level = { ...this.level, snake: next }
     getServices().audio.play('turn')
   }
 
   pauseGame(): void {
     if (this.adsActive() || this.paused || this.finished || this.state.status !== 'alive') return
+    if (this.level && this.level.status !== 'playing') return
     const services = getServices()
     this.paused = true
     this.countdownActive = false
@@ -252,8 +364,11 @@ export class GameScene extends Phaser.Scene {
       const services = getServices()
       this.hud()?.closeModal()
       // The portal only allows midgame ads at natural breaks, never on a
-      // navigation action such as resuming from the pause menu.
-      if (!this.isPortalHost()) await services.ads.showInterstitial()
+      // navigation action such as resuming from the pause menu. Level retries
+      // are short and deliberate, so they never interrupt the puzzle.
+      if (this.mode.kind === 'endless' && !this.isPortalHost()) {
+        await services.ads.showInterstitial()
+      }
       this.paused = false
       this.steer.setEnabled(true)
       // The resume tap is a fresh user gesture; Safari may have interrupted the
@@ -276,7 +391,11 @@ export class GameScene extends Phaser.Scene {
     if (this.restarting || this.adsActive()) return
     this.restarting = true
     try {
-      if (options.commercial !== false && !(this.isPortalHost() && this.paused)) {
+      if (
+        this.mode.kind === 'endless' &&
+        options.commercial !== false &&
+        !(this.isPortalHost() && this.paused)
+      ) {
         await getServices().ads.showInterstitial()
       }
       this.scene.stop('Hud')
@@ -292,6 +411,12 @@ export class GameScene extends Phaser.Scene {
     this.scene.start('Menu')
   }
 
+  goToLevel(levelId: string): void {
+    if (this.adsActive()) return
+    this.scene.stop('Hud')
+    this.scene.start('Game', { mode: 'level', levelId })
+  }
+
   private adsActive(): boolean {
     return getServices().ads.active
   }
@@ -301,13 +426,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   private handleLayout(viewport: Viewport): void {
-    const next = computeSnakeLayout(viewport, { safeTop: hostHudSafeTop() })
+    const grid = this.grid()
+    const next = computeSnakeLayout(viewport, {
+      safeTop: hostHudSafeTop(),
+      gridWidth: grid.cols,
+      gridHeight: grid.rows,
+    })
     if (layoutsEqual(next, this.layout) && !this.foodLayer.needsRebake()) return
 
     const rotated = next.orientation !== this.layout.orientation && this.isPlaying()
     this.layout = next
     this.viewport = viewport
     this.lastFoods = null
+    this.paintDirty = true
     this.drawBackdrop()
     this.drawBoard()
     this.positionCountdown()
@@ -322,6 +453,30 @@ export class GameScene extends Phaser.Scene {
     this.best = save.best
     this.newBest = false
     this.rng = createRng(randomSeed())
+    this.painted.clear()
+    this.paintDirty = true
+
+    if (this.mode.kind === 'level') {
+      const def = levelById(this.mode.levelId)
+      if (!def) {
+        this.scene.start('Menu')
+        return
+      }
+      this.level = createLevelState(def, this.rng)
+      this.state = this.level.snake
+      this.prevCells = [...this.state.snake]
+      this.lastFoods = null
+      this.elapsed = 0
+      this.paused = false
+      this.finished = false
+      this.steer.setEnabled(true)
+      this.paintCell(this.state.snake[0], this.state.segmentColors[0] ?? null)
+      this.startCountdown()
+      services.platform.gameplayStart()
+      return
+    }
+
+    this.level = null
     const lastSkin = this.registry.get('lastSkin') as SnakeSkinId | undefined
     const skin = resolveSkin(this.rng, {
       unlocked: save.unlockedSkins,
@@ -336,6 +491,7 @@ export class GameScene extends Phaser.Scene {
     this.elapsed = 0
     this.paused = false
     this.finished = false
+    this.paintCell(this.state.snake[0], this.state.segmentColors[0] ?? null)
     this.steer.setEnabled(true)
     this.startCountdown()
     services.platform.gameplayStart()
@@ -396,12 +552,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   private advance(): void {
+    if (this.level) {
+      this.advanceLevel()
+      return
+    }
     const services = getServices()
     const oldCells = this.state.snake
     const wasFeast = this.state.feast !== null
     const result = step(this.state, this.rng)
     this.prevCells = result.state.snake.map((cell, index) => oldCells[index] ?? cell)
     this.state = result.state
+    this.paintCell(result.state.snake[0], result.state.segmentColors[0] ?? null)
 
     for (const event of result.events) {
       if (event.type === 'eat') {
@@ -452,6 +613,68 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private advanceLevel(): void {
+    const services = getServices()
+    const run = this.level
+    if (!run) return
+
+    const oldCells = run.snake.snake
+    const result = stepLevel(run, this.rng)
+    this.prevCells = result.state.snake.snake.map((cell, index) => oldCells[index] ?? cell)
+    this.level = result.state
+    this.state = result.state.snake
+    const head = result.state.snake.snake[0]
+    this.paintCell(head, result.state.snake.segmentColors[0] ?? null)
+
+    for (const event of result.snakeEvents) {
+      if (event.type === 'eat') {
+        this.playEatSound(true, false)
+        showEatFeedback(this, this.layout.board, event.at, event.kind, event.points, services.theme)
+      } else if (event.type === 'power') {
+        services.audio.play(event.effect === 'fast' ? 'boost' : 'slow')
+        const label = services.i18n.t(event.effect === 'fast' ? 'power.fast' : 'power.slow')
+        showPowerUpFeedback(
+          this,
+          this.layout.board,
+          event.at,
+          event.kind,
+          event.effect,
+          label,
+          services.theme,
+        )
+      } else if (event.type === 'die') {
+        this.resetEatChain()
+        services.audio.play('die')
+        this.cameras.main.shake(220, 0.008)
+        flashDanger(this, services.theme)
+      }
+    }
+
+    for (const event of result.events) {
+      if (event.type === 'bloom') {
+        const color = event.color
+          ? snakeColors.art.fruits[event.color].body
+          : services.theme.accentWarm
+        services.audio.play('eat', { pitch: 1.45, gain: 0.8 })
+        showBloomFeedback(this, this.layout.board, event.at, color, services.theme)
+      } else if (event.type === 'golden') {
+        services.audio.play('start')
+        showGoldenFeedback(this, this.layout.board, event.at, services.theme)
+      } else if (event.type === 'win') {
+        this.resetEatChain()
+        services.audio.play('start')
+      } else if (event.type === 'lose') {
+        this.resetEatChain()
+        if (event.reason !== 'wall' && event.reason !== 'self') {
+          services.audio.play('die')
+          this.cameras.main.shake(160, 0.004)
+        }
+      }
+    }
+
+    if (this.level.status !== 'playing' && !this.finished) this.finish()
+  }
+
   private playEatSound(grew: boolean, feast: boolean): void {
     const now = this.time.now
     const audio = getServices().audio
@@ -484,9 +707,46 @@ export class GameScene extends Phaser.Scene {
 
   private finish(): void {
     const services = getServices()
+    if (this.finished) return
     this.finished = true
     this.steer.setEnabled(false)
     services.platform.gameplayStop()
+
+    if (this.level) {
+      const run = this.level
+      const won = run.status === 'won'
+      const save = snakeSave(services)
+      const current = save.read()
+      if (won) {
+        const next = applyLevelResult(current, run.def.id, run.stars, run.steps, run.golden)
+        save.write({ ...next, plays: current.plays + 1 })
+      } else {
+        save.write({ ...current, plays: current.plays + 1 })
+      }
+
+      services.platform.haptic(won ? 40 : 24)
+      if (won) services.platform.happyTime()
+
+      const info: LevelResultInfo = {
+        levelId: run.def.id,
+        world: run.def.world,
+        stars: won ? run.stars : 0,
+        score: run.score,
+        steps: run.steps,
+        par: run.def.par,
+        limit: run.def.limit,
+        golden: run.golden,
+        hasGolden: run.def.golden !== null,
+        won,
+        reason: won ? null : (run.lostReason ?? 'wall'),
+        nextLevelId: won ? nextUnlockedLevel(save.read(), run.def.id) : null,
+      }
+
+      this.time.delayedCall(GAME_OVER_DELAY_MS, () => {
+        if (this.finished) this.hud()?.showLevelResult(info)
+      })
+      return
+    }
 
     const won = this.state.status === 'won'
     const save = snakeSave(services)
@@ -515,13 +775,31 @@ export class GameScene extends Phaser.Scene {
   }
 
   private progress(): number {
-    if (this.state.status !== 'alive') return 1
+    if (this.level && this.level.status !== 'playing') return 1
+    if (!this.level && this.state.status !== 'alive') return 1
     const interval = tickMs(this.state)
     return Math.min(1, this.elapsed / interval)
   }
 
   private render(progress: number): void {
     const theme = getServices().theme
+    this.renderPaint(theme)
+
+    if (this.level) {
+      drawLevelSeeds(
+        this.seedGraphics,
+        this.layout.board,
+        this.level.def,
+        this.level.bloomed,
+        this.level.bloomColors,
+        this.level.golden,
+        this.time.now,
+        theme,
+      )
+    } else {
+      this.seedGraphics.clear()
+    }
+
     drawSnake(
       this.snakeGraphics,
       this.state,
@@ -547,12 +825,44 @@ export class GameScene extends Phaser.Scene {
     )
   }
 
+  private renderPaint(theme: Theme): void {
+    if (!this.paintDirty) return
+    drawPaintTrail(this.paintGraphics, this.layout.board, this.painted, this.grid().cols, theme)
+    this.paintDirty = false
+  }
+
+  private paintCell(cell: Cell | undefined, kind: FruitKind | null): void {
+    if (!cell) return
+    const key = cellKey(cell, this.grid().cols)
+    if (this.painted.has(key)) return
+    this.painted.set(key, kind)
+    this.paintDirty = true
+  }
+
   private drawBackdrop(): void {
     drawBackdrop(this.backdropGraphics, this.viewport, getServices().theme)
   }
 
   private drawBoard(): void {
-    drawBoardFrame(this.boardGraphics, this.layout.board, getServices().theme)
+    const grid = this.grid()
+    drawGardenBoard(
+      this.boardGraphics,
+      this.layout.board,
+      grid.cols,
+      grid.rows,
+      this.level?.def.blocked ?? [],
+      getServices().theme,
+    )
+    this.seedGraphics.clear()
+    this.paintDirty = true
+  }
+
+  private grid(): { cols: number; rows: number } {
+    const def =
+      this.level?.def ?? (this.mode.kind === 'level' ? levelById(this.mode.levelId) : null)
+    return def
+      ? { cols: def.width, rows: def.height }
+      : { cols: snakeConfig.width, rows: snakeConfig.height }
   }
 
   private bindInput(): void {
@@ -595,7 +905,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private isPlaying(): boolean {
-    return !this.paused && !this.finished && this.state.status === 'alive'
+    return (
+      !this.paused &&
+      !this.finished &&
+      this.state.status === 'alive' &&
+      (!this.level || this.level.status === 'playing')
+    )
   }
 }
 

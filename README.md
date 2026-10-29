@@ -1,7 +1,12 @@
-# Fruit Snake: Color Trail
+# Bloomtail: Color Trail
 
-A standalone Phaser 4 arcade game built on
+A handcrafted garden-snake campaign built on
 [`xechoz/mg-platform`](https://github.com/xechoz/mg-platform).
+
+Slither through a faded garden, paint the soil with fruit colors, bloom every
+bud before the step limit, and chase three stars by finding the golden seed.
+Two worlds and twelve levels ship with the campaign; the original endless mode
+is still available from the level map.
 
 Clone with the platform submodule:
 
@@ -26,6 +31,21 @@ The platform is pinned at `v4.0.0` in `platform/`.
 | `npm run package:poki` | Poki build |
 | `npm run package:crazy:basic` | CrazyGames lifecycle build |
 | `npm run package:crazy:full` | CrazyGames lifecycle + ads build |
+
+## Level campaign
+
+- `src/logic/levels.ts` holds the handcrafted boards, seeds, fruit plans and
+  par/step limits.
+- `src/logic/levelRun.ts` is the pure bloom/golden/star rule set.
+- `src/logic/progress.ts` merges stars, coins and level unlocks.
+- Save version 4 migrates old endless-only saves without losing the best score
+  or skins.
+
+For a fast visual check of any level, use the debug deep link:
+
+```text
+http://localhost:5173/?debug&level=2-1
+```
 
 ## Local CrazyGames preview
 

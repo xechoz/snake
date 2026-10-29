@@ -22,10 +22,10 @@ function cssColor(color: number): string {
 }
 
 const snakeTheme = {
-  bg: 0xe3f2fa,
-  bgAlt: 0xfff4e2,
-  board: cream,
-  boardAlt: 0xeaf9e8,
+  bg: 0xdff0e4,
+  bgAlt: 0xfff4d6,
+  board: 0x6b4a2f,
+  boardAlt: 0x785437,
   ink,
   accent,
   accentHover,
@@ -37,14 +37,14 @@ const snakeTheme = {
   textMuted: cssColor(muted),
   muted,
   panel: cream,
-  borderSoft: 0xd2d0d6,
-  surface: white,
-  surfaceAlt: 0xffead5,
+  borderSoft: 0xd8c8a8,
+  surface: 0xfff6df,
+  surfaceAlt: 0xffe6c2,
   danger: 0xce2f40,
   dangerHover: 0xb82736,
   onDanger: cream,
   highlight: white,
-  overlay: 0x2a2038,
+  overlay: 0x16251c,
   shadow: ink,
   // Button clamps this to half its height, so every control renders as a capsule.
   radius: 64,
@@ -83,6 +83,28 @@ export interface FoliageArtColors {
   readonly light: number
 }
 
+export interface GardenArtColors {
+  readonly soil: number
+  readonly soilAlt: number
+  readonly soilEdge: number
+  readonly frame: number
+  readonly frameDark: number
+  readonly frameLight: number
+  readonly hedge: number
+  readonly hedgeLight: number
+  readonly water: number
+  readonly waterLight: number
+  readonly petal: number
+  readonly petalShade: number
+  readonly gold: number
+}
+
+export interface UiArtColors {
+  /** Text that sits directly on the garden backdrop, not on a cream card. */
+  readonly onBg: number
+  readonly onBgMuted: number
+}
+
 export interface SnakeArtColors {
   ink: number
   snakeHead: number
@@ -92,6 +114,8 @@ export interface SnakeArtColors {
   superFruit: SuperFruitArtColors
   effects: Record<EffectKind, number>
   foliage: FoliageArtColors
+  garden: GardenArtColors
+  ui: UiArtColors
   leaf: number
   eyeWhite: number
   shine: number
@@ -139,6 +163,25 @@ const snakeArt: SnakeArtColors = {
     deep: 0x2f7d5b,
     mid: 0x4fae7e,
     light: 0x9fd8bb,
+  },
+  garden: {
+    soil: 0x6b4a2f,
+    soilAlt: 0x785437,
+    soilEdge: 0x4d3420,
+    frame: 0x8b5a2b,
+    frameDark: 0x5c3a1e,
+    frameLight: 0xc98a4b,
+    hedge: 0x2f6b45,
+    hedgeLight: 0x4f9e68,
+    water: 0x3f9fe8,
+    waterLight: 0x8fd3ff,
+    petal: 0xfff4d6,
+    petalShade: 0xf1d9a8,
+    gold: 0xffc93c,
+  },
+  ui: {
+    onBg: ink,
+    onBgMuted: muted,
   },
   leaf: accentAlt,
   eyeWhite: white,

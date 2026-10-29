@@ -82,6 +82,10 @@ export interface SnakeConfig {
   feastDurationMs: number
   /** Feast fruit eaten per extra snake segment; the rest only score. */
   feastGrowthEvery: number
+  /** Solid cells: walls, hedges and water. They block movement and spawning. */
+  readonly blocked?: readonly Cell[]
+  /** Cells that never receive fruit or pickups: seeds, the golden seed and scripted fruit. */
+  readonly reserved?: readonly Cell[]
 }
 
 export type SnakeStatus = 'alive' | 'dead' | 'won'

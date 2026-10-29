@@ -15,7 +15,10 @@ import {
 } from '@mg/core'
 import { createRng } from '@mg/core/rng'
 import Phaser from 'phaser'
+import { startMusic, syncMusic } from '../audio/music'
 import { snakeColors } from '../colors'
+import { levelById } from '../logic/levels'
+import { MAX_STARS, nextLevelId, totalStars } from '../logic/progress'
 import type { Direction } from '../logic/types'
 import { snakeSave } from '../save'
 import { resolveSkin, startingSegmentColors } from '../skins'
@@ -25,6 +28,7 @@ import { DemoCoach } from '../ui/DemoCoach'
 import { hasTouchInput } from '../ui/device'
 import { fruitDecoration } from '../ui/fruitDecoration'
 import { LanguageModal } from '../ui/LanguageModal'
+import { LevelMapModal } from '../ui/LevelMapModal'
 import {
   computeMenuLayout,
   MENU_PLAY_HEIGHT,
@@ -54,11 +58,12 @@ export class MenuScene extends Phaser.Scene {
   private playGlow!: Phaser.GameObjects.Graphics
   private playButton!: Button
   private playWidth = 0
-  private collectionButton!: Button
+  private mapButton!: Button
   private soundButton!: Button
   private languageButton!: Button
   private collectionModal?: CollectionModal
   private languageModal?: LanguageModal
+  private levelMap?: LevelMapModal
   private demo!: MenuDemo
   private hint!: Phaser.GameObjects.Text
   private controlsIcon!: Phaser.GameObjects.Graphics
@@ -78,8 +83,14 @@ export class MenuScene extends Phaser.Scene {
   create(): void {
     const services = getServices()
     const theme = services.theme
+    const preview = services.params.get('level')
+    if (preview && services.debug && levelById(preview)) {
+      this.scene.start('Game', { mode: 'level', levelId: preview })
+      return
+    }
+    startMusic(this)
     const save = snakeSave(services).read()
-    const best = save.best
+    const stars = totalStars(save)
     const menuSkin = resolveSkin(createRng(randomSeed()), {
       unlocked: save.unlockedSkins,
       active: save.activeSkin,
@@ -101,31 +112,30 @@ export class MenuScene extends Phaser.Scene {
       .text(
         0,
         0,
-        services.i18n.t('menu.best', { score: best }),
-        textStyle(theme, 26, cssColor(theme.accentInk), true),
+        services.i18n.t('menu.progress', { stars, total: MAX_STARS }),
+        textStyle(theme, 26, cssColor(snakeColors.art.ui.onBg), true),
       )
       .setOrigin(0.5)
 
     this.playGlow = this.add.graphics()
     this.playWidth = initial.playWidth
-    this.playButton = new Button(this, 0, 0, services.i18n.t('menu.play'), theme, {
+    this.playButton = new Button(this, 0, 0, services.i18n.t('menu.continue'), theme, {
       width: initial.playWidth,
       height: MENU_PLAY_HEIGHT,
       fontSize: PLAY_FONT_SIZE,
       icon: 'play',
       decoration: fruitDecoration,
-      onClick: () => this.startGame(),
+      onClick: () => this.startNextLevel(),
     })
 
-    this.collectionButton = new Button(this, 0, 0, '', theme, {
+    this.mapButton = new Button(this, 0, 0, '', theme, {
       width: initial.settings.size,
       height: initial.settings.size,
       variant: 'soft',
       minHitSize: this.touch ? MENU_SETTINGS_HIT : undefined,
       fontSize: SETTINGS_ICON_SIZE,
-      icon: 'bag',
-      decoration: collectionButtonDecoration,
-      onClick: () => this.openCollection(),
+      icon: 'star',
+      onClick: () => this.openMap(),
     })
 
     this.soundButton = new Button(this, 0, 0, '', theme, {
@@ -138,6 +148,7 @@ export class MenuScene extends Phaser.Scene {
       onClick: () => {
         services.audio.play('click')
         services.setSound(!services.settings.value.sound)
+        syncMusic()
         this.soundButton.setIcon(services.settings.value.sound ? 'soundOn' : 'soundOff')
       },
     })
@@ -161,7 +172,12 @@ export class MenuScene extends Phaser.Scene {
         : 'menu.controlsTouch'
       : 'menu.controlsDesktop'
     this.hint = this.add
-      .text(0, 0, services.i18n.t(this.hintKey), textStyle(theme, 28, theme.textMuted))
+      .text(
+        0,
+        0,
+        services.i18n.t(this.hintKey),
+        textStyle(theme, 28, cssColor(snakeColors.art.ui.onBgMuted)),
+      )
       .setOrigin(0.5)
 
     this.coach = new DemoCoach(this, theme, this.demo, this.touch ? 'touch' : 'keys')
@@ -170,7 +186,7 @@ export class MenuScene extends Phaser.Scene {
     if (this.showInstallHint) {
       this.installHint = this.add
         .text(0, 0, services.i18n.t('menu.fullscreenHint'), {
-          ...textStyle(theme, 24, theme.textMuted),
+          ...textStyle(theme, 24, cssColor(snakeColors.art.ui.onBgMuted)),
           align: 'center',
         })
         .setOrigin(0.5)
@@ -187,8 +203,8 @@ export class MenuScene extends Phaser.Scene {
     })
     this.playEntrance()
 
-    this.input.keyboard?.on('keydown-ENTER', () => this.startGame())
-    this.input.keyboard?.on('keydown-SPACE', () => this.startGame())
+    this.input.keyboard?.on('keydown-ENTER', () => this.startNextLevel())
+    this.input.keyboard?.on('keydown-SPACE', () => this.startNextLevel())
     const takeoverKeys: readonly (readonly [string, Direction])[] = [
       ['UP', 'up'],
       ['W', 'up'],
@@ -207,19 +223,67 @@ export class MenuScene extends Phaser.Scene {
     }
   }
 
-  private startGame(): void {
-    if (this.languageModal || this.collectionModal) return
+  private startNextLevel(): void {
+    const levelId = nextLevelId(snakeSave(getServices()).read())
+    this.startLevel(levelId)
+  }
+
+  private startLevel(levelId: string): void {
+    this.startRun({ mode: 'level', levelId })
+  }
+
+  private startEndless(): void {
+    this.startRun({ mode: 'endless' })
+  }
+
+  private startRun(data: { mode: 'level'; levelId: string } | { mode: 'endless' }): void {
+    if (this.modalOpen()) return
     this.coach.cancel()
     this.steer.setEnabled(false)
     const services = getServices()
     maybeEnterFullscreen(this.scale)
     services.audio.unlock()
     services.audio.play('click')
-    this.scene.start('Game')
+    this.scene.start('Game', data)
+  }
+
+  private modalOpen(): boolean {
+    return Boolean(this.languageModal || this.collectionModal || this.levelMap)
+  }
+
+  private openMap(): void {
+    if (this.modalOpen()) return
+    const services = getServices()
+    services.audio.play('click')
+    this.steer.setEnabled(false)
+    this.coach.pause()
+    this.levelMap = new LevelMapModal(this, {
+      theme: services.theme,
+      save: snakeSave(services).read(),
+      onSelect: (levelId) => {
+        this.levelMap = undefined
+        this.startLevel(levelId)
+      },
+      onEndless: () => {
+        this.levelMap = undefined
+        this.startEndless()
+      },
+      onCollection: () => {
+        this.levelMap = undefined
+        this.openCollection()
+      },
+      onClose: () => {
+        this.levelMap = undefined
+        if (this.languageModal || this.collectionModal) return
+        this.coach.resume()
+        this.syncDemoSteer(this.layout)
+        this.syncHint(this.layout)
+      },
+    })
   }
 
   private openLanguage(): void {
-    if (this.languageModal || this.collectionModal) return
+    if (this.modalOpen()) return
     const services = getServices()
     services.audio.play('click')
     this.steer.setEnabled(false)
@@ -242,7 +306,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private openCollection(): void {
-    if (this.languageModal || this.collectionModal) return
+    if (this.languageModal || this.collectionModal || this.levelMap) return
     const services = getServices()
     services.audio.play('click')
     this.steer.setEnabled(false)
@@ -273,7 +337,7 @@ export class MenuScene extends Phaser.Scene {
 
     this.playButton.setPosition(layout.centerX, layout.playY)
     this.drawPlayGlow(layout)
-    this.collectionButton.setPosition(layout.settings.collection.x, layout.settings.collection.y)
+    this.mapButton.setPosition(layout.settings.collection.x, layout.settings.collection.y)
     this.soundButton.setPosition(layout.settings.sound.x, layout.settings.sound.y)
     this.languageButton.setPosition(layout.settings.language.x, layout.settings.language.y)
 
@@ -298,7 +362,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private syncDemoSteer(layout: MenuLayout): void {
-    const enabled = layout.demo.visible && !this.languageModal && !this.collectionModal
+    const enabled = layout.demo.visible && !this.modalOpen()
     this.steer.setEnabled(enabled)
     this.steer.setActiveRect(enabled ? menuDemoTouchRect(layout.demo) : null)
   }
@@ -322,7 +386,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private handleDemoSteer(direction: Direction): void {
-    if (this.languageModal || this.collectionModal || !this.layout.demo.visible) return
+    if (this.modalOpen() || !this.layout.demo.visible) return
     if (this.demo.steer(direction)) {
       this.coach.cancel()
     }
@@ -372,14 +436,14 @@ export class MenuScene extends Phaser.Scene {
 
     if (this.touch) {
       // A fingertip with motion lines reads as "swipe" instead of "hold".
-      graphics.lineStyle(3, theme.ink, 0.18)
+      graphics.lineStyle(3, snakeColors.art.ui.onBgMuted, 0.35)
       graphics.lineBetween(-26, -8, -13, -8)
-      graphics.lineStyle(3, theme.ink, 0.26)
+      graphics.lineStyle(3, snakeColors.art.ui.onBgMuted, 0.5)
       graphics.lineBetween(-24, 1, -13, 1)
-      graphics.lineStyle(3, theme.ink, 0.34)
+      graphics.lineStyle(3, snakeColors.art.ui.onBgMuted, 0.65)
       graphics.lineBetween(-26, 10, -13, 10)
 
-      graphics.fillStyle(theme.accentInk, 1)
+      graphics.fillStyle(snakeColors.art.ui.onBg, 1)
       graphics.fillRoundedRect(-8, 12, 26, 14, 7)
       graphics.fillRoundedRect(-3, 2, 10, 20, 5)
       graphics.fillCircle(2, 0, 11)
@@ -413,7 +477,7 @@ export class MenuScene extends Phaser.Scene {
     this.bestLabel.setAlpha(0)
     this.playGlow.setAlpha(0).setScale(1)
     this.playButton.setAlpha(0).setScale(0.9)
-    this.collectionButton.setAlpha(0)
+    this.mapButton.setAlpha(0)
     this.soundButton.setAlpha(0)
     this.languageButton.setAlpha(0)
     this.controlsIcon.setAlpha(0)
@@ -428,7 +492,7 @@ export class MenuScene extends Phaser.Scene {
       delay: 220,
     })
     this.tweens.add({
-      targets: [this.collectionButton, this.soundButton, this.languageButton],
+      targets: [this.mapButton, this.soundButton, this.languageButton],
       alpha: 1,
       duration: 260,
       delay: 60,
@@ -486,28 +550,4 @@ export class MenuScene extends Phaser.Scene {
     if (isStandalone()) return false
     return this.touch
   }
-}
-
-/**
- * The bag icon only has the UI ink colour. A handful of fruit-coloured dots
- * sits inside it so the menu control reads as a fruit collection rather than a
- * plain bag. Coordinates target the 30px settings icon.
- */
-function collectionButtonDecoration(scene: Phaser.Scene): Phaser.GameObjects.GameObject {
-  const graphics = scene.add.graphics()
-  const fruits = snakeColors.art.fruits
-  const dots = [
-    { color: fruits.apple.body, x: -5.4, y: 4.3, radius: 3.4 },
-    { color: fruits.orange.body, x: 0.3, y: 6.7, radius: 3.2 },
-    { color: fruits.grape.body, x: 5.4, y: 4.1, radius: 3.4 },
-    { color: fruits.lemon.body, x: -0.1, y: 2, radius: 2.2 },
-  ]
-
-  for (const dot of dots) {
-    graphics.fillStyle(dot.color, 1)
-    graphics.fillCircle(dot.x, dot.y, dot.radius)
-    graphics.fillStyle(0xffffff, 0.35)
-    graphics.fillCircle(dot.x - dot.radius * 0.32, dot.y - dot.radius * 0.32, dot.radius * 0.3)
-  }
-  return graphics
 }
