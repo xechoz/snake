@@ -5,6 +5,9 @@
 - Replace the synthesised garden loop with "Sweet Fun and Happy Loop" by
   Sonican (Pixabay Content License): a 38.4-second ukulele loop crossfaded at
   the seam and levelled to -16.5 LUFS.
+- Redraw the backdrop as a planned orchard: trees, fence and foliage are placed
+  around the quiet zones of the HUD and board, with separate menu and gameplay
+  densities plus animated butterflies and drifting petals.
 
 ## 4.0.0
 

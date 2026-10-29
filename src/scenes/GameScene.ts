@@ -50,7 +50,9 @@ import {
 } from '../ui/gameArt'
 import { drawGardenBoard, drawLevelSeeds, drawPaintTrail } from '../ui/gardenArt'
 import { computeSnakeLayout, type SnakeLayout } from '../ui/layout'
+import { OrchardAmbience } from '../ui/orchardAmbience'
 import { SwipeSteer } from '../ui/SwipeSteer'
+import type { SceneryRect } from '../ui/scenery'
 import type { GameOverInfo, HudScene, LevelResultInfo } from './HudScene'
 
 const COUNTDOWN_STEP_MS = 1000
@@ -138,6 +140,7 @@ export class GameScene extends Phaser.Scene {
   private countdownText!: Phaser.GameObjects.Text
   private debugOverlay?: DebugOverlay
   private removeHiddenListener?: () => void
+  private ambience?: OrchardAmbience
   private steer!: SwipeSteer
 
   constructor() {
@@ -212,6 +215,7 @@ export class GameScene extends Phaser.Scene {
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.removeHiddenListener?.()
+      this.ambience?.destroy()
       this.foodLayer.destroy()
     })
   }
@@ -840,7 +844,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawBackdrop(): void {
-    drawBackdrop(this.backdropGraphics, this.viewport, getServices().theme)
+    const theme = getServices().theme
+    const board = this.layout.board
+    const hud = this.layout.hud
+    const quiet: SceneryRect[] = [
+      { x: board.x, y: board.y, width: board.width, height: board.height },
+      { x: hud.x, y: hud.y, width: hud.width, height: hud.height },
+    ]
+    const plan = drawBackdrop(this.backdropGraphics, this.viewport, theme, {
+      quiet,
+      density: 'game',
+    })
+    this.ambience?.destroy()
+    this.ambience = new OrchardAmbience(this, theme, plan, 'game').setDepth(-1)
   }
 
   private drawBoard(): void {

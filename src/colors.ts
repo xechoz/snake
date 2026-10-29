@@ -97,6 +97,9 @@ export interface GardenArtColors {
   readonly petal: number
   readonly petalShade: number
   readonly gold: number
+  readonly bark: number
+  readonly barkLight: number
+  readonly barkDark: number
 }
 
 export interface UiArtColors {
@@ -178,6 +181,9 @@ const snakeArt: SnakeArtColors = {
     petal: 0xfff4d6,
     petalShade: 0xf1d9a8,
     gold: 0xffc93c,
+    bark: 0x7a5233,
+    barkLight: 0xa5744a,
+    barkDark: 0x4f331d,
   },
   ui: {
     onBg: ink,

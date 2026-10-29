@@ -38,7 +38,9 @@ import {
 } from '../ui/layout'
 import { createSnakeLogo, type SnakeLogo } from '../ui/logo'
 import { createMenuDemo, type MenuDemo } from '../ui/menuDemo'
+import { OrchardAmbience } from '../ui/orchardAmbience'
 import { SwipeSteer } from '../ui/SwipeSteer'
+import type { SceneryRect } from '../ui/scenery'
 
 const CONTROL_ICON_DESKTOP = 160
 const CONTROL_ICON_TOUCH = 56
@@ -64,6 +66,7 @@ export class MenuScene extends Phaser.Scene {
   private collectionModal?: CollectionModal
   private languageModal?: LanguageModal
   private levelMap?: LevelMapModal
+  private ambience?: OrchardAmbience
   private demo!: MenuDemo
   private hint!: Phaser.GameObjects.Text
   private controlsIcon!: Phaser.GameObjects.Graphics
@@ -103,7 +106,7 @@ export class MenuScene extends Phaser.Scene {
     services.platform.gameplayStop()
 
     this.cameras.main.setBackgroundColor(theme.bg)
-    this.backdrop = this.add.graphics()
+    this.backdrop = this.add.graphics().setDepth(-2)
     this.logo = createSnakeLogo(this, menuSkin.palette)
     const initial = computeMenuLayout(viewport, this.logo.height, this.touch, this.showInstallHint)
 
@@ -328,7 +331,10 @@ export class MenuScene extends Phaser.Scene {
   private applyLayout(viewport: Viewport, layout: MenuLayout): void {
     const theme = getServices().theme
     this.layout = layout
-    drawBackdrop(this.backdrop, viewport, theme)
+    const quiet = this.sceneryQuiet(layout)
+    const plan = drawBackdrop(this.backdrop, viewport, theme, { quiet, density: 'menu' })
+    this.ambience?.destroy()
+    this.ambience = new OrchardAmbience(this, theme, plan, 'menu').setDepth(-1)
 
     const logoScale = Math.min(1, layout.logoMaxWidth / this.logo.width)
     this.logo.container.setPosition(layout.centerX, layout.logoY).setScale(logoScale)
@@ -359,6 +365,71 @@ export class MenuScene extends Phaser.Scene {
     }
     this.syncDemoSteer(layout)
     this.syncHint(layout)
+  }
+
+  /**
+   * Rectangles the orchard must leave alone. The plan adds its own padding, so
+   * this only describes the real UI bounds.
+   */
+  private sceneryQuiet(layout: MenuLayout): SceneryRect[] {
+    const logoScale = Math.min(1, layout.logoMaxWidth / this.logo.width)
+    const logoWidth = this.logo.width * logoScale
+    const logoHeight = this.logo.height * logoScale
+    const settingsSize = layout.settings.size
+    const settingsLeft = layout.settings.collection.x - settingsSize / 2
+    const settingsRight = layout.settings.language.x + settingsSize / 2
+
+    const rects: SceneryRect[] = [
+      {
+        x: layout.centerX - logoWidth / 2,
+        y: layout.logoY - logoHeight / 2,
+        width: logoWidth,
+        height: logoHeight,
+      },
+      {
+        x: layout.centerX - this.bestLabel.width / 2,
+        y: layout.bestY - 20,
+        width: this.bestLabel.width,
+        height: 40,
+      },
+      {
+        x: layout.centerX - this.playWidth / 2 - 10,
+        y: layout.playY - MENU_PLAY_HEIGHT / 2 - 10,
+        width: this.playWidth + 20,
+        height: MENU_PLAY_HEIGHT + 20,
+      },
+      {
+        x: layout.centerX - this.hint.width / 2,
+        y: layout.hintY - 20,
+        width: this.hint.width,
+        height: 40,
+      },
+      {
+        x: settingsLeft,
+        y: layout.settings.collection.y - settingsSize / 2,
+        width: settingsRight - settingsLeft,
+        height: settingsSize,
+      },
+    ]
+
+    if (layout.demo.visible) {
+      rects.push({
+        x: layout.demo.x - layout.demo.width / 2,
+        y: layout.demo.y - layout.demo.height / 2,
+        width: layout.demo.width,
+        height: layout.demo.height,
+      })
+    }
+    if (this.installHint) {
+      rects.push({
+        x: layout.centerX - this.installHint.width / 2,
+        y: layout.installHintY - 30,
+        width: this.installHint.width,
+        height: 60,
+      })
+    }
+
+    return rects
   }
 
   private syncDemoSteer(layout: MenuLayout): void {
