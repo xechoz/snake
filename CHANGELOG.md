@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Replace the synthesised garden loop with "Sweet Fun and Happy Loop" by
+  Sonican (Pixabay Content License): a 38.4-second ukulele loop crossfaded at
+  the seam and levelled to -16.5 LUFS.
+
 ## 4.0.0
 
 - Rebrand to **Bloomtail: Color Trail** / **花尾蛇：色彩小径**.
@@ -9,6 +15,9 @@
   progress. Save version 4 migrates endless-only saves in place.
 - Replace the checkered board with a garden bed, a painted colour trail,
   buds/blooms, a level HUD and a dedicated level result screen.
+- Build a layered orchard backdrop around the garden: fruit trees, a distant
+  orchard row, a picket fence, meadow flowers, an overhanging branch and a
+  light butterfly/petal ambience that stays clear of the UI.
 - Keep the original endless mode as a bonus mode. Level retries no longer show
   interstitials.
 - Add an original 32-second garden music loop (CC0), synced to the sound toggle,
