@@ -320,11 +320,11 @@ describe('computeMenuLayout', () => {
     expect(layout.playY).toBeGreaterThan(layout.bestY)
     expect(layout.hintY).toBeGreaterThan(layout.playY)
     expect(layout.installHintY).toBeGreaterThan(layout.hintY)
-    expect(layout.settings.collection.x).toBeLessThan(layout.settings.sound.x)
-    expect(layout.settings.sound.x).toBeLessThan(layout.settings.language.x)
+    expect(layout.settings.collection.x).toBeLessThan(layout.settings.settings.x)
+    expect(layout.settings.settings.x).toBeLessThan(layout.settings.language.x)
     expect(layout.settings.language.x + layout.settings.size / 2).toBe(1280 - 24)
     expect(layout.settings.language.y).toBeLessThan(layout.logoY)
-    expect(layout.settings.sound.y + layout.settings.size / 2).toBeLessThan(
+    expect(layout.settings.settings.y + layout.settings.size / 2).toBeLessThan(
       layout.demo.y - layout.demo.height / 2,
     )
     expect(layout.demo.x - layout.demo.width / 2).toBeGreaterThan(
@@ -397,13 +397,13 @@ describe('computeMenuLayout', () => {
 
     expect(layout.settings.size).toBe(MENU_SETTINGS_TOUCH_SIZE)
     expect(layout.settings.language.x + layout.settings.size / 2).toBe(720 - 24)
-    expect(layout.settings.language.x - layout.settings.sound.x).toBeGreaterThanOrEqual(
+    expect(layout.settings.language.x - layout.settings.settings.x).toBeGreaterThanOrEqual(
       MENU_SETTINGS_HIT,
     )
-    expect(layout.settings.sound.x - layout.settings.collection.x).toBeGreaterThanOrEqual(
+    expect(layout.settings.settings.x - layout.settings.collection.x).toBeGreaterThanOrEqual(
       MENU_SETTINGS_HIT,
     )
-    expect(layout.settings.sound.y + layout.settings.size / 2).toBeLessThanOrEqual(
+    expect(layout.settings.settings.y + layout.settings.size / 2).toBeLessThanOrEqual(
       layout.logoY - MENU_LOGO_HEIGHT / 2,
     )
   })
@@ -483,7 +483,7 @@ describe('computeMenuLayout', () => {
 
       for (const point of [
         layout.settings.collection,
-        layout.settings.sound,
+        layout.settings.settings,
         layout.settings.language,
       ]) {
         expect(point.x - layout.settings.size / 2, tag).toBeGreaterThanOrEqual(edge.left)
@@ -493,7 +493,7 @@ describe('computeMenuLayout', () => {
       }
 
       if (layout.mode === 'single') {
-        expect(layout.settings.sound.y + layout.settings.size / 2, tag).toBeLessThanOrEqual(
+        expect(layout.settings.settings.y + layout.settings.size / 2, tag).toBeLessThanOrEqual(
           layout.logoY - MENU_LOGO_HEIGHT / 2,
         )
       }

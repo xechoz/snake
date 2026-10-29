@@ -8,5 +8,6 @@ Free for commercial use, no attribution required. The track is embedded in the
 game build and may not be redistributed as standalone audio.
 
 Edits: cut to a 16-bar seamless loop (38.4 s at 100 BPM) with a 2-beat
-equal-power crossfade at the seam, 3 ms boundary fades, and a -2.5 dB gain to
-land at -16.5 LUFS. Encoded to Ogg Vorbis q1 and MP3 64 kbps.
+equal-power crossfade at the seam, 3 ms boundary fades, a +2.5 dB high shelf at
+6.5 kHz for presence, and a -3.2 dB gain to land around -16 LUFS. Encoded to
+MP3 160 kbps.

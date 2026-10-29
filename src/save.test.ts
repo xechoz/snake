@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { migrateSnakeSave } from './save'
+import { DEFAULT_SETTINGS, migrateSnakeSave } from './save'
 
 const emptyProgress = {
   coins: 0,
   levels: {},
   daily: null,
+  settings: DEFAULT_SETTINGS,
 }
 
 describe('snake save migration', () => {
@@ -59,8 +60,62 @@ describe('snake save migration', () => {
     ).toMatchObject({ best: 12, unlockedSkins: [], activeSkin: 'random' })
   })
 
+  it('keeps v4 campaign progress and adds default settings', () => {
+    const migrated = migrateSnakeSave(
+      {
+        best: 840,
+        plays: 31,
+        pendingSuper: true,
+        unlockedSkins: ['berry'],
+        activeSkin: 'random',
+        coins: 7,
+        levels: {
+          '1-1': { stars: 3, bestSteps: 21, golden: true },
+          '1-2': { stars: 1, bestSteps: 61, golden: false },
+          broken: { stars: 'nope' },
+        },
+        daily: { date: '2026-10-29', stars: 2 },
+      },
+      4,
+    )
+
+    expect(migrated).toEqual({
+      best: 840,
+      plays: 31,
+      pendingSuper: true,
+      unlockedSkins: ['berry'],
+      activeSkin: 'random',
+      coins: 7,
+      levels: {
+        '1-1': { stars: 3, bestSteps: 21, golden: true },
+        '1-2': { stars: 1, bestSteps: 61, golden: false },
+      },
+      daily: { date: '2026-10-29', stars: 2 },
+      settings: DEFAULT_SETTINGS,
+    })
+  })
+
+  it('repairs out-of-range v5 settings', () => {
+    expect(
+      migrateSnakeSave(
+        {
+          best: 12,
+          plays: 2,
+          pendingSuper: false,
+          unlockedSkins: [],
+          activeSkin: 'random',
+          coins: 0,
+          levels: {},
+          daily: null,
+          settings: { musicVolume: 4, sfxVolume: -2, difficulty: 'insane' },
+        },
+        5,
+      )?.settings,
+    ).toEqual({ musicVolume: 1, sfxVolume: 0, difficulty: 'normal' })
+  })
+
   it('rejects unknown versions and malformed records', () => {
-    expect(migrateSnakeSave({ best: 120, plays: 4 }, 4)).toBeNull()
+    expect(migrateSnakeSave({ best: 120, plays: 4 }, 6)).toBeNull()
     expect(migrateSnakeSave({ best: 120, plays: 4 }, 0)).toBeNull()
     expect(migrateSnakeSave(null, 1)).toBeNull()
     expect(migrateSnakeSave({ best: 'nope', plays: 4 }, 1)).toBeNull()

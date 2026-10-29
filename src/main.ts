@@ -9,10 +9,7 @@ const eatSamples = [
   new URL('./assets/audio/eat-1.wav', import.meta.url).href,
   new URL('./assets/audio/eat-2.wav', import.meta.url).href,
 ]
-const music = [
-  new URL('./assets/audio/sweet-fun-loop.ogg', import.meta.url).href,
-  new URL('./assets/audio/sweet-fun-loop.mp3', import.meta.url).href,
-]
+const music = new URL('./assets/audio/sweet-fun-loop.mp3', import.meta.url).href
 const handPointer = new URL('./assets/hand-pointer.svg', import.meta.url).href
 
 createGame({

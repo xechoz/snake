@@ -13,8 +13,10 @@ import { createRng, type Rng } from '@mg/core/rng'
 import Phaser from 'phaser'
 import { takeSuperReward } from '../ads'
 import { startMusic, syncMusic } from '../audio/music'
+import { playSfx } from '../audio/sfx'
 import { snakeColors } from '../colors'
 import { snakeConfig } from '../logic/config'
+import { applyDifficulty } from '../logic/difficulty'
 import { bloomCount, createLevelState, type LevelState, stepLevel } from '../logic/levelRun'
 import { levelById, type WorldId } from '../logic/levels'
 import { applyLevelResult, nextUnlockedLevel } from '../logic/progress'
@@ -243,7 +245,7 @@ export class GameScene extends Phaser.Scene {
         this.countdownText.setFontSize(56)
         this.countdownText.setText(getServices().i18n.t('go'))
         this.popCountdown()
-        getServices().audio.play('start')
+        playSfx('start')
         this.tweens.add({
           targets: [this.countdownText, this.countdownArt],
           alpha: 0,
@@ -343,7 +345,7 @@ export class GameScene extends Phaser.Scene {
     if (next === this.state) return
     this.state = next
     if (this.level) this.level = { ...this.level, snake: next }
-    getServices().audio.play('turn')
+    playSfx('turn')
   }
 
   pauseGame(): void {
@@ -357,7 +359,7 @@ export class GameScene extends Phaser.Scene {
     this.countdownArt.setAlpha(0)
     this.steer.setEnabled(false)
     services.platform.gameplayStop()
-    services.audio.play('pause')
+    playSfx('pause')
     this.hud()?.showPause()
   }
 
@@ -466,7 +468,7 @@ export class GameScene extends Phaser.Scene {
         this.scene.start('Menu')
         return
       }
-      this.level = createLevelState(def, this.rng)
+      this.level = createLevelState(applyDifficulty(def, save.settings.difficulty), this.rng)
       this.state = this.level.snake
       this.prevCells = [...this.state.snake]
       this.lastFoods = null
@@ -520,7 +522,7 @@ export class GameScene extends Phaser.Scene {
   /** One short beep per countdown beat, rising above the menu's confirmation click. */
   private playCountdownTick(step: number): void {
     const pitch = 1.15 + (step - 1) * 0.15
-    getServices().audio.play('click', { pitch, gain: 1.15 })
+    playSfx('click', { pitch, gain: 1.15 })
   }
 
   private stepCountdownRing(step: number): void {
@@ -574,7 +576,7 @@ export class GameScene extends Phaser.Scene {
         this.playEatSound(grew, wasFeast)
         showEatFeedback(this, this.layout.board, event.at, event.kind, event.points, services.theme)
       } else if (event.type === 'power') {
-        services.audio.play(event.effect === 'fast' ? 'boost' : 'slow')
+        playSfx(event.effect === 'fast' ? 'boost' : 'slow')
         const label = services.i18n.t(event.effect === 'fast' ? 'power.fast' : 'power.slow')
         showPowerUpFeedback(
           this,
@@ -587,7 +589,7 @@ export class GameScene extends Phaser.Scene {
         )
       } else if (event.type === 'feast') {
         this.resetEatChain()
-        services.audio.play('start')
+        playSfx('start')
         showFeastFeedback(
           this,
           this.layout.board,
@@ -597,15 +599,15 @@ export class GameScene extends Phaser.Scene {
         )
       } else if (event.type === 'feastEnd') {
         this.resetEatChain()
-        services.audio.play('click')
+        playSfx('click')
         showFeastEndFeedback(this, this.layout.board, services.i18n.t('feast.end'), services.theme)
       } else if (event.type === 'die') {
         this.resetEatChain()
-        services.audio.play('die')
+        playSfx('die')
         this.cameras.main.shake(220, 0.008)
         flashDanger(this, services.theme)
       } else if (event.type === 'win') {
-        services.audio.play('start')
+        playSfx('start')
       }
     }
 
@@ -635,7 +637,7 @@ export class GameScene extends Phaser.Scene {
         this.playEatSound(true, false)
         showEatFeedback(this, this.layout.board, event.at, event.kind, event.points, services.theme)
       } else if (event.type === 'power') {
-        services.audio.play(event.effect === 'fast' ? 'boost' : 'slow')
+        playSfx(event.effect === 'fast' ? 'boost' : 'slow')
         const label = services.i18n.t(event.effect === 'fast' ? 'power.fast' : 'power.slow')
         showPowerUpFeedback(
           this,
@@ -648,7 +650,7 @@ export class GameScene extends Phaser.Scene {
         )
       } else if (event.type === 'die') {
         this.resetEatChain()
-        services.audio.play('die')
+        playSfx('die')
         this.cameras.main.shake(220, 0.008)
         flashDanger(this, services.theme)
       }
@@ -659,18 +661,18 @@ export class GameScene extends Phaser.Scene {
         const color = event.color
           ? snakeColors.art.fruits[event.color].body
           : services.theme.accentWarm
-        services.audio.play('eat', { pitch: 1.45, gain: 0.8 })
+        playSfx('eat', { pitch: 1.45, gain: 0.8 })
         showBloomFeedback(this, this.layout.board, event.at, color, services.theme)
       } else if (event.type === 'golden') {
-        services.audio.play('start')
+        playSfx('start')
         showGoldenFeedback(this, this.layout.board, event.at, services.theme)
       } else if (event.type === 'win') {
         this.resetEatChain()
-        services.audio.play('start')
+        playSfx('start')
       } else if (event.type === 'lose') {
         this.resetEatChain()
         if (event.reason !== 'wall' && event.reason !== 'self') {
-          services.audio.play('die')
+          playSfx('die')
           this.cameras.main.shake(160, 0.004)
         }
       }
@@ -681,14 +683,13 @@ export class GameScene extends Phaser.Scene {
 
   private playEatSound(grew: boolean, feast: boolean): void {
     const now = this.time.now
-    const audio = getServices().audio
 
     // During the feast most bites only score. Keep those quiet, fixed-pitch and
     // spaced so the 230ms crunch samples do not pile up into noise.
     if (feast && !grew) {
       if (now - this.lastFeastEatAt < FEAST_EAT_MIN_MS) return
       this.lastFeastEatAt = now
-      audio.play('eat', { gain: FEAST_EAT_GAIN })
+      playSfx('eat', { gain: FEAST_EAT_GAIN })
       return
     }
 
@@ -700,7 +701,7 @@ export class GameScene extends Phaser.Scene {
     if (feast) this.lastFeastEatAt = now
     const maxStep = feast ? FEAST_EAT_MAX_STEP : EAT_STEPS.length - 1
     const step = EAT_STEPS[Math.min(this.eatChain, maxStep)] ?? 0
-    audio.play('eat', { pitch: 2 ** (step / 12) })
+    playSfx('eat', { pitch: 2 ** (step / 12) })
   }
 
   private resetEatChain(): void {

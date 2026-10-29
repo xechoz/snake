@@ -328,7 +328,7 @@ export function superFruitSpot(width: number, height: number): SuperFruitSpot {
 
 export interface MenuSettingsLayout {
   readonly collection: Point
-  readonly sound: Point
+  readonly settings: Point
   readonly language: Point
   readonly size: number
 }
@@ -524,12 +524,12 @@ function computeSettingsLayout(
   gap: number,
 ): MenuSettingsLayout {
   const languageX = width - insets.right - SETTINGS_EDGE - size / 2
-  const soundX = languageX - size - gap
-  const collectionX = soundX - size - gap
+  const settingsX = languageX - size - gap
+  const collectionX = settingsX - size - gap
   const y = insets.top + SETTINGS_TOP + size / 2
   return {
     collection: { x: collectionX, y },
-    sound: { x: soundX, y },
+    settings: { x: settingsX, y },
     language: { x: languageX, y },
     size,
   }

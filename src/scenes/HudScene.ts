@@ -13,6 +13,7 @@ import {
 import Phaser from 'phaser'
 import { canOfferSuperReward, grantSuperReward } from '../ads'
 import { syncMusic } from '../audio/music'
+import { playSfx } from '../audio/sfx'
 import { snakeColors } from '../colors'
 import type { LevelFailReason } from '../logic/levelRun'
 import type { WorldId } from '../logic/levels'
@@ -498,7 +499,7 @@ export class HudScene extends Phaser.Scene {
     const services = getServices()
     const next = !services.settings.value.sound
     if (next) services.audio.unlock()
-    else services.audio.play('click')
+    else playSfx('click')
     services.setSound(next)
     syncMusic()
     this.soundButton?.setIcon(next ? 'soundOn' : 'soundOff')

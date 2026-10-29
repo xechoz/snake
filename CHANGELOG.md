@@ -4,7 +4,11 @@
 
 - Replace the synthesised garden loop with "Sweet Fun and Happy Loop" by
   Sonican (Pixabay Content License): a 38.4-second ukulele loop crossfaded at
-  the seam and levelled to -16.5 LUFS.
+  the seam, lifted with a +2.5 dB high shelf and encoded at MP3 160 kbps so the
+  top end survives.
+- Add a settings panel in the menu's top-right corner: music and effect volume,
+  a master sound toggle, and three campaign difficulties that adjust the pace
+  and step budget without changing the star thresholds.
 - Redraw the backdrop as a planned orchard: trees, fence and foliage are placed
   around the quiet zones of the HUD and board, with separate menu and gameplay
   densities plus animated butterflies and drifting petals.

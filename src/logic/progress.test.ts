@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { SnakeSave } from '../save'
+import { DEFAULT_SETTINGS, type SnakeSave } from '../save'
 import { LEVELS } from './levels'
 import {
   applyLevelResult,
@@ -20,6 +20,7 @@ function save(patch: Partial<SnakeSave> = {}): SnakeSave {
     coins: 0,
     levels: {},
     daily: null,
+    settings: DEFAULT_SETTINGS,
     ...patch,
   }
 }

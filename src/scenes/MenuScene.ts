@@ -15,7 +15,8 @@ import {
 } from '@mg/core'
 import { createRng } from '@mg/core/rng'
 import Phaser from 'phaser'
-import { startMusic, syncMusic } from '../audio/music'
+import { startMusic } from '../audio/music'
+import { playSfx } from '../audio/sfx'
 import { snakeColors } from '../colors'
 import { levelById } from '../logic/levels'
 import { MAX_STARS, nextLevelId, totalStars } from '../logic/progress'
@@ -27,6 +28,7 @@ import { CollectionModal } from '../ui/CollectionModal'
 import { DemoCoach } from '../ui/DemoCoach'
 import { hasTouchInput } from '../ui/device'
 import { fruitDecoration } from '../ui/fruitDecoration'
+import { gearDecoration } from '../ui/gear'
 import { LanguageModal } from '../ui/LanguageModal'
 import { LevelMapModal } from '../ui/LevelMapModal'
 import {
@@ -39,6 +41,7 @@ import {
 import { createSnakeLogo, type SnakeLogo } from '../ui/logo'
 import { createMenuDemo, type MenuDemo } from '../ui/menuDemo'
 import { OrchardAmbience } from '../ui/orchardAmbience'
+import { SettingsModal } from '../ui/SettingsModal'
 import { SwipeSteer } from '../ui/SwipeSteer'
 import type { SceneryRect } from '../ui/scenery'
 
@@ -61,10 +64,11 @@ export class MenuScene extends Phaser.Scene {
   private playButton!: Button
   private playWidth = 0
   private mapButton!: Button
-  private soundButton!: Button
+  private settingsButton!: Button
   private languageButton!: Button
   private collectionModal?: CollectionModal
   private languageModal?: LanguageModal
+  private settingsModal?: SettingsModal
   private levelMap?: LevelMapModal
   private ambience?: OrchardAmbience
   private demo!: MenuDemo
@@ -141,19 +145,14 @@ export class MenuScene extends Phaser.Scene {
       onClick: () => this.openMap(),
     })
 
-    this.soundButton = new Button(this, 0, 0, '', theme, {
+    this.settingsButton = new Button(this, 0, 0, '', theme, {
       width: initial.settings.size,
       height: initial.settings.size,
       variant: 'soft',
       minHitSize: this.touch ? MENU_SETTINGS_HIT : undefined,
       fontSize: SETTINGS_ICON_SIZE,
-      icon: services.settings.value.sound ? 'soundOn' : 'soundOff',
-      onClick: () => {
-        services.audio.play('click')
-        services.setSound(!services.settings.value.sound)
-        syncMusic()
-        this.soundButton.setIcon(services.settings.value.sound ? 'soundOn' : 'soundOff')
-      },
+      decoration: gearDecoration,
+      onClick: () => this.openSettings(),
     })
 
     this.languageButton = new Button(this, 0, 0, LANG_SHORT[services.i18n.lang], theme, {
@@ -199,6 +198,7 @@ export class MenuScene extends Phaser.Scene {
     onLayoutChange(this, (next) => {
       this.languageModal?.close()
       this.collectionModal?.close()
+      this.settingsModal?.close()
       this.applyLayout(
         next,
         computeMenuLayout(next, this.logo.height, this.touch, this.showInstallHint),
@@ -246,18 +246,20 @@ export class MenuScene extends Phaser.Scene {
     const services = getServices()
     maybeEnterFullscreen(this.scale)
     services.audio.unlock()
-    services.audio.play('click')
+    playSfx('click')
     this.scene.start('Game', data)
   }
 
   private modalOpen(): boolean {
-    return Boolean(this.languageModal || this.collectionModal || this.levelMap)
+    return Boolean(
+      this.languageModal || this.collectionModal || this.levelMap || this.settingsModal,
+    )
   }
 
   private openMap(): void {
     if (this.modalOpen()) return
     const services = getServices()
-    services.audio.play('click')
+    playSfx('click')
     this.steer.setEnabled(false)
     this.coach.pause()
     this.levelMap = new LevelMapModal(this, {
@@ -288,7 +290,7 @@ export class MenuScene extends Phaser.Scene {
   private openLanguage(): void {
     if (this.modalOpen()) return
     const services = getServices()
-    services.audio.play('click')
+    playSfx('click')
     this.steer.setEnabled(false)
     this.coach.pause()
     this.languageModal = new LanguageModal(this, {
@@ -308,10 +310,31 @@ export class MenuScene extends Phaser.Scene {
     })
   }
 
-  private openCollection(): void {
-    if (this.languageModal || this.collectionModal || this.levelMap) return
+  private openSettings(): void {
+    if (this.modalOpen()) return
     const services = getServices()
-    services.audio.play('click')
+    playSfx('click')
+    this.steer.setEnabled(false)
+    this.coach.pause()
+    this.settingsModal = new SettingsModal(this, {
+      theme: services.theme,
+      settings: snakeSave(services).read().settings,
+      onSettingsChange: (settings) => {
+        snakeSave(services).update((save) => ({ ...save, settings }))
+      },
+      onClose: () => {
+        this.settingsModal = undefined
+        this.coach.resume()
+        this.syncDemoSteer(this.layout)
+        this.syncHint(this.layout)
+      },
+    })
+  }
+
+  private openCollection(): void {
+    if (this.modalOpen()) return
+    const services = getServices()
+    playSfx('click')
     this.steer.setEnabled(false)
     this.coach.pause()
     this.collectionModal = new CollectionModal(this, {
@@ -344,7 +367,7 @@ export class MenuScene extends Phaser.Scene {
     this.playButton.setPosition(layout.centerX, layout.playY)
     this.drawPlayGlow(layout)
     this.mapButton.setPosition(layout.settings.collection.x, layout.settings.collection.y)
-    this.soundButton.setPosition(layout.settings.sound.x, layout.settings.sound.y)
+    this.settingsButton.setPosition(layout.settings.settings.x, layout.settings.settings.y)
     this.languageButton.setPosition(layout.settings.language.x, layout.settings.language.y)
 
     this.installHint?.setPosition(layout.centerX, layout.installHintY)
@@ -549,7 +572,7 @@ export class MenuScene extends Phaser.Scene {
     this.playGlow.setAlpha(0).setScale(1)
     this.playButton.setAlpha(0).setScale(0.9)
     this.mapButton.setAlpha(0)
-    this.soundButton.setAlpha(0)
+    this.settingsButton.setAlpha(0)
     this.languageButton.setAlpha(0)
     this.controlsIcon.setAlpha(0)
     this.hint.setAlpha(0)
@@ -563,7 +586,7 @@ export class MenuScene extends Phaser.Scene {
       delay: 220,
     })
     this.tweens.add({
-      targets: [this.mapButton, this.soundButton, this.languageButton],
+      targets: [this.mapButton, this.settingsButton, this.languageButton],
       alpha: 1,
       duration: 260,
       delay: 60,
