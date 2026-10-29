@@ -6,8 +6,8 @@ A handcrafted garden-snake campaign built on
 Slither through a faded garden, paint the soil with fruit colors, bloom every
 bud before the step limit, and chase three stars: finish within par for the
 second star and find the golden seed for the third. Two worlds and twelve
-levels ship with the campaign; the original endless mode is still available
-from the level map.
+levels ship with the campaign. The arcade Endless mode now lives in the separate
+`xechoz/snake-endless` game.
 
 Clone with the platform submodule:
 

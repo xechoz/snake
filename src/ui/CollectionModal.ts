@@ -2,7 +2,7 @@ import { readViewport, type Theme, textStyle } from '@mg/core'
 import Phaser from 'phaser'
 import { FRUIT_KINDS, type PowerUpKind } from '../logic/types'
 import { CloseButton } from './CloseButton'
-import { drawFruit, drawPowerUp, drawSuperFruit } from './snakeArt'
+import { drawFruit, drawPowerUp } from './snakeArt'
 
 export interface CollectionModalOptions {
   theme: Theme
@@ -12,9 +12,9 @@ export interface CollectionModalOptions {
   onClose?: () => void
 }
 
-type CollectionItem = PowerUpKind | 'super'
+type CollectionItem = PowerUpKind
 
-const ITEMS: readonly CollectionItem[] = ['ice', 'chili', 'super']
+const ITEMS: readonly CollectionItem[] = ['ice', 'chili']
 const CARD_MARGIN = 32
 const CARD_TOP_PADDING = 92
 const CARD_BOTTOM_PADDING = 32
@@ -152,11 +152,7 @@ export class CollectionModal extends Phaser.GameObjects.Container {
       const x = itemsLeft + index * (layout.tile + TILE_GAP) + layout.tile / 2
       const y = layout.itemsGridTop + layout.tile / 2
       drawTile(tiles, x, y, layout.tile, options.theme)
-      if (item === 'super') {
-        drawSuperFruit(art, x, y, Math.min(26, layout.tile * 0.19), 0, options.theme)
-      } else {
-        drawPowerUp(art, x, y, Math.min(32, layout.tile * 0.25), item, 0)
-      }
+      drawPowerUp(art, x, y, Math.min(32, layout.tile * 0.25), item, 0)
     })
 
     const onEsc = (): void => this.close()

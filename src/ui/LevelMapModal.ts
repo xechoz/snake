@@ -26,7 +26,6 @@ export interface LevelMapModalOptions {
   theme: Theme
   save: SnakeSave
   onSelect: (levelId: string) => void
-  onEndless: () => void
   onCollection: () => void
   onClose?: () => void
 }
@@ -162,43 +161,18 @@ export class LevelMapModal extends Phaser.GameObjects.Container {
     card.add(close)
 
     const footerY = layout.footer.y - centerY
-    const endless = new Button(
-      scene,
-      -layout.footer.buttonWidth / 2 - layout.footer.gap / 2,
-      footerY,
-      services.i18n.t('menu.endless'),
-      theme,
-      {
-        width: layout.footer.buttonWidth,
-        height: 60,
-        variant: 'soft',
-        fontSize: 21,
-        icon: 'play',
-        onClick: () => {
-          options.onEndless()
-          this.close()
-        },
+    const collection = new Button(scene, 0, footerY, services.i18n.t('level.collection'), theme, {
+      width: layout.footer.buttonWidth,
+      height: 60,
+      variant: 'soft',
+      fontSize: 21,
+      icon: 'bag',
+      onClick: () => {
+        options.onCollection()
+        this.close()
       },
-    )
-    const collection = new Button(
-      scene,
-      layout.footer.buttonWidth / 2 + layout.footer.gap / 2,
-      footerY,
-      services.i18n.t('level.collection'),
-      theme,
-      {
-        width: layout.footer.buttonWidth,
-        height: 60,
-        variant: 'soft',
-        fontSize: 21,
-        icon: 'bag',
-        onClick: () => {
-          options.onCollection()
-          this.close()
-        },
-      },
-    )
-    card.add([endless, collection])
+    })
+    card.add(collection)
 
     const onEsc = (): void => this.close()
     scene.input.keyboard?.on('keydown-ESC', onEsc)

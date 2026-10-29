@@ -246,11 +246,7 @@ export class MenuScene extends Phaser.Scene {
     this.startRun({ mode: 'level', levelId })
   }
 
-  private startEndless(): void {
-    this.startRun({ mode: 'endless' })
-  }
-
-  private startRun(data: { mode: 'level'; levelId: string } | { mode: 'endless' }): void {
+  private startRun(data: { mode: 'level'; levelId: string }): void {
     if (this.modalOpen()) return
     this.coach.cancel()
     this.steer.setEnabled(false)
@@ -279,10 +275,6 @@ export class MenuScene extends Phaser.Scene {
       onSelect: (levelId) => {
         this.levelMap = undefined
         this.startLevel(levelId)
-      },
-      onEndless: () => {
-        this.levelMap = undefined
-        this.startEndless()
       },
       onCollection: () => {
         this.levelMap = undefined

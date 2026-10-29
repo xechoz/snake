@@ -153,15 +153,11 @@ export class GameScene extends Phaser.Scene {
     const services = getServices()
     const theme = services.theme
     const data = (this.scene.settings.data ?? {}) as RunData
-    this.mode =
-      data.mode === 'level' && data.levelId
-        ? { kind: 'level', levelId: data.levelId }
-        : { kind: 'endless' }
-
-    if (this.mode.kind === 'level' && !levelById(this.mode.levelId)) {
+    if (!data.levelId || !levelById(data.levelId)) {
       this.scene.start('Menu')
       return
     }
+    this.mode = { kind: 'level', levelId: data.levelId }
 
     startMusic(this)
     this.cameras.main.setBackgroundColor(theme.bg)

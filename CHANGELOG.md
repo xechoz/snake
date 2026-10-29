@@ -1,7 +1,9 @@
 # Changelog
 
-## Unreleased
+## 4.1.0
 
+- Split the arcade Endless mode into the separate `xechoz/snake-endless` game.
+  The campaign map now focuses on levels and its footer only offers Collection.
 - Replace the grid level picker with a winding two-world map: flowers for cleared
   levels, a gold ring on the next level, a star gate between Orchard and Berry
   Bog, and short hints on locked nodes.
