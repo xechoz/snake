@@ -198,6 +198,7 @@ export class MenuScene extends Phaser.Scene {
     onLayoutChange(this, (next) => {
       this.languageModal?.close()
       this.collectionModal?.close()
+      this.levelMap?.close()
       this.settingsModal?.close()
       this.applyLayout(
         next,
@@ -205,6 +206,8 @@ export class MenuScene extends Phaser.Scene {
       )
     })
     this.playEntrance()
+
+    if (services.debug && services.params.get('map') !== null) this.openMap()
 
     this.input.keyboard?.on('keydown-ENTER', () => this.startNextLevel())
     this.input.keyboard?.on('keydown-SPACE', () => this.startNextLevel())
@@ -227,8 +230,16 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private startNextLevel(): void {
-    const levelId = nextLevelId(snakeSave(getServices()).read())
-    this.startLevel(levelId)
+    const save = snakeSave(getServices()).read()
+    const next = nextLevelId(save)
+    // `nextLevelId` falls back to 1-1 once every level has a star. That means
+    // the campaign is finished, so send the player to the map instead of
+    // silently restarting the first level.
+    if ((save.levels[next]?.stars ?? 0) > 0) {
+      this.openMap()
+      return
+    }
+    this.startLevel(next)
   }
 
   private startLevel(levelId: string): void {

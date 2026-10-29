@@ -591,7 +591,9 @@ export class HudScene extends Phaser.Scene {
           : 'level.failWall'
     const goldenMark = info.hasGolden ? (info.golden ? ' · ★' : ' · ☆') : ''
     const body = info.won
-      ? `${services.i18n.t('level.steps', { steps: info.steps, limit: info.limit })} · ${services.i18n.t('level.par', { par: info.par })}${goldenMark}`
+      ? info.stars === 3
+        ? `${services.i18n.t('level.goldenDone')} · ${services.i18n.t('level.steps', { steps: info.steps, limit: info.limit })}`
+        : `${services.i18n.t('level.steps', { steps: info.steps, limit: info.limit })} · ${services.i18n.t('level.par', { par: info.par })}${goldenMark}`
       : services.i18n.t(reasonKey)
 
     const nextLevel = info.nextLevelId

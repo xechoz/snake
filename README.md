@@ -4,9 +4,10 @@ A handcrafted garden-snake campaign built on
 [`xechoz/mg-platform`](https://github.com/xechoz/mg-platform).
 
 Slither through a faded garden, paint the soil with fruit colors, bloom every
-bud before the step limit, and chase three stars by finding the golden seed.
-Two worlds and twelve levels ship with the campaign; the original endless mode
-is still available from the level map.
+bud before the step limit, and chase three stars: finish within par for the
+second star and find the golden seed for the third. Two worlds and twelve
+levels ship with the campaign; the original endless mode is still available
+from the level map.
 
 Clone with the platform submodule:
 
@@ -37,14 +38,22 @@ The platform is pinned at `v4.0.0` in `platform/`.
 - `src/logic/levels.ts` holds the handcrafted boards, seeds, fruit plans and
   par/step limits.
 - `src/logic/levelRun.ts` is the pure bloom/golden/star rule set.
+- `src/logic/levelAudit.test.ts` checks par reachability and golden-seed detours
+  with a relaxed shortest-route search.
 - `src/logic/progress.ts` merges stars, coins and level unlocks.
-- Save version 4 migrates old endless-only saves without losing the best score
-  or skins.
+- Save version 5 migrates older saves without losing the best score, skins or
+  level progress.
 
 For a fast visual check of any level, use the debug deep link:
 
 ```text
 http://localhost:5173/?debug&level=2-1
+```
+
+For the level map, use:
+
+```text
+http://localhost:5173/?debug&map
 ```
 
 ## Local CrazyGames preview

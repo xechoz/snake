@@ -188,10 +188,11 @@ describe('level rules', () => {
     expect(afterWall.lostReason).toBe('wall')
   })
 
-  it('never awards stars for a lost run', () => {
+  it('keeps the golden seed and par stars independent', () => {
     expect(starsFor(baseLevel, 4, true)).toBe(3)
     expect(starsFor(baseLevel, 4, false)).toBe(2)
-    expect(starsFor(baseLevel, 6, true)).toBe(1)
+    expect(starsFor(baseLevel, 6, true)).toBe(3)
+    expect(starsFor(baseLevel, 6, false)).toBe(1)
   })
 
   it('keeps every real level playable by construction', () => {

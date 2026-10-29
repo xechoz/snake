@@ -175,9 +175,14 @@ export function stepLevel(run: LevelState, rng: Rng): LevelStepResult {
   }
 }
 
+/**
+ * Stars measure two independent goals: finishing within par earns the second
+ * star, and the golden seed earns the third. Keeping them separate means a
+ * handcrafted par never has to double as a golden-seed detour budget.
+ */
 export function starsFor(level: LevelDef, steps: number, golden: boolean): number {
-  if (steps > level.par) return 1
-  return golden ? 3 : 2
+  if (golden) return 3
+  return steps <= level.par ? 2 : 1
 }
 
 export function bloomCount(run: LevelState): number {

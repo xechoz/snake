@@ -195,7 +195,7 @@ export function drawFlower(
   graphics.fillCircle(x - radius * 0.08, y - radius * 0.1, radius * 0.055)
 }
 
-function drawBud(
+export function drawBud(
   graphics: Phaser.GameObjects.Graphics,
   x: number,
   y: number,
